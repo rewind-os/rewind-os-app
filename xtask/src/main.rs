@@ -8,7 +8,7 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-const APP_ID: &str = "io.github.r_dvl.rewind_os";
+const APP_ID: &str = "io.github.rewind_os.rewind_os_app";
 const HICOLOR: [u32; 8] = [16, 24, 32, 48, 64, 128, 256, 512];
 const ICO: [u32; 9] = [16, 20, 24, 32, 40, 48, 64, 128, 256];
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-icon/hicolor/256x256/apps/io.github.r_dvl.rewind_os.png" width="128" height="128" alt="Rewind OS icon: an engraved raccoon on a teal tile">
+  <img src="assets/app-icon/hicolor/256x256/apps/io.github.rewind_os.rewind_os_app.png" width="128" height="128" alt="Rewind OS icon: an engraved raccoon on a teal tile">
 </p>
 
 <h1 align="center">Rewind OS</h1>
@@ -16,7 +16,8 @@
 It removes what you do not need: temporary files, caches, leftovers of programs you uninstalled,
 large forgotten files and programs that start with the system for no reason.
 
-- **Overview**: drives (SSD/HDD), memory, and Windows' own large files (`hiberfil.sys`,
+- **Home**: recommendations for this computer (a drive almost full, junk worth cleaning, too
+  many startup programs…), each with a button that does it; drives (SSD/HDD), memory, and Windows' own large files (`hiberfil.sys`,
   `pagefile.sys`).
 - **Disk analyzer**: scans a drive or folder in parallel; folder list, treemap, largest files and
   size per file type. Anything can be shown in the file manager or moved to the recycle bin.
@@ -27,6 +28,8 @@ large forgotten files and programs that start with the system for no reason.
   program, service, running program or startup entry refers to. They go to the recycle bin.
 - **Installed programs** with search and their own uninstaller.
 - **Startup programs** on and off, using the system's own records.
+- **Make Windows lighter**: turn off ads, suggestions, tracking and extras you do not use. A
+  closed list of documented settings; nothing is uninstalled and every one can be undone.
 - **Maintenance**: the system's own tools (component store and hibernation on Windows, the
   journal on Linux).
 
@@ -40,7 +43,8 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Overview, disk analyzer | ✓ | ✓ | ✓ |
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | — |
-| Program leftovers, installed programs | ✓ | — | — |
+| Recommendations | ✓ | ✓ | ✓ |
+| Program leftovers, installed programs, make Windows lighter | ✓ | — | — |
 | Maintenance | component store, hibernation | journal | — |
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.
@@ -81,6 +85,9 @@ rewind-os-cli clean analyze
 rewind-os-cli clean run --defaults --yes     # the categories marked safe
 rewind-os-cli leftovers
 rewind-os-cli startup list
+rewind-os-cli recommend
+rewind-os-cli tweaks list
+rewind-os-cli tweaks apply --recommended --yes
 sudo rewind-os-cli clean run --defaults --yes   # Linux/macOS: system-wide categories too
 rewind-os-cli --json run '{"tool":"cleanup.analyze"}'
 ```

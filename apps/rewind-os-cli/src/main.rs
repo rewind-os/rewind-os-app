@@ -34,6 +34,11 @@ enum Command {
     Commands,
     /// Drives, memory and large system files.
     Overview,
+    /// What is worth doing on this computer.
+    Recommend,
+    /// Settings that make Windows lighter (every one can be undone).
+    #[command(subcommand)]
+    Tweaks(Tweaks),
     /// Measure every folder under PATH.
     Scan {
         path: PathBuf,
@@ -81,6 +86,25 @@ enum Clean {
         categories: Vec<String>,
         #[arg(long)]
         defaults: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Tweaks {
+    List,
+    /// Apply settings by id; `--recommended` applies every recommended one.
+    Apply {
+        ids: Vec<String>,
+        #[arg(long)]
+        recommended: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Undo a setting, back to Windows' default.
+    Undo {
+        id: String,
         #[arg(long)]
         yes: bool,
     },
@@ -195,6 +219,32 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             return Ok(None);
         }
         Command::Overview => Request::SystemOverview,
+        Command::Recommend => Request::Recommendations,
+        Command::Tweaks(Tweaks::List) => Request::TweaksList,
+        Command::Tweaks(Tweaks::Apply {
+            ids,
+            recommended,
+            yes,
+        }) => {
+            confirm(yes)?;
+            let mut ids = ids;
+            if recommended {
+                ids.extend(
+                    rewind_os_engine::tweaks::CATALOG
+                        .iter()
+                        .filter(|t| t.recommended)
+                        .map(|t| t.id.to_owned()),
+                );
+            }
+            if ids.is_empty() {
+                return Err(tr("Name at least one setting, or pass --recommended.").to_owned());
+            }
+            return apply_tweaks(&ids, *json).map(|()| None);
+        }
+        Command::Tweaks(Tweaks::Undo { id, yes }) => {
+            confirm(yes)?;
+            Request::TweakSet { id, applied: false }
+        }
         Command::Scan { path, .. } => Request::DiskScan { root: path },
         Command::Files { dir } => Request::ListFiles { dir },
         Command::Clean(Clean::Analyze) => Request::CleanupAnalyze,
@@ -293,6 +343,41 @@ fn spawn_reporter(task: &Arc<Task>) -> Reporter {
     Reporter {
         done,
         handle: Some(handle),
+    }
+}
+
+/// Applies several settings one by one and reports each, so one failure does not hide the rest.
+fn apply_tweaks(ids: &[String], json: bool) -> Result<(), String> {
+    let engine = Engine::new();
+    let mut failed = false;
+    for id in ids {
+        let outcome = engine.run(
+            Request::TweakSet {
+                id: id.clone(),
+                applied: true,
+            },
+            &Task::new(),
+        );
+        match outcome {
+            Ok(_) if json => println!("{{\"id\":{id:?},\"ok\":true}}"),
+            Ok(_) => println!("{} {id}", tr("Applied")),
+            Err(err) => {
+                failed = true;
+                if json {
+                    println!(
+                        "{{\"id\":{id:?},\"ok\":false,\"error\":{:?}}}",
+                        err.to_string()
+                    );
+                } else {
+                    println!("{}: {id}: {err}", tr("Error"));
+                }
+            }
+        }
+    }
+    if failed {
+        Err(tr("Some settings could not be applied.").to_owned())
+    } else {
+        Ok(())
     }
 }
 
@@ -475,5 +560,38 @@ fn print_human(response: &Response, top: usize) {
         }
         Response::ToolOutput(text) => println!("{text}"),
         Response::Done(message) => println!("{}", tr(message)),
+        Response::Recommendations(list) => {
+            if list.is_empty() {
+                println!("{}", tr("Nothing to do: this computer is in good shape."));
+            }
+            for r in list {
+                let args: Vec<(&str, &str)> =
+                    r.args.iter().map(|(k, v)| (*k, v.as_str())).collect();
+                let level = match r.level {
+                    rewind_os_engine::recommend::Level::Important => "!",
+                    rewind_os_engine::recommend::Level::Suggested => "*",
+                    rewind_os_engine::recommend::Level::Tip => "-",
+                };
+                println!("{level} {}", trf(r.title, &args));
+                println!("  {}", tr(r.detail));
+            }
+        }
+        Response::Tweaks(list) => {
+            for s in list {
+                let state = match s.state {
+                    rewind_os_engine::tweaks::State::Applied => tr("Applied"),
+                    rewind_os_engine::tweaks::State::Default => tr("Default"),
+                    rewind_os_engine::tweaks::State::Partial => tr("Partly applied"),
+                };
+                let mark = if s.tweak.recommended { "*" } else { " " };
+                println!(
+                    "{mark} {:<36} {:<16} {}",
+                    s.tweak.id,
+                    state,
+                    tr(s.tweak.name)
+                );
+            }
+            println!("\n* {}", tr("recommended"));
+        }
     }
 }

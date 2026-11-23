@@ -11,7 +11,7 @@ Rewind OS is a native app, written only in Rust, that shows what uses disk space
 what is not needed: temporary files, caches, leftovers of uninstalled programs, large forgotten
 files, and unneeded startup programs. Windows comes first; Linux and macOS share the engine and
 grow tool by tool. It ships a desktop app (egui) and a CLI, both driven by one engine. Display
-name **Rewind OS**; machine names `rewind-os-*`; app id `io.github.r_dvl.rewind_os`.
+name **Rewind OS**; machine names `rewind-os-*`; app id `io.github.rewind_os.rewind_os_app`.
 
 ## Layout
 
@@ -53,8 +53,9 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
    files. Every removal MUST go through `crates/engine/src/safety.rs`; widening it needs a test
    that shows the new place is safe. Read [docs/safety.md](docs/safety.md) before changing
    cleanup, removal or startup code.
-11. Anything that deletes or changes the system MUST ask first (a confirmation dialog in the GUI,
-   `--yes` in the CLI). User files go to the recycle bin; only regenerable caches are deleted
+11. Anything that deletes, or changes the system in a way the app cannot undo, MUST ask first (a
+   confirmation dialog in the GUI); every change needs `--yes` in the CLI. Toggles the app can
+   undo in place (startup entries, single "lighter Windows" settings) act on click. User files go to the recycle bin; only regenerable caches are deleted
    permanently.
 12. Never follow symbolic links or junctions when measuring or deleting.
 13. A UI change SHOULD work by keyboard. Drawn surfaces (bars, treemap tiles) expose a role, a

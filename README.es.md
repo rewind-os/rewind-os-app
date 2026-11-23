@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-icon/hicolor/256x256/apps/io.github.r_dvl.rewind_os.png" width="128" height="128" alt="Icono de Rewind OS: un mapache grabado sobre una loseta verde azulado">
+  <img src="assets/app-icon/hicolor/256x256/apps/io.github.rewind_os.rewind_os_app.png" width="128" height="128" alt="Icono de Rewind OS: un mapache grabado sobre una loseta verde azulado">
 </p>
 
 <h1 align="center">Rewind OS</h1>
@@ -16,7 +16,8 @@
 Elimina lo que no necesitas: archivos temporales, cachés, restos de programas que desinstalaste,
 archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 
-- **Resumen**: unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
+- **Inicio**: recomendaciones para este equipo (una unidad casi llena, basura que conviene
+  limpiar, demasiados programas de inicio…), cada una con un botón que lo hace; unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
   (`hiberfil.sys`, `pagefile.sys`).
 - **Analizador de disco**: escanea una unidad o carpeta en paralelo; lista de carpetas, treemap,
   archivos más grandes y tamaño por tipo de archivo. Cualquier elemento se puede mostrar en el
@@ -29,6 +30,8 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   a la papelera.
 - **Programas instalados**, con búsqueda y su propio desinstalador.
 - **Programas de inicio**: activar y desactivar, con los registros del propio sistema.
+- **Aligerar Windows**: desactiva anuncios, sugerencias, rastreo y extras que no usas. Una lista
+  cerrada de ajustes documentados; no se desinstala nada y cada uno se puede deshacer.
 - **Mantenimiento**: las herramientas del propio sistema (almacén de componentes e hibernación en
   Windows, el journal en Linux).
 
@@ -43,7 +46,8 @@ administrador cuando una tarea lo necesita.
 | Resumen, analizador de disco | ✓ | ✓ | ✓ |
 | Limpieza, papelera | ✓ | ✓ | ✓ |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | — |
-| Restos de programas, programas instalados | ✓ | — | — |
+| Recomendaciones | ✓ | ✓ | ✓ |
+| Restos de programas, programas instalados, aligerar Windows | ✓ | — | — |
 | Mantenimiento | almacén de componentes, hibernación | journal | — |
 
 Una herramienta que aún no está disponible lo dice, en la app y en la CLI; nunca finge

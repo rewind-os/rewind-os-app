@@ -2,6 +2,8 @@
 
 mod cleanup;
 mod leftovers;
+mod recommend;
 mod safety;
 mod scan;
 mod startup;
+mod tweaks;

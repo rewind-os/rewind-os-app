@@ -4,6 +4,7 @@ use crate::theme;
 use crate::widgets::{self, card, fill_color, page_header, usage_bar};
 use egui::RichText;
 use rewind_os_engine::format::bytes;
+use rewind_os_engine::recommend::{Action, Level, Recommendation};
 use rewind_os_engine::system::{DriveKind, SystemFileKind};
 use rewind_os_engine::{Engine, Request, Response};
 use rewind_os_i18n::{tr, trf};
@@ -11,16 +12,20 @@ use std::sync::Arc;
 
 pub struct State {
     job: Option<Job>,
+    advice_job: Option<Job>,
+    advice: Option<Vec<Recommendation>>,
 }
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.job.is_some()
+        self.job.is_some() || self.advice_job.is_some()
     }
 
     pub fn new(ctx: &egui::Context, engine: &Arc<Engine>) -> Self {
         Self {
             job: Some(Job::start(ctx, engine, Request::SystemOverview)),
+            advice_job: Some(Job::start(ctx, engine, Request::Recommendations)),
+            advice: None,
         }
     }
 
@@ -35,23 +40,122 @@ impl State {
             Some(Err(err)) => shared.error(err),
             None => {}
         }
+        match jobs::finished(&mut self.advice_job, ctx) {
+            Some(Ok(Response::Recommendations(list))) => self.advice = Some(list),
+            Some(Ok(_)) => {}
+            Some(Err(err)) => shared.error(err),
+            None => {}
+        }
+    }
+
+    /// What the computer could use, most important first, each with a button that leads there.
+    fn recommendations(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
+        let t = theme::current(ui.ctx());
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(tr("Recommended for you")).strong());
+            if self.advice_job.is_some() {
+                ui.spinner();
+                ui.label(
+                    RichText::new(tr("Looking at this computer…"))
+                        .small()
+                        .color(t.text_muted),
+                );
+            }
+        });
+        ui.add_space(4.0);
+        let Some(advice) = &self.advice else { return };
+        if advice.is_empty() {
+            card(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(
+                    RichText::new(tr("Nothing to do: this computer is in good shape.")).color(t.ok),
+                );
+            });
+            return;
+        }
+        let mut chosen = None;
+        card(ui, |ui| {
+            ui.set_width(ui.available_width());
+            for (index, r) in advice.iter().enumerate() {
+                widgets::list_row(ui, index, 58.0, |ui| {
+                    let (word, color) = match r.level {
+                        Level::Important => (tr("Important"), t.danger),
+                        Level::Suggested => (tr("Suggested"), t.accent),
+                        Level::Tip => (tr("Tip"), t.text_muted),
+                    };
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let label = match r.action {
+                            Action::Clean { .. } => tr("Clean"),
+                            Action::Analyze { .. } => tr("Analyze"),
+                            Action::Hibernation => tr("Open"),
+                            Action::ReviewStartup | Action::Lighten => tr("Review"),
+                        };
+                        let button = if r.level == Level::Tip {
+                            widgets::row_button(ui, label, true)
+                        } else {
+                            widgets::primary_button(ui, label, true)
+                        };
+                        if button.clicked() {
+                            chosen = Some(r.action.clone());
+                        }
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(84.0, 20.0),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| widgets::badge(ui, word, color),
+                        );
+                        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                            ui.add_space(9.0);
+                            let args: Vec<(&str, &str)> =
+                                r.args.iter().map(|(k, v)| (*k, v.as_str())).collect();
+                            ui.label(RichText::new(trf(r.title, &args)).strong());
+                            ui.add(
+                                egui::Label::new(
+                                    RichText::new(tr(r.detail)).small().color(t.text_muted),
+                                )
+                                .truncate(),
+                            );
+                        });
+                    });
+                });
+            }
+        });
+        if let Some(action) = chosen {
+            match action {
+                Action::Clean { categories } => {
+                    shared.cleanup_request = Some(categories);
+                    shared.goto = Some(Page::Cleanup);
+                }
+                Action::Analyze { path } => {
+                    shared.scan_request = Some(path);
+                    shared.goto = Some(Page::Analyzer);
+                }
+                Action::ReviewStartup => shared.goto = Some(Page::Startup),
+                Action::Lighten => shared.goto = Some(Page::Lighten),
+                Action::Hibernation => shared.goto = Some(Page::Maintenance),
+            }
+        }
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
         let t = theme::current(ui.ctx());
         page_header(
             ui,
-            tr("Overview"),
-            tr("Your drives, memory and the large files the system keeps for itself."),
+            tr("Home"),
+            tr("What is worth doing on this computer, and how your drives are."),
         );
         if ui
-            .add_enabled(self.job.is_none(), egui::Button::new(tr("Refresh")))
+            .add_enabled(!self.busy(), egui::Button::new(tr("Refresh")))
             .clicked()
         {
             self.job = Some(Job::start(
                 ui.ctx(),
                 &shared.engine,
                 Request::SystemOverview,
+            ));
+            self.advice_job = Some(Job::start(
+                ui.ctx(),
+                &shared.engine,
+                Request::Recommendations,
             ));
         }
         ui.add_space(t.gap);
@@ -60,6 +164,8 @@ impl State {
             return;
         };
         egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
+            self.recommendations(ui, shared);
+            ui.add_space(t.gap * 1.5);
             ui.label(RichText::new(tr("Drives")).strong());
             ui.add_space(4.0);
             let columns = ((ui.available_width() / 320.0).floor() as usize).max(1);

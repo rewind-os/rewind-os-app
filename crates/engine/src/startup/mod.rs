@@ -95,7 +95,6 @@ const ESSENTIAL_PREFIXES: &[&str] = &[
     "cinnamon-settings-daemon",
     "xfsettingsd",
     "xfce4-notifyd",
-    "xdg-user-dirs",
 ];
 
 /// Whether the entry with this value or file name is essential.

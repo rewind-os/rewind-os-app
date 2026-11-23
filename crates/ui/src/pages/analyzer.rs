@@ -249,16 +249,19 @@ impl State {
         let wide = ui.available_width() > 860.0;
         let navigate = if wide {
             let column = egui::Layout::top_down(egui::Align::Min);
-            let list_width = (ui.available_width() - 16.0) * 0.5;
+            let gap = 16.0;
+            let list_width = (ui.available_width() - gap) * 0.58;
+            let map_width = ui.available_width() - gap - list_width;
             let height = (ui.available_height() - 8.0).max(200.0);
             ui.horizontal_top(|ui| {
-                let size = egui::vec2(list_width, height);
                 let from_list = ui
-                    .allocate_ui_with_layout(size, column, |ui| self.folder_list(ui, shared, tree))
+                    .allocate_ui_with_layout(egui::vec2(list_width, height), column, |ui| {
+                        self.folder_list(ui, shared, tree)
+                    })
                     .inner;
-                ui.add_space(16.0);
+                ui.add_space(gap);
                 let from_map = ui
-                    .allocate_ui_with_layout(size, column, |ui| {
+                    .allocate_ui_with_layout(egui::vec2(map_width, height), column, |ui| {
                         treemap_view(ui, tree, self.current, &self.trashed, height - 8.0)
                     })
                     .inner;
@@ -294,7 +297,7 @@ impl State {
             .map(|(id, n)| (id, n.name.to_string(), n.bytes, n.files, n.incomplete))
             .collect();
         let mut navigate = None;
-        let row_height = 30.0;
+        let row_height = 38.0;
         egui::ScrollArea::vertical()
             .id_salt("folder_rows")
             .max_height((ui.available_height() - 40.0).max(160.0))
@@ -303,8 +306,7 @@ impl State {
                 for index in range {
                     let Some((id, name, size, files, incomplete)) = rows.get(index) else {
                         // The files that sit directly in this folder, as one row.
-                        ui.horizontal(|ui| {
-                            ui.set_height(row_height);
+                        widgets::list_row(ui, index, row_height, |ui| {
                             let label =
                                 trf("{n} files in this folder", &[("n", &count(node.own_files))]);
                             if ui.selectable_label(self.show_files, label).clicked() {
@@ -326,10 +328,9 @@ impl State {
                     };
                     let path = tree.path(*id);
                     let gone = self.trashed.contains(&path);
-                    ui.horizontal(|ui| {
-                        ui.set_height(row_height);
+                    widgets::list_row(ui, index, row_height, |ui| {
                         let fraction = *size as f32 / parent_bytes as f32;
-                        ui.allocate_ui(egui::vec2(70.0, row_height), |ui| {
+                        ui.allocate_ui(egui::vec2(64.0, row_height), |ui| {
                             widgets::usage_bar(
                                 ui,
                                 fraction,
@@ -338,24 +339,41 @@ impl State {
                             );
                         });
                         ui.add_sized(
-                            [80.0, row_height],
+                            [76.0, row_height],
                             egui::Label::new(RichText::new(bytes(*size)).strong()),
                         );
-                        let mut text = RichText::new(name.as_str());
-                        if gone {
-                            text = text.strikethrough().color(t.text_muted);
-                        }
-                        let response = ui.add_enabled(!gone, egui::Button::new(text).frame(false));
-                        if response.clicked() {
-                            navigate = Some(*id);
-                        }
-                        response.on_hover_text(trf("{n} files", &[("n", &count(*files))]));
-                        if *incomplete {
-                            widgets::badge(ui, tr("partial"), t.warn)
-                                .on_hover_text(tr("Some folders inside could not be read."));
-                        }
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            row_menu(ui, shared, &mut self.pending_trash, &path, *size, gone);
+                            let (show, trash) = widgets::file_actions(ui, &path, gone);
+                            if show {
+                                reveal(shared, path.clone());
+                            }
+                            if trash {
+                                self.pending_trash = Some(vec![(path.clone(), *size)]);
+                            }
+                            if *incomplete {
+                                widgets::badge(ui, tr("partial"), t.warn)
+                                    .on_hover_text(tr("Some folders inside could not be read."));
+                            }
+                            ui.with_layout(
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    let mut text = RichText::new(format!("{name}  ›"));
+                                    if gone {
+                                        text = text.strikethrough().color(t.text_muted);
+                                    }
+                                    let response = ui.add_enabled(
+                                        !gone,
+                                        egui::Button::new(text).frame(false).truncate(),
+                                    );
+                                    if response.clicked() {
+                                        navigate = Some(*id);
+                                    }
+                                    response.on_hover_text(trf(
+                                        "Open · {n} files",
+                                        &[("n", &count(*files))],
+                                    ));
+                                },
+                            );
                         });
                     });
                 }
@@ -439,28 +457,6 @@ impl State {
     }
 }
 
-fn row_menu(
-    ui: &mut egui::Ui,
-    shared: &mut Shared,
-    pending: &mut Option<Vec<(PathBuf, u64)>>,
-    path: &std::path::Path,
-    size: u64,
-    gone: bool,
-) {
-    ui.menu_button("…", |ui| {
-        if ui.button(tr("Show in File Explorer")).clicked() {
-            reveal(shared, path.to_path_buf());
-            ui.close();
-        }
-        if widgets::trash_entry(ui, path, gone) {
-            *pending = Some(vec![(path.to_path_buf(), size)]);
-            ui.close();
-        }
-    })
-    .response
-    .on_hover_text(tr("Actions"));
-}
-
 fn reveal(shared: &mut Shared, path: PathBuf) {
     if let Err(err) = shared.engine.run(
         Request::FilesReveal { path },
@@ -478,17 +474,16 @@ fn file_rows(
     files: &[FileEntry],
 ) {
     let t = theme::current(ui.ctx());
-    let row_height = 28.0;
+    let row_height = 38.0;
     egui::ScrollArea::vertical()
         .id_salt(ui.next_auto_id())
         .auto_shrink([false, true])
         .show_rows(ui, row_height, files.len(), |ui, range| {
-            for file in &files[range] {
+            for (index, file) in files.iter().enumerate().skip(range.start).take(range.len()) {
                 let gone = trashed.contains(&file.path);
-                ui.horizontal(|ui| {
-                    ui.set_height(row_height);
+                widgets::list_row(ui, index, row_height, |ui| {
                     ui.add_sized(
-                        [80.0, row_height],
+                        [76.0, row_height],
                         egui::Label::new(RichText::new(bytes(file.bytes)).strong()),
                     );
                     ui.add_sized(
@@ -497,22 +492,19 @@ fn file_rows(
                             RichText::new(widgets::date(file.modified)).color(t.text_muted),
                         ),
                     );
-                    let mut text = RichText::new(file.path.display().to_string());
-                    if gone {
-                        text = text.strikethrough().color(t.text_muted);
-                    }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.menu_button("…", |ui| {
-                            if ui.button(tr("Show in File Explorer")).clicked() {
-                                reveal(shared, file.path.clone());
-                                ui.close();
-                            }
-                            if widgets::trash_entry(ui, &file.path, gone) {
-                                *pending = Some(vec![(file.path.clone(), file.bytes)]);
-                                ui.close();
-                            }
-                        });
+                        let (show, trash) = widgets::file_actions(ui, &file.path, gone);
+                        if show {
+                            reveal(shared, file.path.clone());
+                        }
+                        if trash {
+                            *pending = Some(vec![(file.path.clone(), file.bytes)]);
+                        }
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                            let mut text = RichText::new(file.path.display().to_string());
+                            if gone {
+                                text = text.strikethrough().color(t.text_muted);
+                            }
                             ui.add(egui::Label::new(text).truncate());
                         });
                     });

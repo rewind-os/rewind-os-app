@@ -9,7 +9,7 @@ mod treemap;
 mod widgets;
 
 /// Reverse-DNS id: the Wayland app id, the Linux `.desktop` file and the icon name.
-pub const APP_ID: &str = "io.github.r_dvl.rewind_os";
+pub const APP_ID: &str = "io.github.rewind_os.rewind_os_app";
 
 /// Opens the main window and runs until it closes.
 pub fn run() -> eframe::Result {
@@ -63,7 +63,7 @@ fn icon() -> egui::IconData {
         include_bytes!("../../../assets/app-icon/rewind-os-macos-512.png")
     } else {
         include_bytes!(
-            "../../../assets/app-icon/hicolor/256x256/apps/io.github.r_dvl.rewind_os.png"
+            "../../../assets/app-icon/hicolor/256x256/apps/io.github.rewind_os.rewind_os_app.png"
         )
     };
     eframe::icon_data::from_png_bytes(png).unwrap_or_default()

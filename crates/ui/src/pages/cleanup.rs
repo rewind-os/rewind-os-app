@@ -33,7 +33,14 @@ impl State {
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         match jobs::finished(&mut self.analyze, ctx) {
             Some(Ok(Response::CleanupAnalysis(reports))) => {
-                if self.reports.is_none() {
+                if let Some(wanted) = shared.cleanup_request.take() {
+                    // A recommendation chose these categories.
+                    self.selected = reports
+                        .iter()
+                        .filter(|r| wanted.iter().any(|w| w == r.category.id) && !r.blocked)
+                        .map(|r| r.category.id)
+                        .collect();
+                } else if self.reports.is_none() {
                     self.selected = reports
                         .iter()
                         .filter(|r| r.category.selected_by_default && r.present && !r.blocked)
@@ -68,7 +75,7 @@ impl State {
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
         let ctx = ui.ctx().clone();
         let t = theme::current(&ctx);
-        if !self.started {
+        if !self.started || (shared.cleanup_request.is_some() && self.analyze.is_none()) {
             self.start_analyze(&ctx, shared);
         }
         self.poll(&ctx, shared);

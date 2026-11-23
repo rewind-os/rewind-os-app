@@ -1,7 +1,7 @@
 use crate::app::Shared;
 use crate::jobs::{self, Job};
 use crate::theme;
-use crate::widgets::{card, page_header};
+use crate::widgets::{self, card, page_header};
 use egui::RichText;
 use rewind_os_engine::startup::StartupEntry;
 use rewind_os_engine::{Request, Response, Task};
@@ -57,59 +57,76 @@ impl State {
             .show(ui, |ui| {
                 card(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    for (i, entry) in entries.iter().enumerate() {
-                        if i > 0 {
-                            ui.separator();
-                        }
+                    for (index, entry) in entries.iter().enumerate() {
                         let needs_rights = entry.needs_admin && !shared.elevated;
                         // Essential entries can be turned on but never off.
                         let essential = entry.essential && entry.enabled;
-                        let locked = needs_rights || essential;
-                        ui.horizontal(|ui| {
-                            let mut on = entry.enabled;
-                            let label = RichText::new(&entry.name).strong();
-                            let response =
-                                ui.add_enabled(!locked, egui::Checkbox::new(&mut on, label));
-                            let response = if essential {
-                                response.on_disabled_hover_text(tr(
-                                    rewind_os_engine::startup::ESSENTIAL,
-                                ))
-                            } else if needs_rights {
-                                response
-                                    .on_disabled_hover_text(tr("This needs administrator rights."))
-                            } else {
-                                response
-                            };
-                            if essential {
-                                ui.label(
-                                    RichText::new(tr("Needed by the system"))
-                                        .small()
-                                        .color(t.text_muted),
-                                );
-                            }
-                            if response.changed() {
-                                changed = Some((entry.id.clone(), on));
-                            }
-                            ui.label(
-                                RichText::new(if entry.enabled { tr("On") } else { tr("Off") })
-                                    .color(if entry.enabled { t.ok } else { t.text_muted }),
-                            );
-                            ui.label(
-                                RichText::new(tr(entry.source.label()))
-                                    .small()
-                                    .color(t.text_muted),
+                        widgets::list_row(ui, index, 62.0, |ui| {
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if essential {
+                                        ui.label(
+                                            RichText::new(tr("Needed by the system"))
+                                                .small()
+                                                .color(t.text_muted),
+                                        )
+                                        .on_hover_text(tr(rewind_os_engine::startup::ESSENTIAL));
+                                    } else {
+                                        let label = if entry.enabled {
+                                            tr("Turn off")
+                                        } else {
+                                            tr("Turn on")
+                                        };
+                                        let button = widgets::row_button(ui, label, !needs_rights);
+                                        let button = if needs_rights {
+                                            button.on_disabled_hover_text(tr(
+                                                "This needs administrator rights.",
+                                            ))
+                                        } else {
+                                            button
+                                        };
+                                        if button.clicked() {
+                                            changed = Some((entry.id.clone(), !entry.enabled));
+                                        }
+                                    }
+                                    let (word, color) = if entry.enabled {
+                                        (tr("On"), t.ok)
+                                    } else {
+                                        (tr("Off"), t.text_muted)
+                                    };
+                                    ui.allocate_ui_with_layout(
+                                        egui::vec2(90.0, 20.0),
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| ui.label(RichText::new(word).small().color(color)),
+                                    );
+                                    ui.with_layout(
+                                        egui::Layout::top_down(egui::Align::Min),
+                                        |ui| {
+                                            ui.add_space(8.0);
+                                            ui.horizontal(|ui| {
+                                                ui.label(RichText::new(&entry.name).strong());
+                                                ui.label(
+                                                    RichText::new(tr(entry.source.label()))
+                                                        .small()
+                                                        .color(t.text_muted),
+                                                );
+                                            });
+                                            ui.add(
+                                                egui::Label::new(
+                                                    RichText::new(&entry.command)
+                                                        .small()
+                                                        .monospace()
+                                                        .color(t.text_muted),
+                                                )
+                                                .truncate(),
+                                            )
+                                            .on_hover_text(&entry.command);
+                                        },
+                                    );
+                                },
                             );
                         });
-                        ui.add(
-                            egui::Label::new(
-                                RichText::new(&entry.command)
-                                    .small()
-                                    .monospace()
-                                    .color(t.text_muted),
-                            )
-                            .truncate(),
-                        )
-                        .on_hover_text(&entry.command);
                     }
                 });
                 if !shared.elevated && entries.iter().any(|e| e.needs_admin) {

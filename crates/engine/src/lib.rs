@@ -7,11 +7,13 @@ pub mod format;
 pub mod leftovers;
 pub mod maintenance;
 pub mod programs;
+pub mod recommend;
 pub mod safety;
 pub mod scan;
 pub mod startup;
 pub mod system;
 pub mod task;
+pub mod tweaks;
 mod walk;
 
 use serde::{Deserialize, Serialize};
@@ -125,6 +127,10 @@ pub const TOOLS: &[ToolSpec] = &[
         "Show drives, memory and large system files",
     ),
     ToolSpec::new(
+        "system.recommendations",
+        "Suggest what is worth doing on this computer",
+    ),
+    ToolSpec::new(
         "system.relaunch_elevated",
         "Restart the app with administrator rights",
     )
@@ -185,6 +191,18 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "tweaks.list",
+        "List settings that make Windows lighter, and whether they are on",
+    )
+    .only(WINDOWS),
+    ToolSpec::new(
+        "tweaks.set",
+        "Apply or undo a setting that makes Windows lighter",
+    )
+    .admin(AdminNeed::Partly)
+    .changes()
+    .only(WINDOWS),
+    ToolSpec::new(
         "maintenance.journal_usage",
         "Report how much space the system journal uses",
     )
@@ -209,6 +227,12 @@ pub fn tool(id: &str) -> Option<&'static ToolSpec> {
 pub enum Request {
     #[serde(rename = "system.overview")]
     SystemOverview,
+    #[serde(rename = "system.recommendations")]
+    Recommendations,
+    #[serde(rename = "tweaks.list")]
+    TweaksList,
+    #[serde(rename = "tweaks.set")]
+    TweakSet { id: String, applied: bool },
     #[serde(rename = "system.relaunch_elevated")]
     RelaunchElevated { args: Vec<String> },
     #[serde(rename = "disk.scan")]
@@ -250,6 +274,8 @@ pub enum Request {
 #[serde(tag = "kind", content = "data", rename_all = "snake_case")]
 pub enum Response {
     Overview(system::Overview),
+    Recommendations(Vec<recommend::Recommendation>),
+    Tweaks(Vec<tweaks::TweakStatus>),
     Scan(#[serde(serialize_with = "scan::serialize_summary")] Arc<scan::ScanTree>),
     Files(Vec<scan::FileEntry>),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
@@ -291,6 +317,16 @@ impl Engine {
         }
         match request {
             Request::SystemOverview => Ok(Response::Overview(system::overview())),
+            Request::Recommendations => Ok(Response::Recommendations(recommend::recommend(task))),
+            Request::TweaksList => Ok(Response::Tweaks(tweaks::list())),
+            Request::TweakSet { id, applied } => {
+                tweaks::set(&id, applied)?;
+                Ok(Response::Done(if applied {
+                    "Setting applied"
+                } else {
+                    "Setting undone"
+                }))
+            }
             Request::RelaunchElevated { args } => {
                 rewind_os_platform::elevation::relaunch_elevated(&args)?;
                 Ok(Response::Done("An elevated copy was started"))
@@ -346,6 +382,9 @@ impl Request {
     pub fn id(&self) -> &'static str {
         match self {
             Request::SystemOverview => "system.overview",
+            Request::Recommendations => "system.recommendations",
+            Request::TweaksList => "tweaks.list",
+            Request::TweakSet { .. } => "tweaks.set",
             Request::RelaunchElevated { .. } => "system.relaunch_elevated",
             Request::DiskScan { .. } => "disk.scan",
             Request::ListFiles { .. } => "disk.list_files",

@@ -9,6 +9,7 @@ guarantees, where they are enforced, and the tests that hold them.
 |---|---|
 | Junk cleanup | Only curated categories of caches and temporary files, each a fixed path template. Every matched path passes the guard's cleanup check. In system locations only files are deleted and every folder is kept. Files in use are skipped. Categories that need rights are skipped without them. |
 | Move to recycle bin (analyzer, leftovers) | Passes the guard's removal check. Goes to the recycle bin, so it can be restored. |
+| Make Windows lighter | Only the settings in a closed catalog (`crates/engine/src/tweaks.rs`): documented registry values and policies. Each records exactly how it goes back to Windows' default, and a setting that fails halfway puts back the values it already wrote. Nothing is uninstalled. |
 | Startup programs | Only the system's own on/off records (Windows "startup approved", XDG `Hidden=` in the user's folder). Nothing is deleted. Essential entries (security, sign-in, accessibility, sound, the desktop session) cannot be turned off. |
 | Maintenance | Only the system's own tools (DISM component cleanup, `powercfg /hibernate`, `journalctl --vacuum-time`), which their vendors support. |
 | Uninstall | Starts the program's own uninstaller; Rewind OS removes nothing itself. |
@@ -44,6 +45,8 @@ Measuring and deleting never follow symbolic links or junctions.
   ordinary files and the cleanup locations are allowed (Unix paths on Linux and macOS, Windows
   paths on Windows, each in CI).
 - `crates/engine/tests/it/cleanup.rs`: a cleanup deletes inside its folder only.
+- `crates/engine/tests/it/tweaks.rs`: every setting applies and undoes back to the default; a
+  failure halfway leaves nothing changed.
 - `crates/engine/tests/it/startup.rs`: essential entries cannot be turned off; ids cannot escape
   the autostart folders.
 - `crates/engine/src/walk.rs`: links are not followed; system locations keep their folders.

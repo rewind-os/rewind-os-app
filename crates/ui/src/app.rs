@@ -20,17 +20,30 @@ pub enum Page {
     Leftovers,
     Programs,
     Startup,
+    Lighten,
     Maintenance,
 }
 
+/// Navigation groups, in the order the sidebar shows them.
+const SECTIONS: [(&str, &[Page]); 4] = [
+    ("", &[Page::Overview]),
+    (
+        "Free up space",
+        &[Page::Analyzer, Page::Cleanup, Page::Leftovers],
+    ),
+    ("Programs", &[Page::Programs, Page::Startup]),
+    ("System", &[Page::Lighten, Page::Maintenance]),
+];
+
 impl Page {
-    const ALL: [Page; 7] = [
+    const ALL: [Page; 8] = [
         Page::Overview,
         Page::Analyzer,
         Page::Cleanup,
         Page::Leftovers,
         Page::Programs,
         Page::Startup,
+        Page::Lighten,
         Page::Maintenance,
     ];
 
@@ -43,6 +56,7 @@ impl Page {
             Page::Leftovers => &["leftovers.find"],
             Page::Programs => &["programs.list"],
             Page::Startup => &["startup.list"],
+            Page::Lighten => &["tweaks.list"],
             Page::Maintenance => &[
                 "maintenance.analyze_component_store",
                 "maintenance.journal_usage",
@@ -58,21 +72,37 @@ impl Page {
 
     pub fn title(self) -> &'static str {
         match self {
-            Page::Overview => "Overview",
+            Page::Overview => "Home",
             Page::Analyzer => "Disk analyzer",
             Page::Cleanup => "Junk cleanup",
             Page::Leftovers => "Program leftovers",
             Page::Programs => "Installed programs",
             Page::Startup => "Startup programs",
+            Page::Lighten => "Make Windows lighter",
             Page::Maintenance => "Maintenance",
+        }
+    }
+
+    /// A one-line hint shown under the title in the sidebar tooltip.
+    pub fn hint(self) -> &'static str {
+        match self {
+            Page::Overview => "Recommendations and your drives",
+            Page::Analyzer => "See what takes up space, folder by folder",
+            Page::Cleanup => "Delete temporary files and caches",
+            Page::Leftovers => "Folders left by uninstalled programs",
+            Page::Programs => "Uninstall what you no longer use",
+            Page::Startup => "Choose what starts with the system",
+            Page::Lighten => "Turn off ads, tracking and extras you do not use",
+            Page::Maintenance => "The system's own maintenance tools",
         }
     }
 }
 
 /// The app icon for the top bar, from the 64 px render.
 fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
-    let png =
-        include_bytes!("../../../assets/app-icon/hicolor/64x64/apps/io.github.r_dvl.rewind_os.png");
+    let png = include_bytes!(
+        "../../../assets/app-icon/hicolor/64x64/apps/io.github.rewind_os.rewind_os_app.png"
+    );
     let icon = eframe::icon_data::from_png_bytes(png).ok()?;
     let size = [icon.width as usize, icon.height as usize];
     let image = egui::ColorImage::from_rgba_unmultiplied(size, &icon.rgba);
@@ -99,6 +129,8 @@ pub struct Shared {
     pub goto: Option<Page>,
     /// Set by the overview to start a scan in the analyzer.
     pub scan_request: Option<PathBuf>,
+    /// Set by a recommendation: the cleanup categories to select.
+    pub cleanup_request: Option<Vec<String>>,
     pub relaunch: Option<Job>,
 }
 
@@ -158,6 +190,7 @@ pub struct App {
     leftovers: pages::leftovers::State,
     programs: pages::programs::State,
     startup: pages::startup::State,
+    lighten: pages::lighten::State,
     maintenance: pages::maintenance::State,
     devtools: crate::devtools::Devtools,
     logo: Option<egui::TextureHandle>,
@@ -182,6 +215,7 @@ impl App {
                 status: None,
                 goto: None,
                 scan_request: crate::devtools::scan_path(),
+                cleanup_request: None,
                 relaunch: None,
             },
             page,
@@ -191,6 +225,7 @@ impl App {
             leftovers: Default::default(),
             programs: Default::default(),
             startup: Default::default(),
+            lighten: Default::default(),
             maintenance: Default::default(),
             devtools: crate::devtools::Devtools::from_env(),
             logo: load_logo(ctx),
@@ -204,6 +239,7 @@ impl App {
             || self.leftovers.busy()
             || self.programs.busy()
             || self.startup.busy()
+            || self.lighten.busy()
             || self.maintenance.busy()
     }
 
@@ -223,19 +259,34 @@ impl App {
             ui.label(RichText::new("Rewind OS").size(17.0).strong());
         });
         ui.add_space(22.0);
-        for page in Page::ALL {
-            let available = page.available();
-            let response = widgets::nav_item(ui, tr(page.title()), self.page == page, available);
-            let response = if available {
-                response
-            } else {
-                response.on_hover_text(rewind_os_i18n::trf(
-                    "Not available on {os} yet.",
-                    &[("os", Os::current().name())],
-                ))
-            };
-            if response.clicked() {
-                self.page = page;
+        for (heading, pages) in SECTIONS {
+            if !heading.is_empty() {
+                ui.add_space(14.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(16.0);
+                    ui.label(
+                        RichText::new(tr(heading).to_uppercase())
+                            .size(11.0)
+                            .color(t.text_muted),
+                    );
+                });
+                ui.add_space(2.0);
+            }
+            for &page in pages {
+                let available = page.available();
+                let response =
+                    widgets::nav_item(ui, tr(page.title()), self.page == page, available);
+                let response = if available {
+                    response.on_hover_text(tr(page.hint()))
+                } else {
+                    response.on_hover_text(rewind_os_i18n::trf(
+                        "Not available on {os} yet.",
+                        &[("os", Os::current().name())],
+                    ))
+                };
+                if response.clicked() {
+                    self.page = page;
+                }
             }
         }
         ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
@@ -343,6 +394,7 @@ impl eframe::App for App {
                     Page::Leftovers => self.leftovers.ui(ui, shared),
                     Page::Programs => self.programs.ui(ui, shared),
                     Page::Startup => self.startup.ui(ui, shared),
+                    Page::Lighten => self.lighten.ui(ui, shared),
                     Page::Maintenance => self.maintenance.ui(ui, shared),
                 }
             });

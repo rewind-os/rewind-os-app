@@ -4,8 +4,8 @@
 #   rewind-os-<version>-linux-<arch>.tar.gz
 #     rewind-os-<version>-linux-<arch>/
 #       bin/rewind-os, bin/rewind-os-cli
-#       share/applications/io.github.r_dvl.rewind_os.desktop
-#       share/icons/hicolor/<n>x<n>/apps/io.github.r_dvl.rewind_os.png
+#       share/applications/io.github.rewind_os.rewind_os_app.desktop
+#       share/icons/hicolor/<n>x<n>/apps/io.github.rewind_os.rewind_os_app.png
 #       README.md, README.es.md, LICENSE-MIT, LICENSE-APACHE, NOTICE
 #
 # Unpack it anywhere and run bin/rewind-os; copy share/ into ~/.local/share to get the
@@ -25,7 +25,7 @@ case "$(uname -m)" in
 esac
 DIST="${DIST:-$ROOT/dist/release}"
 TARGET_DIR="${CARGO_TARGET_DIR:-$ROOT/target}"
-ID="io.github.r_dvl.rewind_os"
+ID="io.github.rewind_os.rewind_os_app"
 NAME="rewind-os-$VERSION-linux-$ARCH"
 
 echo "Rewind OS $VERSION for Linux $ARCH"

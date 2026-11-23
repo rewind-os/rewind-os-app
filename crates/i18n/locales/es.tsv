@@ -278,3 +278,108 @@ This folder holds your user folders or programs. Remove what is inside it instea
 Cleanup never touches your personal folders.	La limpieza nunca toca tus carpetas personales.
 The system needs this to work properly (security, sign-in, accessibility or sound).	El sistema lo necesita para funcionar bien (seguridad, inicio de sesión, accesibilidad o sonido).
 Needed by the system	Necesario para el sistema
+# Navigation
+Home	Inicio
+Free up space	Liberar espacio
+Programs	Programas
+Recommendations and your drives	Recomendaciones y tus unidades
+See what takes up space, folder by folder	Mira qué ocupa espacio, carpeta por carpeta
+Delete temporary files and caches	Borra archivos temporales y cachés
+Folders left by uninstalled programs	Carpetas que dejaron programas desinstalados
+Uninstall what you no longer use	Desinstala lo que ya no usas
+Choose what starts with the system	Elige qué se inicia con el sistema
+Turn off ads, tracking and extras you do not use	Desactiva anuncios, rastreo y extras que no usas
+The system's own maintenance tools	Las herramientas de mantenimiento del propio sistema
+# Lists
+Show	Mostrar
+Bin	Papelera
+Open · {n} files	Abrir · {n} archivos
+# Recommendations
+Suggest what is worth doing on this computer	Sugiere qué merece la pena hacer en este equipo
+Looking for recommendations	Buscando recomendaciones
+Recommended for you	Recomendado para ti
+Looking at this computer…	Revisando este equipo…
+What is worth doing on this computer, and how your drives are.	Qué merece la pena hacer en este equipo y cómo están tus unidades.
+Nothing to do: this computer is in good shape.	Nada que hacer: este equipo está en buena forma.
+Important	Importante
+Suggested	Sugerido
+Tip	Consejo
+{drive} is almost full	{drive} está casi llena
+With less than about 10% free, the system and apps slow down and updates can fail. See what takes the space.	Con menos de un 10 % libre, el sistema y las apps van más lentos y las actualizaciones pueden fallar. Mira qué ocupa el espacio.
+Clean {size} of junk files	Limpia {size} de archivos basura
+Temporary files, caches and crash reports that are recreated when needed.	Archivos temporales, cachés e informes de bloqueos que se vuelven a crear cuando hacen falta.
+Empty the recycle bin ({size})	Vacía la papelera ({size})
+Files you deleted still take space until the recycle bin is emptied.	Los archivos que borraste siguen ocupando espacio hasta que vacías la papelera.
+Old installers in Downloads use {size}	Los instaladores antiguos de Descargas ocupan {size}
+Setup files you already used. They go to the recycle bin.	Instaladores que ya usaste. Van a la papelera.
+Developer package caches use {size}	Las cachés de paquetes de desarrollo ocupan {size}
+Packages are downloaded again when a project needs them.	Los paquetes se vuelven a descargar cuando un proyecto los necesita.
+Your Downloads folder uses {size}	Tu carpeta Descargas ocupa {size}
+Look for large files you no longer need.	Busca archivos grandes que ya no necesites.
+{n} programs start with the system	{n} programas se inician con el sistema
+Each one makes starting up slower. Turn off the ones you do not need right away.	Cada uno hace el arranque más lento. Desactiva los que no necesitas nada más encender.
+{n} settings can make Windows lighter	{n} ajustes pueden hacer Windows más ligero
+Ads, suggestions and data collection you can turn off. Every change can be undone.	Anuncios, sugerencias y recogida de datos que puedes desactivar. Todo cambio se puede deshacer.
+The hibernation file uses {size}	El archivo de hibernación ocupa {size}
+If you never hibernate the computer, turning hibernation off frees this space.	Si nunca hibernas el equipo, desactivar la hibernación libera este espacio.
+# Make Windows lighter
+Make Windows lighter	Aligerar Windows
+List settings that make Windows lighter, and whether they are on	Lista los ajustes que aligeran Windows y si están aplicados
+Apply or undo a setting that makes Windows lighter	Aplica o deshace un ajuste que aligera Windows
+Turn off ads, tracking and extras you do not use. Nothing is uninstalled, and every change can be undone here.	Desactiva anuncios, rastreo y extras que no usas. No se desinstala nada y cada cambio se puede deshacer aquí.
+Apply {n} recommended	Aplicar {n} recomendados
+Apply the recommended settings?	¿Aplicar los ajustes recomendados?
+These settings will be turned off. You can undo each one here at any time.	Se desactivarán estos ajustes. Puedes deshacer cada uno aquí cuando quieras.
+Apply	Aplicar
+Applied	Aplicado
+Default	Por defecto
+Partly applied	Aplicado en parte
+Partly	En parte
+Turned off	Desactivado
+Undo	Deshacer
+Recommended	Recomendado
+recommended	recomendado
+Setting applied	Ajuste aplicado
+Setting undone	Ajuste deshecho
+Name at least one setting, or pass --recommended.	Indica al menos un ajuste, o usa --recommended.
+Some settings could not be applied.	Algunos ajustes no se han podido aplicar.
+Takes effect right away	Se aplica al momento
+Takes effect after signing out	Se aplica al cerrar sesión
+Takes effect after restarting	Se aplica al reiniciar
+Ads and suggestions	Anuncios y sugerencias
+Features you may not use	Funciones que quizá no uses
+Visual effects	Efectos visuales
+Suggestions in Start and Settings	Sugerencias en Inicio y Configuración
+Stops Windows from showing suggested apps and offers in the Start menu and in Settings.	Windows deja de mostrar apps sugeridas y ofertas en el menú Inicio y en Configuración.
+Tips and tricks	Trucos y consejos
+Stops notifications with tips about using Windows.	Deja de mostrar notificaciones con consejos sobre Windows.
+Apps installed without asking	Apps instaladas sin preguntar
+Stops Windows from installing suggested apps and games on its own. Apps already installed stay.	Windows deja de instalar por su cuenta apps y juegos sugeridos. Las apps ya instaladas se quedan.
+Fun facts on the lock screen	Curiosidades en la pantalla de bloqueo
+Removes tips and promotions shown over the lock screen picture.	Quita los consejos y promociones que aparecen sobre la imagen de la pantalla de bloqueo.
+Offers in File Explorer	Ofertas en el Explorador de archivos
+Stops cloud storage offers in File Explorer.	Deja de mostrar ofertas de almacenamiento en la nube en el Explorador de archivos.
+Web results in Start search	Resultados web en la búsqueda de Inicio
+Start menu search shows only results from this computer, without web suggestions.	La búsqueda del menú Inicio muestra solo resultados de este equipo, sin sugerencias web.
+Advertising ID	Identificador de publicidad
+Apps can no longer use an identifier to show you personalised ads.	Las apps ya no pueden usar un identificador para mostrarte anuncios personalizados.
+Tailored experiences	Experiencias personalizadas
+Microsoft stops using your diagnostic data to personalise tips, ads and recommendations.	Microsoft deja de usar tus datos de diagnóstico para personalizar consejos, anuncios y recomendaciones.
+Optional diagnostic data	Datos de diagnóstico opcionales
+Windows sends only the required diagnostic data, the least it allows.	Windows envía solo los datos de diagnóstico obligatorios, el mínimo que permite.
+Activity history	Historial de actividad
+Windows stops keeping and sending a history of the apps and files you use.	Windows deja de guardar y enviar un historial de las apps y archivos que usas.
+Telemetry service	Servicio de telemetría
+Turns off the Connected User Experiences and Telemetry service, which sends diagnostic data in the background.	Desactiva el servicio Experiencias del usuario y telemetría asociadas, que envía datos de diagnóstico en segundo plano.
+Widgets	Widgets
+Turns off the Widgets board with news and weather, and its button on the taskbar.	Desactiva el panel de Widgets con noticias y tiempo, y su botón en la barra de tareas.
+Recall snapshots	Capturas de Recall
+Windows stops saving snapshots of your screen. Only Copilot+ PCs have this feature.	Windows deja de guardar capturas de tu pantalla. Solo los PC Copilot+ tienen esta función.
+Background game recording	Grabación de juegos en segundo plano
+Turns off Game Bar's background recording of games. You can still take screenshots.	Desactiva la grabación en segundo plano de la Game Bar. Puedes seguir haciendo capturas.
+Sharing updates with other computers	Compartir actualizaciones con otros equipos
+Windows downloads updates only from Microsoft and stops uploading them to other computers.	Windows descarga las actualizaciones solo de Microsoft y deja de enviarlas a otros equipos.
+Transparency effects	Efectos de transparencia
+Windows, the taskbar and Start become solid instead of see-through. Lighter on older computers.	Las ventanas, la barra de tareas e Inicio pasan a ser opacas. Más ligero en equipos antiguos.
+Window animations	Animaciones de ventanas
+Windows open and minimise instantly, without animation.	Las ventanas se abren y minimizan al instante, sin animación.

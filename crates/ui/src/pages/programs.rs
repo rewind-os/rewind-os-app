@@ -96,13 +96,13 @@ impl State {
             RichText::new(trf("{n} programs", &[("n", &shown.len().to_string())]))
                 .color(t.text_muted),
         );
-        let row_height = 42.0;
+        let row_height = 52.0;
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show_rows(ui, row_height, shown.len(), |ui, range| {
-                for program in &shown[range] {
-                    ui.horizontal(|ui| {
-                        ui.set_height(row_height);
+                for (index, program) in shown.iter().enumerate().skip(range.start).take(range.len())
+                {
+                    widgets::list_row(ui, index, row_height, |ui| {
                         ui.vertical(|ui| {
                             ui.label(RichText::new(&program.name).strong());
                             let mut details = Vec::new();

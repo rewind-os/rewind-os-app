@@ -60,7 +60,7 @@ jobs:
           cargo build --locked --release -p rewind-os-cli
           cli=target/release/rewind-os-cli
           "$cli" --version
-          for cmd in overview "clean analyze" "startup list" "scan $RUNNER_TEMP --top 5"; do
+          for cmd in overview recommend "clean analyze" "startup list" "scan $RUNNER_TEMP --top 5"; do
             echo "==> rewind-os-cli $cmd"
             # shellcheck disable=SC2086
             "$cli" $cmd
@@ -94,7 +94,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $cli = '.\target\release\rewind-os-cli.exe'
           & $cli --version
-          foreach ($cmd in @('overview', 'programs', 'leftovers', 'files C:\Windows')) {
+          foreach ($cmd in @('overview', 'programs', 'leftovers', 'files C:\Windows', 'recommend', 'tweaks list')) {
             Write-Output "==> rewind-os-cli --json $cmd"
             $json = & $cli --json @($cmd -split ' ')
             if ($LASTEXITCODE -ne 0) { throw "$cmd failed with exit code $LASTEXITCODE" }
@@ -134,6 +134,7 @@ jobs:
           cli=target/release/rewind-os-cli
           "$cli" --version
           "$cli" overview
+          "$cli" recommend
           "$cli" clean analyze
           "$cli" scan "$RUNNER_TEMP" --top 5
           "$cli" --json clean analyze | python3 -c 'import json,sys; json.load(sys.stdin)'

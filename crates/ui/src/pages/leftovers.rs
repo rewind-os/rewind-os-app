@@ -173,14 +173,18 @@ impl State {
             ))
             .color(t.text_muted),
         );
-        let row_height = 44.0;
+        let row_height = 54.0;
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show_rows(ui, row_height, visible.len(), |ui, range| {
-                for item in &visible[range] {
+                for (index, item) in visible
+                    .iter()
+                    .enumerate()
+                    .skip(range.start)
+                    .take(range.len())
+                {
                     let gone = self.moved.contains(&item.path);
-                    ui.horizontal(|ui| {
-                        ui.set_height(row_height);
+                    widgets::list_row(ui, index, row_height, |ui| {
                         let mut checked = self.selected.contains(&item.path);
                         let refusal = rewind_os_engine::safety::removal_refusal(&item.path);
                         let response = ui.add_enabled(

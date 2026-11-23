@@ -33,8 +33,8 @@ direction fur grows in. No third-party artwork. Licence: `LICENSE.txt`.
 | `rewind-os-1024.png` | 1024 px render (store listings, docs) |
 | `rewind-os-macos-512.png` | runtime window icon on macOS |
 | `rewind-os.ico` | Windows icon, 16-256 px, embedded in `rewind-os.exe` by `apps/rewind-os/build.rs` |
-| `hicolor/<n>x<n>/apps/io.github.r_dvl.rewind_os.png` | Linux icon theme, 16-512 px; the 256 px one is also the runtime window icon on Windows and Linux |
-| `hicolor/scalable/apps/io.github.r_dvl.rewind_os.svg` | Linux scalable icon |
+| `hicolor/<n>x<n>/apps/io.github.rewind_os.rewind_os_app.png` | Linux icon theme, 16-512 px; the 256 px one is also the runtime window icon on Windows and Linux |
+| `hicolor/scalable/apps/io.github.rewind_os.rewind_os_app.svg` | Linux scalable icon |
 
 ## Regenerate
 

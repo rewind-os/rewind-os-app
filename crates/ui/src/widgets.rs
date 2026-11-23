@@ -30,6 +30,63 @@ pub fn card<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
         .inner
 }
 
+/// One row of a list. Every other row is faintly shaded and the row under the pointer is
+/// highlighted across its whole width, so the buttons at the end of a row clearly belong to it.
+/// `add` lays the row out from left to right, vertically centred.
+pub fn list_row<R>(ui: &mut Ui, index: usize, height: f32, add: impl FnOnce(&mut Ui) -> R) -> R {
+    let t = theme::current(ui.ctx());
+    let width = ui.available_width();
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
+    let fill = if ui.rect_contains_pointer(rect) {
+        Some(t.surface)
+    } else if index % 2 == 1 {
+        Some(stripe(t))
+    } else {
+        None
+    };
+    if let Some(fill) = fill {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(t.radius), fill);
+    }
+    let inner = rect.shrink2(egui::vec2(12.0, 0.0));
+    let mut row = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(inner)
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    add(&mut row)
+}
+
+/// Halfway between the background and the surface: shading that guides the eye without
+/// drawing lines.
+fn stripe(t: &Theme) -> Color32 {
+    let mix = |a: u8, b: u8| ((u16::from(a) + u16::from(b)) / 2) as u8;
+    Color32::from_rgb(
+        mix(t.background.r(), t.surface.r()),
+        mix(t.background.g(), t.surface.g()),
+        mix(t.background.b(), t.surface.b()),
+    )
+}
+
+/// A small button at the end of a list row.
+pub fn row_button(ui: &mut Ui, label: &str, enabled: bool) -> Response {
+    ui.add_enabled(enabled, egui::Button::new(RichText::new(label).small()))
+}
+
+/// The usual end of a file or folder row: "Show" in the file manager and "Move to recycle
+/// bin", greyed out with the reason for protected paths. Returns true when the user asked to
+/// move it. Lays out right to left, so call it inside a right-to-left layout.
+pub fn file_actions(ui: &mut Ui, path: &std::path::Path, gone: bool) -> (bool, bool) {
+    let refusal = rewind_os_engine::safety::removal_refusal(path);
+    let trash = row_button(ui, tr("Bin"), !gone && refusal.is_none());
+    let trash = match refusal {
+        Some(why) => trash.on_disabled_hover_text(tr(why)),
+        None => trash.on_hover_text(tr("Move to recycle bin")),
+    };
+    let show = row_button(ui, tr("Show"), true).on_hover_text(tr("Show in File Explorer"));
+    (show.clicked(), trash.clicked())
+}
+
 /// A horizontal bar showing `fraction` (0..=1). `label` is what a screen reader announces.
 pub fn usage_bar(ui: &mut Ui, fraction: f32, color: Color32, label: &str) -> Response {
     let t = theme::current(ui.ctx());
@@ -108,12 +165,11 @@ pub fn nav_item(ui: &mut Ui, label: &str, selected: bool, enabled: bool) -> Resp
     } else {
         t.text_muted
     };
-    let font = egui::FontId::proportional(14.5);
     ui.painter().text(
         rect.left_center() + egui::vec2(16.0, 0.0),
         egui::Align2::LEFT_CENTER,
         label,
-        font,
+        egui::FontId::proportional(14.5),
         color,
     );
     let label = label.to_owned();
@@ -218,21 +274,6 @@ pub fn error_text(err: &rewind_os_engine::EngineError) -> String {
     match err {
         rewind_os_engine::EngineError::Refused(why) => reason(why),
         other => other.to_string(),
-    }
-}
-
-/// A "Move to recycle bin…" menu entry that is greyed out, with the reason, for protected
-/// paths. Returns true when clicked.
-pub fn trash_entry(ui: &mut Ui, path: &std::path::Path, gone: bool) -> bool {
-    match rewind_os_engine::safety::removal_refusal(path) {
-        Some(why) => {
-            ui.add_enabled(false, egui::Button::new(tr("Move to recycle bin…")))
-                .on_disabled_hover_text(tr(why));
-            false
-        }
-        None => ui
-            .add_enabled(!gone, egui::Button::new(tr("Move to recycle bin…")))
-            .clicked(),
     }
 }
 

@@ -268,14 +268,43 @@ fn xdg_user_dirs(home: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
+/// Resolves links in the longest part of `path` that exists and appends the rest, so a path
+/// that does not exist yet still compares like its real parent (`/etc/x` is `/private/etc/x` on
+/// macOS, where `/etc` is a link).
+fn resolve_existing_prefix(path: &Path) -> PathBuf {
+    let mut rest = Vec::new();
+    let mut current = path;
+    loop {
+        if let Ok(real) = std::fs::canonicalize(current) {
+            return rest.iter().rev().fold(real, |acc, part| acc.join(part));
+        }
+        match (current.parent(), current.file_name()) {
+            (Some(parent), Some(name)) => {
+                rest.push(name.to_os_string());
+                current = parent;
+            }
+            _ => return path.to_path_buf(),
+        }
+    }
+}
+
 /// Resolves links where the path exists, then `.` and `..`, drops Windows' `\\?\` prefix and
 /// trailing separators, and lowercases on case-insensitive systems.
 fn normalize(path: &Path, case_insensitive: bool) -> PathBuf {
-    let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let resolved = resolve_existing_prefix(&lexical(path));
     let text = resolved.to_string_lossy();
-    let text = text.strip_prefix(r"\\?\").unwrap_or(&text);
+    let out = lexical(Path::new(text.strip_prefix(r"\\?\").unwrap_or(&text)));
+    if case_insensitive {
+        PathBuf::from(out.to_string_lossy().to_lowercase())
+    } else {
+        out
+    }
+}
+
+/// `path` with `.` and `..` worked out from the text alone.
+fn lexical(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
-    for component in Path::new(text).components() {
+    for component in path.components() {
         match component {
             Component::ParentDir => {
                 out.pop();
@@ -284,9 +313,5 @@ fn normalize(path: &Path, case_insensitive: bool) -> PathBuf {
             other => out.push(other.as_os_str()),
         }
     }
-    if case_insensitive {
-        PathBuf::from(out.to_string_lossy().to_lowercase())
-    } else {
-        out
-    }
+    out
 }

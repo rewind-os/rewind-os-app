@@ -153,3 +153,30 @@ fn windows_ordinary_places_are_allowed() {
     assert!(refused_by_cleanup(&g, r"C:\Windows\System32\config"));
     assert!(refused_by_cleanup(&g, r"C:\Users\ana\Documents\x.docx"));
 }
+
+/// A protected folder reached through a link must stay protected even for paths inside it that
+/// do not exist yet (on macOS `/etc` is a link to `/private/etc`).
+#[cfg(unix)]
+#[test]
+fn links_to_protected_folders_are_seen_through_for_missing_paths() {
+    let root = tempfile::tempdir().unwrap();
+    let real = root.path().join("real-home");
+    std::fs::create_dir_all(real.join("Documents")).unwrap();
+    let link = root.path().join("home-link");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    let g = Guard::for_system(Os::Linux, &[(Known::Home, link.clone())]);
+    for path in [
+        real.join("Documents/not-yet.txt"),
+        link.join("Documents/not-yet.txt"),
+    ] {
+        assert!(
+            g.cleanup_refusal(&path).is_some(),
+            "{} was allowed",
+            path.display()
+        );
+    }
+    assert!(
+        g.removal_refusal(&real).is_some(),
+        "the real home behind the link was allowed"
+    );
+}

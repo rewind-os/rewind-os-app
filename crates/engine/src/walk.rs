@@ -13,6 +13,9 @@ pub struct Filter {
     pub modified_before: Option<SystemTime>,
     /// Only files with one of these extensions (lowercase, no dot). Empty means every file.
     pub extensions: &'static [&'static str],
+    /// Delete files only and leave every folder in place (system locations, where services
+    /// expect their folders to exist).
+    pub keep_folders: bool,
 }
 
 impl Filter {
@@ -126,7 +129,7 @@ fn visit(path: &Path, filter: &Filter, task: &Task, mode: Mode) -> Tally {
         }
         tally.merge(visit(&entry.path(), filter, task, mode));
     }
-    if mode == Mode::Delete {
+    if mode == Mode::Delete && !filter.keep_folders {
         // Fails harmlessly while the folder still holds something.
         let _ = fs::remove_dir(path);
     }
@@ -167,6 +170,7 @@ mod tests {
         let filter = Filter {
             modified_before: Some(SystemTime::now() - std::time::Duration::from_secs(86_400)),
             extensions: &[],
+            keep_folders: false,
         };
         let measured = measure(&target, &filter, &Task::new());
         let deleted = delete(&target, &filter, &Task::new());
@@ -187,10 +191,29 @@ mod tests {
         let filter = Filter {
             modified_before: None,
             extensions: &["exe"],
+            keep_folders: false,
         };
         delete(dir.path(), &filter, &Task::new());
         assert!(!dir.path().join("setup.exe").exists());
         assert!(dir.path().join("photo.jpg").exists());
+    }
+
+    #[test]
+    fn keeping_folders_deletes_files_only() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("Logs");
+        file(&target.join("CBS/old.log"), 50, 30);
+        let filter = Filter {
+            keep_folders: true,
+            ..Filter::default()
+        };
+        let deleted = delete(&target, &filter, &Task::new());
+        assert!(deleted.files > 0);
+        assert!(!target.join("CBS/old.log").exists());
+        assert!(
+            target.join("CBS").is_dir(),
+            "services expect their folders to stay"
+        );
     }
 
     #[cfg(unix)]

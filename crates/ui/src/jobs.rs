@@ -22,7 +22,9 @@ impl Job {
             let engine = Arc::clone(engine);
             let ctx = ctx.clone();
             std::thread::spawn(move || {
-                let outcome = engine.run(request, &task).map_err(|e| e.to_string());
+                let outcome = engine
+                    .run(request, &task)
+                    .map_err(|e| crate::widgets::error_text(&e));
                 let _ = tx.send(outcome);
                 ctx.request_repaint();
             });

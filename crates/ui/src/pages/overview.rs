@@ -42,7 +42,7 @@ impl State {
         page_header(
             ui,
             tr("Overview"),
-            tr("Your drives, memory and the large files Windows keeps for itself."),
+            tr("Your drives, memory and the large files the system keeps for itself."),
         );
         if ui
             .add_enabled(self.job.is_none(), egui::Button::new(tr("Refresh")))

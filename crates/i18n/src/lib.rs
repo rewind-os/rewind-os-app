@@ -65,6 +65,15 @@ pub fn tr(key: &'static str) -> &'static str {
     catalog().map.get(key).copied().unwrap_or(key)
 }
 
+/// Translates text that is only known at run time (a reason an engine error carries). Returns
+/// the text unchanged when there is no translation.
+pub fn tr_text(text: &str) -> String {
+    catalog()
+        .map
+        .get(text)
+        .map_or_else(|| text.to_owned(), |t| (*t).to_owned())
+}
+
 /// Translates `key` and fills `{name}` placeholders from `args`.
 pub fn trf(key: &'static str, args: &[(&str, &str)]) -> String {
     let mut text = tr(key).to_owned();

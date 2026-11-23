@@ -75,6 +75,7 @@ impl Dirs {
                     },
                     enabled: entry.enabled(),
                     needs_admin: false,
+                    essential: super::is_essential(&file),
                 })
             })
             .collect();
@@ -87,6 +88,9 @@ impl Dirs {
             .strip_prefix("xdg|")
             .filter(|f| valid_name(f))
             .ok_or_else(|| EngineError::NotFound(id.to_owned()))?;
+        if !enabled && super::is_essential(file) {
+            return Err(EngineError::Refused(super::ESSENTIAL));
+        }
         let user = self.user.join(file);
         let source = if user.is_file() {
             user.clone()

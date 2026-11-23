@@ -11,19 +11,19 @@ use rewind_os_i18n::{tr, trf};
 
 pub fn page_header(ui: &mut Ui, title: &str, subtitle: &str) {
     let t = theme::current(ui.ctx());
-    ui.add_space(4.0);
-    ui.heading(RichText::new(title).strong());
+    ui.add_space(6.0);
+    ui.heading(title);
     if !subtitle.is_empty() {
+        ui.add_space(2.0);
         ui.label(RichText::new(subtitle).color(t.text_muted));
     }
-    ui.add_space(t.gap);
+    ui.add_space(t.gap * 1.25);
 }
 
 pub fn card<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
     let t = theme::current(ui.ctx());
     egui::Frame::new()
         .fill(t.surface)
-        .stroke(Stroke::new(1.0, t.border))
         .corner_radius(CornerRadius::same(t.radius))
         .inner_margin(Margin::same(t.card_padding))
         .show(ui, add_contents)
@@ -35,8 +35,8 @@ pub fn usage_bar(ui: &mut Ui, fraction: f32, color: Color32, label: &str) -> Res
     let t = theme::current(ui.ctx());
     let fraction = fraction.clamp(0.0, 1.0);
     let width = ui.available_width().max(40.0);
-    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, 10.0), Sense::hover());
-    let radius = CornerRadius::same(5);
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(width, 6.0), Sense::hover());
+    let radius = CornerRadius::same(3);
     ui.painter().rect_filled(rect, radius, t.track);
     let mut fill = rect;
     fill.set_width(rect.width() * fraction);
@@ -63,16 +63,62 @@ pub fn fill_color(t: &Theme, fraction: f32) -> Color32 {
     }
 }
 
-/// A short status word with a coloured outline. The word carries the meaning; colour only
+/// A short status word in a status colour. The word carries the meaning; colour only
 /// reinforces it.
 pub fn badge(ui: &mut Ui, text: &str, color: Color32) -> Response {
+    ui.label(RichText::new(text).color(color).small())
+}
+
+/// One entry of the navigation list: plain text, with an accent bar beside the current page.
+/// Works with the keyboard (Tab, Enter) and reports itself as a tab to assistive technology.
+pub fn nav_item(ui: &mut Ui, label: &str, selected: bool, enabled: bool) -> Response {
     let t = theme::current(ui.ctx());
-    egui::Frame::new()
-        .stroke(Stroke::new(1.0, color))
-        .corner_radius(CornerRadius::same(t.radius))
-        .inner_margin(Margin::symmetric(6, 1))
-        .show(ui, |ui| ui.label(RichText::new(text).color(color).small()))
-        .inner
+    let size = egui::vec2(ui.available_width(), 36.0);
+    let sense = if enabled {
+        Sense::click()
+    } else {
+        Sense::hover()
+    };
+    let (rect, response) = ui.allocate_exact_size(size, sense);
+    let hovered = enabled && (response.hovered() || response.has_focus());
+    if hovered && !selected {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(t.radius), t.surface);
+    }
+    if selected {
+        let bar = egui::Rect::from_min_size(
+            rect.left_top() + egui::vec2(0.0, 9.0),
+            egui::vec2(3.0, rect.height() - 18.0),
+        );
+        ui.painter()
+            .rect_filled(bar, CornerRadius::same(2), t.accent);
+    }
+    if response.has_focus() {
+        ui.painter().rect_stroke(
+            rect,
+            CornerRadius::same(t.radius),
+            Stroke::new(1.5, t.accent),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let color = if !enabled {
+        t.text_muted.gamma_multiply(0.7)
+    } else if selected {
+        t.text
+    } else {
+        t.text_muted
+    };
+    let font = egui::FontId::proportional(14.5);
+    ui.painter().text(
+        rect.left_center() + egui::vec2(16.0, 0.0),
+        egui::Align2::LEFT_CENTER,
+        label,
+        font,
+        color,
+    );
+    let label = label.to_owned();
+    response.widget_info(move || WidgetInfo::selected(Role::Tab, enabled, selected, &label));
+    response
 }
 
 pub fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> Response {
@@ -160,6 +206,34 @@ pub fn confirm(ctx: &egui::Context, id: &str, title: &str, body: &str, action: &
         choice = Choice::Cancelled;
     }
     choice
+}
+
+/// Translates a reason the engine gives (English) when the catalog knows it.
+pub fn reason(text: &str) -> String {
+    rewind_os_i18n::tr_text(text)
+}
+
+/// An engine error as text for people: refusals are translated.
+pub fn error_text(err: &rewind_os_engine::EngineError) -> String {
+    match err {
+        rewind_os_engine::EngineError::Refused(why) => reason(why),
+        other => other.to_string(),
+    }
+}
+
+/// A "Move to recycle bin…" menu entry that is greyed out, with the reason, for protected
+/// paths. Returns true when clicked.
+pub fn trash_entry(ui: &mut Ui, path: &std::path::Path, gone: bool) -> bool {
+    match rewind_os_engine::safety::removal_refusal(path) {
+        Some(why) => {
+            ui.add_enabled(false, egui::Button::new(tr("Move to recycle bin…")))
+                .on_disabled_hover_text(tr(why));
+            false
+        }
+        None => ui
+            .add_enabled(!gone, egui::Button::new(tr("Move to recycle bin…")))
+            .clicked(),
+    }
 }
 
 /// Date of a timestamp in the local time zone, `YYYY-MM-DD`.

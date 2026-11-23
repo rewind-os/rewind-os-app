@@ -2,5 +2,6 @@
 
 mod cleanup;
 mod leftovers;
+mod safety;
 mod scan;
 mod startup;

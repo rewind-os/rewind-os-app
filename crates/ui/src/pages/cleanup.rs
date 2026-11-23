@@ -99,25 +99,36 @@ impl State {
             if widgets::primary_button(ui, &label, !busy && !self.selected.is_empty()).clicked() {
                 self.confirming = true;
             }
-            if !shared.elevated {
+        });
+        if !shared.elevated {
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
                 ui.label(
                     RichText::new(tr("Some categories need administrator rights."))
+                        .small()
                         .color(t.text_muted),
                 );
                 if rewind_os_engine::tool("system.relaunch_elevated").is_some_and(|t| t.available())
                 {
-                    if ui.button(tr("Restart as administrator")).clicked() {
+                    let restart = egui::Button::new(
+                        RichText::new(tr("Restart as administrator"))
+                            .small()
+                            .color(t.accent),
+                    )
+                    .frame(false);
+                    if ui.add(restart).clicked() {
                         shared.relaunch_elevated(&ctx);
                     }
                 } else {
                     ui.label(
                         RichText::new("sudo rewind-os-cli clean run --defaults --yes")
+                            .small()
                             .monospace()
                             .color(t.text_muted),
                     );
                 }
-            }
-        });
+            });
+        }
         ui.add_space(t.gap);
         for job in [&self.analyze, &self.run].into_iter().flatten() {
             card(ui, |ui| {

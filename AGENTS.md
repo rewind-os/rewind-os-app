@@ -42,19 +42,25 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
 5. Non-test code MUST NOT panic: no `unwrap`, `expect`, `panic!` or indexing that can fail.
    Fix what a lint reports; do not silence it with `allow` or a lint-config change.
 6. Dates use `chrono`. Locks use `parking_lot::Mutex`.
-7. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`.
+7. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`. The look
+   is minimal: one accent colour, flat surfaces without borders, muted secondary text, generous
+   spacing. Add no new colours, outlines or decorations without a reason.
 8. User-facing text goes through `tr()` with English as the key. Add the Spanish line to
    `crates/i18n/locales/es.tsv` in the same change; a missing translation shows English.
 9. Never present partial or unsupported behaviour as success. Files that could not be deleted,
    categories skipped for lack of rights and stopped scans are reported, in the GUI and the CLI.
-10. Anything that deletes or changes the system MUST ask first (a confirmation dialog in the GUI,
+10. Safety first: the app must never leave a computer unable to start or wipe personal
+   files. Every removal MUST go through `crates/engine/src/safety.rs`; widening it needs a test
+   that shows the new place is safe. Read [docs/safety.md](docs/safety.md) before changing
+   cleanup, removal or startup code.
+11. Anything that deletes or changes the system MUST ask first (a confirmation dialog in the GUI,
    `--yes` in the CLI). User files go to the recycle bin; only regenerable caches are deleted
    permanently.
-11. Never follow symbolic links or junctions when measuring or deleting.
-12. A UI change SHOULD work by keyboard. Drawn surfaces (bars, treemap tiles) expose a role, a
+12. Never follow symbolic links or junctions when measuring or deleting.
+13. A UI change SHOULD work by keyboard. Drawn surfaces (bars, treemap tiles) expose a role, a
     label and a value through `widget_info`. Colour is never the only signal: badges carry text.
-13. A new dependency's licence MUST be accepted by `deny.toml`.
-14. Keep secrets and personal details out of code, logs, fixtures and requests.
+14. A new dependency's licence MUST be accepted by `deny.toml`.
+15. Keep secrets and personal details out of code, logs, fixtures and requests.
 
 ## Tests
 

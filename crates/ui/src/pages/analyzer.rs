@@ -452,10 +452,7 @@ fn row_menu(
             reveal(shared, path.to_path_buf());
             ui.close();
         }
-        if ui
-            .add_enabled(!gone, egui::Button::new(tr("Move to recycle bin…")))
-            .clicked()
-        {
+        if widgets::trash_entry(ui, path, gone) {
             *pending = Some(vec![(path.to_path_buf(), size)]);
             ui.close();
         }
@@ -469,7 +466,7 @@ fn reveal(shared: &mut Shared, path: PathBuf) {
         Request::FilesReveal { path },
         &rewind_os_engine::Task::new(),
     ) {
-        shared.error(err.to_string());
+        shared.error(crate::widgets::error_text(&err));
     }
 }
 
@@ -510,10 +507,7 @@ fn file_rows(
                                 reveal(shared, file.path.clone());
                                 ui.close();
                             }
-                            if ui
-                                .add_enabled(!gone, egui::Button::new(tr("Move to recycle bin…")))
-                                .clicked()
-                            {
+                            if widgets::trash_entry(ui, &file.path, gone) {
                                 *pending = Some(vec![(file.path.clone(), file.bytes)]);
                                 ui.close();
                             }

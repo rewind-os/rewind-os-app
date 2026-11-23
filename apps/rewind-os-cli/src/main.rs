@@ -89,8 +89,16 @@ enum Clean {
 #[derive(Subcommand)]
 enum Startup {
     List,
-    Enable { id: String },
-    Disable { id: String },
+    Enable {
+        id: String,
+        #[arg(long)]
+        yes: bool,
+    },
+    Disable {
+        id: String,
+        #[arg(long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -147,7 +155,11 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(err) => {
-            eprintln!("{}: {err}", tr("Error"));
+            let text = match &err {
+                rewind_os_engine::EngineError::Refused(why) => rewind_os_i18n::tr_text(why),
+                other => other.to_string(),
+            };
+            eprintln!("{}: {text}", tr("Error"));
             ExitCode::FAILURE
         }
     }
@@ -216,8 +228,14 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::FilesTrash { paths }
         }
         Command::Startup(Startup::List) => Request::StartupList,
-        Command::Startup(Startup::Enable { id }) => Request::StartupSet { id, enabled: true },
-        Command::Startup(Startup::Disable { id }) => Request::StartupSet { id, enabled: false },
+        Command::Startup(Startup::Enable { id, yes }) => {
+            confirm(yes)?;
+            Request::StartupSet { id, enabled: true }
+        }
+        Command::Startup(Startup::Disable { id, yes }) => {
+            confirm(yes)?;
+            Request::StartupSet { id, enabled: false }
+        }
         Command::Maintenance(Maintenance::Store) => Request::AnalyzeComponentStore,
         Command::Maintenance(Maintenance::Cleanup { yes }) => {
             confirm(yes)?;
@@ -436,12 +454,18 @@ fn print_human(response: &Response, top: usize) {
             for r in results {
                 match &r.error {
                     None => println!("{:>10}  {}", bytes(r.bytes), r.path.display()),
-                    Some(err) => {
-                        println!("{:>10}  {}  {}: {err}", "-", r.path.display(), tr("Error"))
-                    }
+                    Some(err) => println!(
+                        "{:>10}  {}  {}: {}",
+                        "-",
+                        r.path.display(),
+                        tr("Error"),
+                        rewind_os_i18n::tr_text(err)
+                    ),
                 }
             }
-            println!("{}", tr("Space is freed when the recycle bin is emptied."));
+            if results.iter().any(|r| r.error.is_none()) {
+                println!("{}", tr("Space is freed when the recycle bin is emptied."));
+            }
         }
         Response::Startup(entries) => {
             for e in entries {

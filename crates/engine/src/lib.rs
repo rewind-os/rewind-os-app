@@ -7,6 +7,7 @@ pub mod format;
 pub mod leftovers;
 pub mod maintenance;
 pub mod programs;
+pub mod safety;
 pub mod scan;
 pub mod startup;
 pub mod system;
@@ -32,6 +33,9 @@ pub enum EngineError {
     UnknownCategory(String),
     #[error("not found: {0}")]
     NotFound(String),
+    /// The safety guard refused; the text (English) says why.
+    #[error("{0}")]
+    Refused(&'static str),
     #[error("{tool} is not available on {os} yet")]
     Unsupported {
         tool: &'static str,
@@ -369,6 +373,13 @@ fn trash(paths: &[PathBuf], task: &Task) -> Vec<TrashResult> {
     paths
         .iter()
         .map(|path| {
+            if let Some(reason) = safety::removal_refusal(path) {
+                return TrashResult {
+                    path: path.clone(),
+                    bytes: 0,
+                    error: Some(reason.to_owned()),
+                };
+            }
             let bytes = walk::measure(path, &walk::Filter::default(), task).bytes;
             let outcome = rewind_os_platform::shell::move_to_trash(std::slice::from_ref(path));
             let error = outcome.into_iter().next().and_then(|o| o.error);

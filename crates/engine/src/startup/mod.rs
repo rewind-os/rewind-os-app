@@ -62,6 +62,46 @@ pub struct StartupEntry {
     pub enabled: bool,
     /// Changing it needs administrator rights.
     pub needs_admin: bool,
+    /// The system needs it (security, sign-in, accessibility, sound); it cannot be turned off.
+    pub essential: bool,
+}
+
+/// English reason shown when an essential entry is not turned off.
+pub const ESSENTIAL: &str =
+    "The system needs this to work properly (security, sign-in, accessibility or sound).";
+
+/// Entries that keep security, sign-in, accessibility or the desktop session working. Matched
+/// on the start of the entry's value name (Windows) or file name (Linux), ignoring case.
+const ESSENTIAL_PREFIXES: &[&str] = &[
+    // Windows
+    "securityhealth",
+    "windowsdefender",
+    "windows defender",
+    "msascuil",
+    // Linux desktop sessions
+    "at-spi",
+    "gnome-keyring",
+    "polkit",
+    "lxpolkit",
+    "org.gnome.settingsdaemon",
+    "gsd-",
+    "pipewire",
+    "pulseaudio",
+    "wireplumber",
+    "org.kde.plasmashell",
+    "kaccess",
+    "xembedsniproxy",
+    "mate-settings-daemon",
+    "cinnamon-settings-daemon",
+    "xfsettingsd",
+    "xfce4-notifyd",
+    "xdg-user-dirs",
+];
+
+/// Whether the entry with this value or file name is essential.
+pub fn is_essential(name: &str) -> bool {
+    let name = name.to_lowercase();
+    ESSENTIAL_PREFIXES.iter().any(|p| name.starts_with(p))
 }
 
 pub fn list() -> Vec<StartupEntry> {

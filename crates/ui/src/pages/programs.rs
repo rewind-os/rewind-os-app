@@ -137,7 +137,7 @@ impl State {
                                     &Task::new(),
                                 )
                             {
-                                shared.error(err.to_string());
+                                shared.error(crate::widgets::error_text(&err));
                             }
                             if let Some(size) = program.estimated_bytes {
                                 ui.label(bytes(size)).on_hover_text(tr(
@@ -171,7 +171,7 @@ impl State {
                     {
                         Ok(Response::Done(message)) => shared.info(tr(message)),
                         Ok(_) => {}
-                        Err(err) => shared.error(err.to_string()),
+                        Err(err) => shared.error(crate::widgets::error_text(&err)),
                     }
                     self.uninstall = None;
                 }

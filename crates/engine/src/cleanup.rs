@@ -88,6 +88,9 @@ pub struct Category {
     source: Source,
     #[serde(skip)]
     extensions: &'static [&'static str],
+    /// Entries whose name starts with one of these are never touched.
+    #[serde(skip)]
+    skip_prefixes: &'static [&'static str],
 }
 
 impl Category {
@@ -109,7 +112,13 @@ impl Category {
             disposal: Disposal::Delete,
             source: Source::Patterns(patterns),
             extensions: &[],
+            skip_prefixes: &[],
         }
+    }
+
+    const fn skipping(mut self, prefixes: &'static [&'static str]) -> Self {
+        self.skip_prefixes = prefixes;
+        self
     }
 
     const fn group(mut self, group: Group) -> Self {
@@ -160,6 +169,7 @@ const RECYCLE_BIN: Category = Category {
     disposal: Disposal::Delete,
     source: Source::RecycleBin,
     extensions: &[],
+    skip_prefixes: &[],
 };
 
 const BROWSER_NOTE: &str =
@@ -489,6 +499,7 @@ pub const MACOS: &[Category] = &[
         "Caches apps keep in your Library, browsers included. Apps recreate them, but may be slower the first time.",
         &["{cache}/*"],
     )
+    .skipping(&["com.apple."])
     .risk(Risk::Moderate),
     Category::new(
         "macos.logs",
@@ -636,9 +647,11 @@ impl Category {
                 .checked_sub(Duration::from_secs(u64::from(self.min_age_days) * 86_400))
                 .unwrap_or(SystemTime::UNIX_EPOCH)
         });
+        // System locations keep their folders: some services expect them to exist.
         Filter {
             modified_before,
             extensions: self.extensions,
+            keep_folders: self.needs_admin,
         }
     }
 
@@ -658,6 +671,17 @@ impl Category {
             .filter_map(|p| glob::glob_with(&p, options).ok())
             .flat_map(|matches| matches.filter_map(|m| m.ok()))
             .filter(|p| !places.is_protected(p))
+            .filter(|p| crate::safety::Guard::current().cleanup_refusal(p).is_none())
+            .filter(|p| {
+                let name = p
+                    .file_name()
+                    .map(|n| n.to_string_lossy())
+                    .unwrap_or_default();
+                !self
+                    .skip_prefixes
+                    .iter()
+                    .any(|prefix| name.starts_with(prefix))
+            })
             .collect()
     }
 }

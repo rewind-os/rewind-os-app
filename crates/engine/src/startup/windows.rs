@@ -87,6 +87,7 @@ pub(super) fn list() -> Vec<StartupEntry> {
                     _ => true,
                 })
                 .unwrap_or(true);
+            let essential = super::is_essential(&name);
             entries.push(StartupEntry {
                 id: format!("{}|{name}", source.tag()),
                 name,
@@ -94,6 +95,7 @@ pub(super) fn list() -> Vec<StartupEntry> {
                 source,
                 enabled,
                 needs_admin: source.hive() == Hive::LocalMachine,
+                essential,
             });
         }
     }
@@ -104,6 +106,9 @@ pub(super) fn set_enabled(id: &str, enabled: bool) -> Result<()> {
     let (tag, name) = id
         .split_once('|')
         .ok_or_else(|| EngineError::NotFound(id.to_owned()))?;
+    if !enabled && super::is_essential(name) {
+        return Err(EngineError::Refused(super::ESSENTIAL));
+    }
     let source = Source::WINDOWS
         .into_iter()
         .find(|s| s.tag() == tag)

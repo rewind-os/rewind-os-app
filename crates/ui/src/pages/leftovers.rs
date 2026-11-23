@@ -56,7 +56,11 @@ impl State {
                             self.selected.remove(&r.path);
                             self.moved.insert(r.path);
                         }
-                        Some(err) => failed.push(format!("{}: {err}", r.path.display())),
+                        Some(err) => failed.push(format!(
+                            "{}: {}",
+                            r.path.display(),
+                            crate::widgets::reason(&err)
+                        )),
                     }
                 }
                 let text = trf(
@@ -178,10 +182,16 @@ impl State {
                     ui.horizontal(|ui| {
                         ui.set_height(row_height);
                         let mut checked = self.selected.contains(&item.path);
-                        if ui
-                            .add_enabled(!gone, egui::Checkbox::without_text(&mut checked))
-                            .changed()
-                        {
+                        let refusal = rewind_os_engine::safety::removal_refusal(&item.path);
+                        let response = ui.add_enabled(
+                            !gone && refusal.is_none(),
+                            egui::Checkbox::without_text(&mut checked),
+                        );
+                        let response = match refusal {
+                            Some(why) => response.on_disabled_hover_text(tr(why)),
+                            None => response,
+                        };
+                        if response.changed() {
                             if checked {
                                 self.selected.insert(item.path.clone());
                             } else {
@@ -228,7 +238,7 @@ impl State {
                                     &rewind_os_engine::Task::new(),
                                 )
                             {
-                                shared.error(err.to_string());
+                                shared.error(crate::widgets::error_text(&err));
                             }
                         });
                     });

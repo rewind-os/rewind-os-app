@@ -5,7 +5,7 @@ use crate::jobs::{self, Job};
 use crate::pages;
 use crate::theme;
 use crate::widgets;
-use egui::{CornerRadius, Margin, RichText, Stroke};
+use egui::{CornerRadius, Margin, RichText};
 use rewind_os_engine::system::Overview;
 use rewind_os_engine::{Engine, Os, Request, Response};
 use rewind_os_i18n::tr;
@@ -207,21 +207,50 @@ impl App {
             || self.maintenance.busy()
     }
 
-    fn top_bar(&mut self, ui: &mut egui::Ui) {
+    /// The left column: the app's name, the pages, and the rights the app runs with.
+    fn sidebar(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
+        ui.add_space(6.0);
         ui.horizontal(|ui| {
+            ui.add_space(10.0);
             if let Some(logo) = &self.logo {
-                ui.add(egui::Image::new((logo.id(), egui::vec2(22.0, 22.0))).alt_text("Rewind OS"));
+                ui.add(
+                    egui::Image::new((logo.id(), egui::vec2(26.0, 26.0)))
+                        .corner_radius(CornerRadius::same(6))
+                        .alt_text("Rewind OS"),
+                );
             }
-            ui.label(RichText::new("Rewind OS").strong().size(16.0).color(t.accent));
-            ui.label(RichText::new(tr(self.page.title())).color(t.text_muted));
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            ui.label(RichText::new("Rewind OS").size(17.0).strong());
+        });
+        ui.add_space(22.0);
+        for page in Page::ALL {
+            let available = page.available();
+            let response = widgets::nav_item(ui, tr(page.title()), self.page == page, available);
+            let response = if available {
+                response
+            } else {
+                response.on_hover_text(rewind_os_i18n::trf(
+                    "Not available on {os} yet.",
+                    &[("os", Os::current().name())],
+                ))
+            };
+            if response.clicked() {
+                self.page = page;
+            }
+        }
+        ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                ui.add_space(12.0);
                 if self.shared.elevated {
-                    widgets::badge(ui, tr("Administrator"), t.ok);
-                } else {
-                    if can_relaunch()
-                        && ui
-                        .button(tr("Restart as administrator"))
+                    ui.label(RichText::new(tr("Administrator")).small().color(t.text_muted));
+                } else if can_relaunch() {
+                    let restart = egui::Button::new(
+                        RichText::new(tr("Restart as administrator")).small().color(t.accent),
+                    )
+                    .frame(false);
+                    if ui
+                        .add(restart)
                         .on_hover_text(tr(
                             "Some cleanups and settings need administrator rights. Windows will ask for permission.",
                         ))
@@ -229,55 +258,28 @@ impl App {
                     {
                         self.shared.relaunch_elevated(ui.ctx());
                     }
-                    widgets::badge(ui, tr("Standard user"), t.text_muted);
+                } else {
+                    ui.label(RichText::new(tr("Standard user")).small().color(t.text_muted));
                 }
             });
         });
     }
 
-    fn navigation(&mut self, ui: &mut egui::Ui) {
-        let t = theme::current(ui.ctx());
-        ui.add_space(8.0);
-        ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-            for page in Page::ALL {
-                let selected = self.page == page;
-                let text = RichText::new(tr(page.title()));
-                let text = if selected {
-                    text.strong().color(t.accent)
-                } else {
-                    text
-                };
-                let button =
-                    egui::Button::selectable(selected, text).min_size(egui::vec2(0.0, 34.0));
-                let response = ui
-                    .add_enabled(page.available(), button)
-                    .on_disabled_hover_text(rewind_os_i18n::trf(
-                        "Not available on {os} yet.",
-                        &[("os", Os::current().name())],
-                    ));
-                if response.clicked() {
-                    self.page = page;
-                }
-            }
-        });
-    }
-
     fn status_bar(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
-        ui.horizontal(|ui| match &self.shared.status {
-            Some(status) => {
-                let color = if status.error { t.danger } else { t.text_muted };
-                let prefix = if status.error {
-                    tr("Error")
-                } else {
-                    tr("Done")
-                };
-                ui.label(RichText::new(format!("{prefix}: {}", status.text)).color(color));
-            }
-            None => {
-                ui.label(RichText::new(tr("Ready")).color(t.text_muted));
-            }
-        });
+        if let Some(status) = &self.shared.status {
+            let color = if status.error { t.danger } else { t.text_muted };
+            let prefix = if status.error {
+                tr("Error")
+            } else {
+                tr("Done")
+            };
+            ui.label(
+                RichText::new(format!("{prefix}: {}", status.text))
+                    .small()
+                    .color(color),
+            );
+        }
     }
 
     fn poll_relaunch(&mut self, ctx: &egui::Context) {
@@ -301,31 +303,35 @@ impl eframe::App for App {
         self.poll_relaunch(&ctx);
         self.overview.poll(&ctx, &mut self.shared);
 
-        let bar = egui::Frame::new()
-            .fill(t.surface)
-            .inner_margin(Margin::symmetric(14, 8))
-            .stroke(Stroke::new(1.0, t.border));
-        egui::Panel::top("top_bar")
-            .frame(bar)
-            .show(ui, |ui| self.top_bar(ui));
-        egui::Panel::bottom("status_bar")
-            .frame(bar)
-            .show(ui, |ui| self.status_bar(ui));
+        if self.shared.status.is_some() {
+            egui::Panel::bottom("status_bar")
+                .frame(
+                    egui::Frame::new()
+                        .fill(t.background)
+                        .inner_margin(Margin::symmetric(28, 10)),
+                )
+                .show(ui, |ui| self.status_bar(ui));
+        }
         egui::Panel::left("navigation")
-            .exact_size(210.0)
+            .exact_size(224.0)
             .resizable(false)
+            .show_separator_line(false)
             .frame(
                 egui::Frame::new()
-                    .fill(t.surface)
-                    .inner_margin(Margin::same(8))
-                    .stroke(Stroke::new(1.0, t.border)),
+                    .fill(t.background)
+                    .inner_margin(Margin::symmetric(12, 18)),
             )
-            .show(ui, |ui| self.navigation(ui));
+            .show(ui, |ui| self.sidebar(ui));
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
                     .fill(t.background)
-                    .inner_margin(Margin::same(18))
+                    .inner_margin(Margin {
+                        left: 20,
+                        right: 32,
+                        top: 22,
+                        bottom: 16,
+                    })
                     .corner_radius(CornerRadius::ZERO),
             )
             .show(ui, |ui| {

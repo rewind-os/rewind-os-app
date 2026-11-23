@@ -81,3 +81,23 @@ fn ids_cannot_point_outside_the_autostart_folders() {
     }
     assert!(!dirs.user.join("../evil.desktop").exists() || !dirs.user.exists());
 }
+
+#[test]
+fn essential_entries_cannot_be_turned_off() {
+    let (_root, dirs) = setup().unwrap();
+    fs::write(
+        dirs.system[0].join("polkit-gnome-authentication-agent-1.desktop"),
+        "[Desktop Entry]\nName=PolicyKit Agent\nExec=polkit-agent\n",
+    )
+    .unwrap();
+    let entry = find(&dirs.list(), "PolicyKit Agent").unwrap().clone();
+    assert!(entry.essential);
+    assert!(dirs.set_enabled(&entry.id, false).is_err());
+    assert!(find(&dirs.list(), "PolicyKit Agent").unwrap().enabled);
+    assert!(
+        !dirs
+            .user
+            .join("polkit-gnome-authentication-agent-1.desktop")
+            .exists()
+    );
+}

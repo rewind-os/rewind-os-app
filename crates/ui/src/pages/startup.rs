@@ -61,18 +61,32 @@ impl State {
                         if i > 0 {
                             ui.separator();
                         }
-                        let locked = entry.needs_admin && !shared.elevated;
+                        let needs_rights = entry.needs_admin && !shared.elevated;
+                        // Essential entries can be turned on but never off.
+                        let essential = entry.essential && entry.enabled;
+                        let locked = needs_rights || essential;
                         ui.horizontal(|ui| {
                             let mut on = entry.enabled;
                             let label = RichText::new(&entry.name).strong();
                             let response =
                                 ui.add_enabled(!locked, egui::Checkbox::new(&mut on, label));
-                            let response = if locked {
+                            let response = if essential {
+                                response.on_disabled_hover_text(tr(
+                                    rewind_os_engine::startup::ESSENTIAL,
+                                ))
+                            } else if needs_rights {
                                 response
                                     .on_disabled_hover_text(tr("This needs administrator rights."))
                             } else {
                                 response
                             };
+                            if essential {
+                                ui.label(
+                                    RichText::new(tr("Needed by the system"))
+                                        .small()
+                                        .color(t.text_muted),
+                                );
+                            }
                             if response.changed() {
                                 changed = Some((entry.id.clone(), on));
                             }
@@ -110,7 +124,7 @@ impl State {
             {
                 Ok(Response::Done(message)) => shared.info(tr(message)),
                 Ok(_) => {}
-                Err(err) => shared.error(err.to_string()),
+                Err(err) => shared.error(crate::widgets::error_text(&err)),
             }
             self.refresh(&ctx, shared);
         }

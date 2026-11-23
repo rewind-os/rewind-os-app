@@ -176,9 +176,14 @@ impl Guard {
                 g.core.extend(unix_core.iter().map(PathBuf::from));
                 g.system.extend(g.core.clone());
                 g.system.extend(
-                    ["/var", "/private", "/opt/homebrew/Cellar"]
-                        .iter()
-                        .map(PathBuf::from),
+                    [
+                        "/var",
+                        "/private/var",
+                        "/private/etc",
+                        "/opt/homebrew/Cellar",
+                    ]
+                    .iter()
+                    .map(PathBuf::from),
                 );
                 g.anchors.extend(
                     ["/root", "/Users", "/Applications", "/Volumes"]
@@ -294,10 +299,22 @@ fn normalize(path: &Path, case_insensitive: bool) -> PathBuf {
     let resolved = resolve_existing_prefix(&lexical(path));
     let text = resolved.to_string_lossy();
     let out = lexical(Path::new(text.strip_prefix(r"\\?\").unwrap_or(&text)));
+    let out = without_data_volume(out);
     if case_insensitive {
         PathBuf::from(out.to_string_lossy().to_lowercase())
     } else {
         out
+    }
+}
+
+/// On macOS the data volume, mounted at `/System/Volumes/Data`, mirrors the root: resolving
+/// `/home` or `/Users` can lead there. It is user data, not part of `/System`, so compare it as
+/// the path it mirrors.
+fn without_data_volume(path: PathBuf) -> PathBuf {
+    const DATA: &str = "/System/Volumes/Data";
+    match path.strip_prefix(DATA) {
+        Ok(rest) => Path::new("/").join(rest),
+        Err(_) => path,
     }
 }
 

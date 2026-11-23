@@ -180,3 +180,17 @@ fn links_to_protected_folders_are_seen_through_for_missing_paths() {
         "the real home behind the link was allowed"
     );
 }
+
+/// macOS mounts user data at /System/Volumes/Data and resolving /home or /Users can lead there;
+/// that is user data, not the protected /System.
+#[cfg(unix)]
+#[test]
+fn the_macos_data_volume_counts_as_the_root_it_mirrors() {
+    let g = unix_guard();
+    assert!(!refused_by_hand(
+        &g,
+        "/System/Volumes/Data/home/ana/Downloads/big.iso"
+    ));
+    assert!(refused_by_hand(&g, "/System/Library/CoreServices"));
+    assert!(refused_by_hand(&g, "/System/Volumes/Data/home/ana"));
+}

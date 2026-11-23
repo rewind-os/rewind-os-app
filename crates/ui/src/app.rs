@@ -6,9 +6,9 @@ use crate::pages;
 use crate::theme;
 use crate::widgets;
 use egui::{CornerRadius, Margin, RichText, Stroke};
-use rewindows_engine::system::Overview;
-use rewindows_engine::{Engine, Request, Response};
-use rewindows_i18n::tr;
+use rewind_os_engine::system::Overview;
+use rewind_os_engine::{Engine, Os, Request, Response};
+use rewind_os_i18n::tr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -34,6 +34,28 @@ impl Page {
         Page::Maintenance,
     ];
 
+    /// The tools behind the page; it is available when any of them works on this system.
+    fn tools(self) -> &'static [&'static str] {
+        match self {
+            Page::Overview => &["system.overview"],
+            Page::Analyzer => &["disk.scan"],
+            Page::Cleanup => &["cleanup.analyze"],
+            Page::Leftovers => &["leftovers.find"],
+            Page::Programs => &["programs.list"],
+            Page::Startup => &["startup.list"],
+            Page::Maintenance => &[
+                "maintenance.analyze_component_store",
+                "maintenance.journal_usage",
+            ],
+        }
+    }
+
+    pub fn available(self) -> bool {
+        self.tools()
+            .iter()
+            .any(|id| rewind_os_engine::tool(id).is_some_and(|t| t.available()))
+    }
+
     pub fn title(self) -> &'static str {
         match self {
             Page::Overview => "Overview",
@@ -45,6 +67,21 @@ impl Page {
             Page::Maintenance => "Maintenance",
         }
     }
+}
+
+/// The app icon for the top bar, from the 64 px render.
+fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
+    let png =
+        include_bytes!("../../../assets/app-icon/hicolor/64x64/apps/io.github.r_dvl.rewind_os.png");
+    let icon = eframe::icon_data::from_png_bytes(png).ok()?;
+    let size = [icon.width as usize, icon.height as usize];
+    let image = egui::ColorImage::from_rgba_unmultiplied(size, &icon.rgba);
+    Some(ctx.load_texture("app-logo", image, egui::TextureOptions::LINEAR))
+}
+
+/// Restarting elevated is a Windows feature; elsewhere the CLI runs under sudo instead.
+fn can_relaunch() -> bool {
+    rewind_os_engine::tool("system.relaunch_elevated").is_some_and(|t| t.available())
 }
 
 pub struct Status {
@@ -96,8 +133,17 @@ impl Shared {
         let t = theme::current(ui.ctx());
         ui.horizontal_wrapped(|ui| {
             ui.label(RichText::new(tr("This needs administrator rights.")).color(t.warn));
-            if ui.button(tr("Restart as administrator")).clicked() {
-                self.relaunch_elevated(ui.ctx());
+            if can_relaunch() {
+                if ui.button(tr("Restart as administrator")).clicked() {
+                    self.relaunch_elevated(ui.ctx());
+                }
+            } else {
+                ui.label(
+                    RichText::new(tr(
+                        "Run the command-line tool with sudo for these: sudo rewind-os-cli",
+                    ))
+                    .color(t.text_muted),
+                );
             }
         });
     }
@@ -114,6 +160,7 @@ pub struct App {
     startup: pages::startup::State,
     maintenance: pages::maintenance::State,
     devtools: crate::devtools::Devtools,
+    logo: Option<egui::TextureHandle>,
 }
 
 impl App {
@@ -130,7 +177,7 @@ impl App {
         Self {
             shared: Shared {
                 engine,
-                elevated: rewindows_engine::system::is_elevated(),
+                elevated: rewind_os_engine::system::is_elevated(),
                 overview: None,
                 status: None,
                 goto: None,
@@ -146,6 +193,7 @@ impl App {
             startup: Default::default(),
             maintenance: Default::default(),
             devtools: crate::devtools::Devtools::from_env(),
+            logo: load_logo(ctx),
         }
     }
 
@@ -162,13 +210,17 @@ impl App {
     fn top_bar(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
         ui.horizontal(|ui| {
-            ui.label(RichText::new("ReWindows").strong().size(16.0).color(t.accent));
+            if let Some(logo) = &self.logo {
+                ui.add(egui::Image::new((logo.id(), egui::vec2(22.0, 22.0))).alt_text("Rewind OS"));
+            }
+            ui.label(RichText::new("Rewind OS").strong().size(16.0).color(t.accent));
             ui.label(RichText::new(tr(self.page.title())).color(t.text_muted));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if self.shared.elevated {
                     widgets::badge(ui, tr("Administrator"), t.ok);
                 } else {
-                    if ui
+                    if can_relaunch()
+                        && ui
                         .button(tr("Restart as administrator"))
                         .on_hover_text(tr(
                             "Some cleanups and settings need administrator rights. Windows will ask for permission.",
@@ -197,7 +249,13 @@ impl App {
                 };
                 let button =
                     egui::Button::selectable(selected, text).min_size(egui::vec2(0.0, 34.0));
-                if ui.add(button).clicked() {
+                let response = ui
+                    .add_enabled(page.available(), button)
+                    .on_disabled_hover_text(rewind_os_i18n::trf(
+                        "Not available on {os} yet.",
+                        &[("os", Os::current().name())],
+                    ));
+                if response.clicked() {
                     self.page = page;
                 }
             }

@@ -4,10 +4,10 @@
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    match rewindows_ui::run() {
+    match rewind_os_ui::run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
-            eprintln!("ReWindows: {err}");
+            eprintln!("Rewind OS: {err}");
             ExitCode::FAILURE
         }
     }

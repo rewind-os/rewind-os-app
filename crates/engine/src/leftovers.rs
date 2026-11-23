@@ -10,8 +10,8 @@ use crate::walk::{self, Filter};
 use crate::{Task, programs, startup};
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
-use rewindows_platform::paths::Known;
-use rewindows_platform::registry::{self, Hive};
+use rewind_os_platform::paths::Known;
+use rewind_os_platform::registry::{self, Hive};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
@@ -29,7 +29,7 @@ pub enum Location {
 }
 
 impl Location {
-    /// English label; translate with `rewindows_i18n::tr`.
+    /// English label; translate with `rewind_os_i18n::tr`.
     pub fn label(self) -> &'static str {
         match self {
             Location::ProgramFiles => "Program Files",

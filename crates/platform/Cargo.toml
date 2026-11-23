@@ -1,6 +1,6 @@
 [package]
-name = "rewindows-platform"
-description = "Windows integration: registry, processes, elevation, recycle bin. No unsafe code."
+name = "rewind-os-platform"
+description = "Operating system integration: known folders, registry, processes, elevation, recycle bin. No unsafe code."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

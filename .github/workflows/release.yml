@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing to the `release` branch builds every Windows package, drafts a GitHub release named
+# Pushing to the `release` branch builds the Windows and Linux packages, drafts a GitHub release named
 # after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages and
 # publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
 # Run it by hand (workflow_dispatch) for a dry run that only builds and keeps the artifacts.
@@ -60,7 +60,7 @@ jobs:
           # Built natively on GitHub's Arm runner (free for public repositories).
           - { arch: arm64, target: aarch64-pc-windows-msvc, runner: windows-11-arm }
     env:
-      REWINDOWS_VERSION: ${{ needs.version.outputs.version }}
+      REWIND_OS_VERSION: ${{ needs.version.outputs.version }}
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -90,10 +90,50 @@ jobs:
           path: dist/release/*
           if-no-files-found: error
 
+  linux:
+    name: Linux ${{ matrix.arch }}
+    needs: version
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, runner: ubuntu-24.04 }
+          # GitHub's Arm runner (free for public repositories).
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    env:
+      REWIND_OS_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install system libraries for eframe
+        run: >-
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends
+          libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev
+      - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: release-linux-${{ matrix.arch }}
+      - name: Build and package
+        run: ./packaging/linux/package.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: dist/release/*
+          if-no-files-found: error
+
   release:
     name: GitHub release
     if: github.event_name == 'push' && github.ref == 'refs/heads/release' && !cancelled() && !contains(needs.*.result, 'failure')
-    needs: [version, windows]
+    needs: [version, windows, linux]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -111,7 +151,7 @@ jobs:
           egress-policy: audit
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: release-windows-*
+          pattern: release-*
           path: dist
           merge-multiple: true
       - name: Draft the release with every package
@@ -124,7 +164,7 @@ jobs:
             echo "::error::$TAG is already published. Raise [workspace.package] version in Cargo.toml for a new release."
             exit 1
           fi
-          flags=(--draft --target "$GITHUB_SHA" --title "ReWindows $VERSION" --generate-notes)
+          flags=(--draft --target "$GITHUB_SHA" --title "Rewind OS $VERSION" --generate-notes)
           if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
           if [ "$state" = missing ]; then
             gh release create "$TAG" "${flags[@]}" dist/*

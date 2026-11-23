@@ -21,3 +21,14 @@ Things that look wrong but are not, and mistakes worth not repeating.
   degrades on its own instead of failing the page.
 - **egui 0.37** renamed `SidePanel`/`TopBottomPanel` to `Panel`, `App::update` to `App::ui`,
   `Id::new` to `Id::unique` and screenshots use a `ScreenshotCallback`.
+- **Rust 2024 makes `std::env::set_var` unsafe**, and `unsafe` is forbidden here. Code that
+  reads folders from the environment takes them as a parameter instead (`cleanup::Places`,
+  `startup::xdg::Dirs`), so tests pass temporary folders rather than changing the environment.
+- **Glob matching is case-insensitive only on Windows.** Linux and macOS cache folders differ
+  only by case sometimes (`Code Cache` vs `code cache`); keep templates exact.
+- **XDG autostart overrides.** A file in `~/.config/autostart` with the same name as one in
+  `/etc/xdg/autostart` replaces it. Turning a system entry off writes the user copy with
+  `Hidden=true`; never edit `/etc`. Entry ids are file names and are checked, so an id can never
+  name a path outside the autostart folders.
+- **macOS Trash and Full Disk Access.** Listing `~/.Trash` can fail without Full Disk Access;
+  the recycle bin category then shows the error instead of 0 B.

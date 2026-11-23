@@ -1,4 +1,4 @@
-# Rules for people and agents working on ReWindows
+# Rules for people and agents working on Rewind OS
 
 These rules adapt the development standards of the Craft apps
 ([storytold/craft-anything](https://github.com/storytold/craft-anything), MIT OR Apache-2.0) to this
@@ -7,10 +7,11 @@ pull request.
 
 ## What this is
 
-ReWindows is a native Windows 11 app, written only in Rust, that shows what uses disk space and
-removes what is not needed: temporary files, caches, leftovers of uninstalled programs, large
-forgotten files, and unneeded startup programs. It ships a desktop app (egui) and a CLI, both
-driven by one engine.
+Rewind OS is a native app, written only in Rust, that shows what uses disk space and removes
+what is not needed: temporary files, caches, leftovers of uninstalled programs, large forgotten
+files, and unneeded startup programs. Windows comes first; Linux and macOS share the engine and
+grow tool by tool. It ships a desktop app (egui) and a CLI, both driven by one engine. Display
+name **Rewind OS**; machine names `rewind-os-*`; app id `io.github.r_dvl.rewind_os`.
 
 ## Layout
 
@@ -19,35 +20,41 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
 | Layer | Crate | Job |
 |---|---|---|
 | L0 | `crates/i18n` | `tr()` / `trf()`; English text is the key, catalogs in `locales/*.tsv` |
-| L0 | `crates/platform` | Everything that talks to Windows: registry, processes, elevation, recycle bin |
+| L0 | `crates/platform` | Everything that talks to the OS: known folders, registry, processes, elevation, recycle bin |
 | L1 | `crates/engine` | Every feature, as a `Request` with a stable tool id (`TOOLS` in `lib.rs`) |
 | L2 | `crates/ui` | The egui interface; the only crate that uses egui, eframe or rfd |
-| app | `apps/rewindows` | Desktop executable (icon, manifest) |
-| app | `apps/rewindows-cli` | Command line; `rewindows-cli commands` lists every tool |
+| app | `apps/rewind-os` | Desktop executable (icon, manifest) |
+| app | `apps/rewind-os-cli` | Command line; `rewind-os-cli commands` lists every tool |
+| tool | `xtask` | `cargo xtask icons` renders the app icon files from `assets/app-icon/rewind-os.svg` |
 
 ## Changing code
 
 1. Every user-visible action MUST be an engine `Request` handled in `Engine::run`. Panels change the
    system only through it, so the CLI (and future automation) can do everything the GUI can.
 2. Apps MUST be Rust only: no handwritten JavaScript or TypeScript, no webview.
-3. `unsafe_code` is forbidden workspace-wide. Windows APIs are reached through safe crates
+3. Every tool in `TOOLS` lists the systems it works on (`.only(...)`). Elsewhere `Engine::run`
+   answers `EngineError::Unsupported`, the GUI greys the page out and says why, and the CLI says
+   so. Platform differences live in `crates/platform` or behind `Os::current()`, not in panels.
+   Cleanup categories are per system (`cleanup::WINDOWS`, `LINUX`, `MACOS`); a shared idea keeps
+   the same id on every system.
+4. `unsafe_code` is forbidden workspace-wide. Windows APIs are reached through safe crates
    (`winreg`, `trash`, `sysinfo`) or Windows' own programs (`whoami`, `dism`, `powercfg`).
-4. Non-test code MUST NOT panic: no `unwrap`, `expect`, `panic!` or indexing that can fail.
+5. Non-test code MUST NOT panic: no `unwrap`, `expect`, `panic!` or indexing that can fail.
    Fix what a lint reports; do not silence it with `allow` or a lint-config change.
-5. Dates use `chrono`. Locks use `parking_lot::Mutex`.
-6. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`.
-7. User-facing text goes through `tr()` with English as the key. Add the Spanish line to
+6. Dates use `chrono`. Locks use `parking_lot::Mutex`.
+7. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`.
+8. User-facing text goes through `tr()` with English as the key. Add the Spanish line to
    `crates/i18n/locales/es.tsv` in the same change; a missing translation shows English.
-8. Never present partial or unsupported behaviour as success. Files that could not be deleted,
+9. Never present partial or unsupported behaviour as success. Files that could not be deleted,
    categories skipped for lack of rights and stopped scans are reported, in the GUI and the CLI.
-9. Anything that deletes or changes the system MUST ask first (a confirmation dialog in the GUI,
+10. Anything that deletes or changes the system MUST ask first (a confirmation dialog in the GUI,
    `--yes` in the CLI). User files go to the recycle bin; only regenerable caches are deleted
    permanently.
-10. Never follow symbolic links or junctions when measuring or deleting.
-11. A UI change SHOULD work by keyboard. Drawn surfaces (bars, treemap tiles) expose a role, a
+11. Never follow symbolic links or junctions when measuring or deleting.
+12. A UI change SHOULD work by keyboard. Drawn surfaces (bars, treemap tiles) expose a role, a
     label and a value through `widget_info`. Colour is never the only signal: badges carry text.
-12. A new dependency's licence MUST be accepted by `deny.toml`.
-13. Keep secrets and personal details out of code, logs, fixtures and requests.
+13. A new dependency's licence MUST be accepted by `deny.toml`.
+14. Keep secrets and personal details out of code, logs, fixtures and requests.
 
 ## Tests
 
@@ -55,8 +62,8 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
   library behaviour. Assert relations ("inside", "larger than", "kept") rather than chosen values.
 - Integration tests are one binary per crate: `tests/it/main.rs`.
 - Never delete, weaken or skip a test to make a check pass.
-- UI checks: `REWINDOWS_PAGE=<page> REWINDOWS_SCREENSHOT=out.ppm cargo run -p rewindows` saves the
-  window and exits; `REWINDOWS_SCAN=<path>` starts a scan first. See `crates/ui/src/devtools.rs`.
+- UI checks: `REWIND_OS_PAGE=<page> REWIND_OS_SCREENSHOT=out.ppm cargo run -p rewind-os` saves the
+  window and exits; `REWIND_OS_SCAN=<path>` starts a scan first. See `crates/ui/src/devtools.rs`.
 
 ## Checks
 
@@ -66,6 +73,7 @@ Run for the crates you changed, and say in the pull request what ran and what di
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --workspace --all-targets --target x86_64-pc-windows-msvc -- -D warnings
+cargo clippy --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
 cargo test --workspace
 ```
 
@@ -80,8 +88,8 @@ cargo test --workspace
 
 - The version lives only in `[workspace.package] version` in `Cargo.toml`. A suffix
   (`0.2.0-rc.1`) makes a pre-release.
-- Pushing to the `release` branch runs `.github/workflows/release.yml`: it builds x64 and arm64
-  with `packaging/windows/package.ps1`, drafts the GitHub release `v<version>` with every package
+- Pushing to the `release` branch runs `.github/workflows/release.yml`: it builds Windows and
+  Linux, x64 and arm64, with `packaging/windows/package.ps1` and `packaging/linux/package.sh`, drafts the GitHub release `v<version>` with every package
   and `SHA256SUMS.txt`, and publishes it only when every build passed and no file is missing
   compared with the previous release. Running the workflow by hand is a dry run (artifacts only).
 - Publishing a release cannot be undone by a new commit: ask the maintainer before pushing to

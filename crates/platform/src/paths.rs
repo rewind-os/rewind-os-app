@@ -1,57 +1,119 @@
-//! Well-known folders and `%VARIABLE%` expansion.
+//! Well-known folders, resolved the way each operating system defines them.
 
 use std::path::PathBuf;
 
-/// Folders the engine needs, resolved from the environment Windows sets for every process.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Folders the engine needs. Some only exist on one system; [`Known::path`] returns `None`
+/// for them elsewhere.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Known {
-    UserProfile,
-    RoamingAppData,
-    LocalAppData,
-    ProgramData,
-    ProgramFiles,
-    ProgramFilesX86,
-    Windows,
+    /// The user's home folder.
+    Home,
+    /// The user's temporary folder.
     Temp,
+    /// Per-user caches: `%LOCALAPPDATA%`, `~/Library/Caches`, `$XDG_CACHE_HOME`.
+    Cache,
+    /// Per-user settings: `%APPDATA%`, `~/Library/Application Support`, `$XDG_CONFIG_HOME`.
+    Config,
+    /// Per-user data: `%LOCALAPPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME`.
+    Data,
+    /// The Downloads folder.
+    Downloads,
+    /// Windows: `%LOCALAPPDATA%`.
+    LocalAppData,
+    /// Windows: `%APPDATA%`.
+    RoamingAppData,
+    /// Windows: `%PROGRAMDATA%`.
+    ProgramData,
+    /// Windows: `%PROGRAMFILES%`.
+    ProgramFiles,
+    /// Windows: `%PROGRAMFILES(X86)%`.
+    ProgramFilesX86,
+    /// Windows: `%WINDIR%`.
+    Windows,
 }
 
 impl Known {
-    fn variable(self) -> &'static str {
+    pub const ALL: [Known; 12] = [
+        Known::Home,
+        Known::Temp,
+        Known::Cache,
+        Known::Config,
+        Known::Data,
+        Known::Downloads,
+        Known::LocalAppData,
+        Known::RoamingAppData,
+        Known::ProgramData,
+        Known::ProgramFiles,
+        Known::ProgramFilesX86,
+        Known::Windows,
+    ];
+
+    /// The name used in path templates: `{cache}/thumbnails/*`.
+    pub fn token(self) -> &'static str {
         match self {
-            Known::UserProfile => "USERPROFILE",
-            Known::RoamingAppData => "APPDATA",
-            Known::LocalAppData => "LOCALAPPDATA",
-            Known::ProgramData => "PROGRAMDATA",
-            Known::ProgramFiles => "PROGRAMFILES",
-            Known::ProgramFilesX86 => "PROGRAMFILES(X86)",
-            Known::Windows => "WINDIR",
-            Known::Temp => "TEMP",
+            Known::Home => "home",
+            Known::Temp => "temp",
+            Known::Cache => "cache",
+            Known::Config => "config",
+            Known::Data => "data",
+            Known::Downloads => "downloads",
+            Known::LocalAppData => "local_app_data",
+            Known::RoamingAppData => "roaming_app_data",
+            Known::ProgramData => "program_data",
+            Known::ProgramFiles => "program_files",
+            Known::ProgramFilesX86 => "program_files_x86",
+            Known::Windows => "windows",
         }
     }
 
-    /// The folder, or `None` when the variable is not set (for example on another OS).
+    /// The folder on this computer, or `None` when it does not exist on this system or the
+    /// environment does not say where it is.
     pub fn path(self) -> Option<PathBuf> {
-        std::env::var_os(self.variable())
-            .filter(|v| !v.is_empty())
-            .map(PathBuf::from)
+        if cfg!(windows) {
+            self.windows()
+        } else {
+            self.unix()
+        }
+    }
+
+    fn windows(self) -> Option<PathBuf> {
+        match self {
+            Known::Home => var("USERPROFILE"),
+            Known::Temp => var("TEMP"),
+            Known::Cache | Known::Data | Known::LocalAppData => var("LOCALAPPDATA"),
+            Known::Config | Known::RoamingAppData => var("APPDATA"),
+            Known::Downloads => var("USERPROFILE").map(|h| h.join("Downloads")),
+            Known::ProgramData => var("PROGRAMDATA"),
+            Known::ProgramFiles => var("PROGRAMFILES"),
+            Known::ProgramFilesX86 => var("PROGRAMFILES(X86)"),
+            Known::Windows => var("WINDIR"),
+        }
+    }
+
+    fn unix(self) -> Option<PathBuf> {
+        let home = var("HOME");
+        let mac = cfg!(target_os = "macos");
+        match self {
+            Known::Home => home,
+            Known::Temp => Some(std::env::temp_dir()),
+            Known::Cache if mac => home.map(|h| h.join("Library/Caches")),
+            Known::Cache => var("XDG_CACHE_HOME").or_else(|| home.map(|h| h.join(".cache"))),
+            Known::Config | Known::Data if mac => {
+                home.map(|h| h.join("Library/Application Support"))
+            }
+            Known::Config => var("XDG_CONFIG_HOME").or_else(|| home.map(|h| h.join(".config"))),
+            Known::Data => var("XDG_DATA_HOME").or_else(|| home.map(|h| h.join(".local/share"))),
+            Known::Downloads => home.map(|h| h.join("Downloads")),
+            _ => None,
+        }
     }
 }
 
-/// Replaces every `%NAME%` with the value of environment variable `NAME`, passing each value
-/// through `escape` (so callers can escape glob characters). Returns `None` if any variable is
-/// missing, so a pattern never silently turns into a relative path.
-pub fn expand(template: &str, escape: impl Fn(&str) -> String) -> Option<String> {
-    let mut out = String::with_capacity(template.len() + 64);
-    let mut rest = template;
-    while let Some(start) = rest.find('%') {
-        out.push_str(&rest[..start]);
-        let after = &rest[start + 1..];
-        let end = after.find('%')?;
-        let name = &after[..end];
-        let value = std::env::var(name).ok().filter(|v| !v.is_empty())?;
-        out.push_str(&escape(&value));
-        rest = &after[end + 1..];
-    }
-    out.push_str(rest);
-    Some(out)
+/// An environment variable as a path, if set and not empty. XDG variables must be absolute;
+/// a relative value is ignored, as the specification says.
+fn var(name: &str) -> Option<PathBuf> {
+    std::env::var_os(name)
+        .filter(|v| !v.is_empty())
+        .map(PathBuf::from)
+        .filter(|p| !name.starts_with("XDG_") || p.is_absolute())
 }

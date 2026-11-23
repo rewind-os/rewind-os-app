@@ -6,8 +6,8 @@ use crate::theme::{self, Theme};
 use egui::{
     Color32, CornerRadius, Margin, Response, RichText, Role, Sense, Stroke, Ui, WidgetInfo,
 };
-use rewindows_engine::format;
-use rewindows_i18n::{tr, trf};
+use rewind_os_engine::format;
+use rewind_os_i18n::{tr, trf};
 
 pub fn page_header(ui: &mut Ui, title: &str, subtitle: &str) {
     let t = theme::current(ui.ctx());

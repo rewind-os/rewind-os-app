@@ -1,5 +1,5 @@
 [package]
-name = "rewindows-engine"
+name = "rewind-os-engine"
 description = "Disk analysis, cleanup, leftovers and startup tools. Every feature is a request."
 version.workspace = true
 edition.workspace = true
@@ -7,7 +7,7 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rewindows-platform.workspace = true
+rewind-os-platform.workspace = true
 thiserror.workspace = true
 serde.workspace = true
 rayon.workspace = true

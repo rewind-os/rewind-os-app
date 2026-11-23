@@ -10,6 +10,36 @@ pub mod shell;
 
 use std::path::PathBuf;
 
+/// The operating system families Rewind OS knows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Os {
+    Windows,
+    Linux,
+    MacOs,
+}
+
+impl Os {
+    /// The system this program was built for. Other Unix systems are treated like Linux.
+    pub const fn current() -> Os {
+        if cfg!(windows) {
+            Os::Windows
+        } else if cfg!(target_os = "macos") {
+            Os::MacOs
+        } else {
+            Os::Linux
+        }
+    }
+
+    /// The system's name, the same in every language.
+    pub fn name(self) -> &'static str {
+        match self {
+            Os::Windows => "Windows",
+            Os::Linux => "Linux",
+            Os::MacOs => "macOS",
+        }
+    }
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum PlatformError {
     #[error("not supported on this operating system: {0}")]

@@ -2,7 +2,7 @@
 
 use crate::{EngineError, Result};
 use chrono::NaiveDate;
-use rewindows_platform::registry::{self, Hive, Value};
+use rewind_os_platform::registry::{self, Hive, Value};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -122,7 +122,7 @@ pub fn start_uninstaller(key: &str) -> Result<()> {
 fn launch(command: &str) -> Result<()> {
     use std::os::windows::process::CommandExt;
     // The registered string is a full command line with its own quoting; pass it untouched.
-    rewindows_platform::process::command("cmd.exe")
+    rewind_os_platform::process::command("cmd.exe")
         .arg("/C")
         .raw_arg(command)
         .spawn()
@@ -135,5 +135,5 @@ fn launch(command: &str) -> Result<()> {
 
 #[cfg(not(windows))]
 fn launch(_command: &str) -> Result<()> {
-    Err(rewindows_platform::PlatformError::Unsupported("program uninstallers").into())
+    Err(rewind_os_platform::PlatformError::Unsupported("program uninstallers").into())
 }

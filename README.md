@@ -1,56 +1,88 @@
-# ReWindows
+<p align="center">
+  <img src="assets/app-icon/hicolor/256x256/apps/io.github.r_dvl.rewind_os.png" width="128" height="128" alt="Rewind OS icon: an engraved raccoon on a teal tile">
+</p>
 
-[Español](README.es.md)
+<h1 align="center">Rewind OS</h1>
 
-A small, fast, native Windows 11 app, written only in Rust, that shows what is using your disk and
-removes what you do not need: temporary files, caches, leftovers of programs you uninstalled,
-large forgotten files and programs that start with Windows for no reason.
+<p align="center">
+  <a href="README.es.md">Español</a>
+</p>
+
+<p align="center">
+  <b>See what is using your disk and take your computer back to clean.</b><br>
+  A small, fast, native app written only in Rust. Windows first; Linux and macOS on the way.
+</p>
+
+It removes what you do not need: temporary files, caches, leftovers of programs you uninstalled,
+large forgotten files and programs that start with the system for no reason.
 
 - **Overview**: drives (SSD/HDD), memory, and Windows' own large files (`hiberfil.sys`,
   `pagefile.sys`).
 - **Disk analyzer**: scans a drive or folder in parallel; folder list, treemap, largest files and
-  size per file type. Anything can be shown in File Explorer or moved to the recycle bin.
-- **Junk cleanup**: temporary files, Windows Update downloads, crash dumps, browser and app caches,
+  size per file type. Anything can be shown in the file manager or moved to the recycle bin.
+- **Junk cleanup**: temporary files, update downloads, crash reports, browser and app caches,
   package manager caches, old installers in Downloads, the recycle bin. Each category says how
   safe it is and whether it needs administrator rights.
 - **Program leftovers**: folders in Program Files, ProgramData and AppData that no installed
   program, service, running program or startup entry refers to. They go to the recycle bin.
 - **Installed programs** with search and their own uninstaller.
-- **Startup programs** on and off, using the same records as Windows' settings.
-- **Maintenance**: real size and cleanup of the component store (WinSxS), hibernation on/off.
+- **Startup programs** on and off, using the system's own records.
+- **Maintenance**: the system's own tools (component store and hibernation on Windows, the
+  journal on Linux).
 
 Nothing is deleted without asking. Files a program has open are skipped and reported. The app
-starts as a normal user and offers to restart as administrator when a task needs it.
+starts as a normal user and, on Windows, offers to restart as administrator when a task needs it.
+
+## Systems
+
+| Feature | Windows | Linux | macOS |
+|---|:-:|:-:|:-:|
+| Overview, disk analyzer | ✓ | ✓ | ✓ |
+| Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
+| Startup programs | ✓ | ✓ (XDG autostart) | — |
+| Program leftovers, installed programs | ✓ | — | — |
+| Maintenance | component store, hibernation | journal | — |
+
+A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.
+macOS builds are checked in CI but not released yet.
 
 ## Download
 
-Ready-made builds for Windows x64 and ARM64 are on the
-[releases page](../../releases): unzip `rewindows-<version>-windows-<arch>-portable.zip` and run
-`rewindows.exe`. Nothing is installed. Check the download against `SHA256SUMS.txt`.
+Ready-made builds are on the [releases page](../../releases); check them against
+`SHA256SUMS.txt`. Nothing is installed.
+
+- **Windows** x64 and ARM64: unzip `rewind-os-<version>-windows-<arch>-portable.zip` and run
+  `rewind-os.exe`.
+- **Linux** x64 and ARM64: unpack `rewind-os-<version>-linux-<arch>.tar.gz` and run
+  `bin/rewind-os`. Copy its `share/` folder into `~/.local/share` for the launcher entry and icon.
 
 ## Build
 
-On Windows 11 with [Rust](https://rustup.rs) and the Visual Studio C++ Build Tools:
+With [Rust](https://rustup.rs) (on Windows, also the Visual Studio C++ Build Tools):
 
-```powershell
+```sh
 cargo build --release
-.\target\release\rewindows.exe        # desktop app
-.\target\release\rewindows-cli.exe    # command line
+target/release/rewind-os        # desktop app
+target/release/rewind-os-cli    # command line
 ```
+
+On Linux the build needs the X11/Wayland development headers (`libxkbcommon-dev libwayland-dev
+libx11-dev libgl1-mesa-dev` or your distribution's equivalent).
 
 ## Command line
 
 Every feature of the app is also a command:
 
-```powershell
-rewindows-cli commands                       # every tool and its id
-rewindows-cli overview
-rewindows-cli scan C:\ --top 30
-rewindows-cli clean analyze
-rewindows-cli clean run --defaults --yes     # the categories marked safe
-rewindows-cli leftovers
-rewindows-cli startup list
-rewindows-cli --json run '{"tool":"cleanup.analyze"}'
+```sh
+rewind-os-cli commands                       # every tool and its id
+rewind-os-cli overview
+rewind-os-cli scan C:\ --top 30
+rewind-os-cli clean analyze
+rewind-os-cli clean run --defaults --yes     # the categories marked safe
+rewind-os-cli leftovers
+rewind-os-cli startup list
+sudo rewind-os-cli clean run --defaults --yes   # Linux/macOS: system-wide categories too
+rewind-os-cli --json run '{"tool":"cleanup.analyze"}'
 ```
 
 `--json` prints the engine's response for scripts. `--lang es` switches the language.
@@ -58,6 +90,7 @@ rewindows-cli --json run '{"tool":"cleanup.analyze"}'
 ## Development
 
 Rules for contributors and coding agents: [AGENTS.md](AGENTS.md). Plan: [docs/ROADMAP.md](docs/ROADMAP.md).
+The app icon and how to regenerate it: [assets/app-icon/README.md](assets/app-icon/README.md).
 
 ## Licence
 

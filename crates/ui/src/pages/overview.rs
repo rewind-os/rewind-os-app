@@ -3,10 +3,10 @@ use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, card, fill_color, page_header, usage_bar};
 use egui::RichText;
-use rewindows_engine::format::bytes;
-use rewindows_engine::system::{DriveKind, SystemFileKind};
-use rewindows_engine::{Engine, Request, Response};
-use rewindows_i18n::{tr, trf};
+use rewind_os_engine::format::bytes;
+use rewind_os_engine::system::{DriveKind, SystemFileKind};
+use rewind_os_engine::{Engine, Request, Response};
+use rewind_os_i18n::{tr, trf};
 use std::sync::Arc;
 
 pub struct State {
@@ -128,7 +128,7 @@ impl State {
                     ui.set_width(ui.available_width());
                     ui.label(RichText::new(tr("System")).strong());
                     egui::Grid::new("system_grid").num_columns(2).spacing([12.0, 4.0]).show(ui, |ui| {
-                        ui.label(RichText::new(tr("Windows")).color(t.text_muted));
+                        ui.label(RichText::new(tr("Operating system")).color(t.text_muted));
                         ui.label(&overview.os);
                         ui.end_row();
                         ui.label(RichText::new(tr("Computer")).color(t.text_muted));

@@ -3,10 +3,10 @@ use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, page_header};
 use egui::RichText;
-use rewindows_engine::format::bytes;
-use rewindows_engine::programs::{InstalledProgram, Scope};
-use rewindows_engine::{Request, Response, Task};
-use rewindows_i18n::{tr, trf};
+use rewind_os_engine::format::bytes;
+use rewind_os_engine::programs::{InstalledProgram, Scope};
+use rewind_os_engine::{Request, Response, Task};
+use rewind_os_i18n::{tr, trf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum Sort {

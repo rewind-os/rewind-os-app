@@ -1,10 +1,10 @@
-//! `rewindows-cli`: every engine tool from the command line. Destructive tools ask for
+//! `rewind-os-cli`: every engine tool from the command line. Destructive tools ask for
 //! `--yes`; `--json` prints the engine's response for scripts and agents.
 
 use clap::{Parser, Subcommand};
-use rewindows_engine::format::{bytes, count};
-use rewindows_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
-use rewindows_i18n::{tr, trf};
+use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
+use rewind_os_i18n::{tr, trf};
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -13,7 +13,7 @@ use std::time::Duration;
 
 #[derive(Parser)]
 #[command(
-    name = "rewindows-cli",
+    name = "rewind-os-cli",
     version,
     about = "Disk analysis and cleanup for Windows"
 )]
@@ -113,7 +113,7 @@ enum Maintenance {
 
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    rewindows_i18n::init(cli.lang.as_deref());
+    rewind_os_i18n::init(cli.lang.as_deref());
     let mut json = cli.json;
     let top = match &cli.command {
         Command::Scan { top, .. } => *top,
@@ -172,7 +172,11 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             } else {
                 for tool in TOOLS {
                     let mark = if tool.changes_system { "*" } else { " " };
-                    println!("{mark} {:<40} {}", tool.id, tr(tool.summary));
+                    let mut line = format!("{mark} {:<40} {}", tool.id, tr(tool.summary));
+                    if !tool.available() {
+                        line.push_str(&format!(" ({})", tr("not available on this system yet")));
+                    }
+                    println!("{line}");
                 }
                 println!("\n* {}", tr("changes your system"));
             }
@@ -190,7 +194,7 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             confirm(yes)?;
             if defaults {
                 categories.extend(
-                    cleanup::CATEGORIES
+                    cleanup::categories()
                         .iter()
                         .filter(|c| c.selected_by_default)
                         .map(|c| c.id.to_owned()),
@@ -341,7 +345,7 @@ fn print_human(response: &Response, top: usize) {
             }
             println!("\n{}", tr("Largest folders"));
             for (id, node) in tree
-                .children(rewindows_engine::scan::ScanTree::ROOT)
+                .children(rewind_os_engine::scan::ScanTree::ROOT)
                 .take(top)
             {
                 println!("{:>10}  {}", bytes(node.bytes), tree.path(id).display());

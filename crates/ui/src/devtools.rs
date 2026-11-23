@@ -1,10 +1,10 @@
 //! Hooks for checking the interface without a person at the screen. Only active when the
 //! environment asks for them:
 //!
-//! - `REWINDOWS_PAGE=<overview|analyzer|cleanup|leftovers|programs|startup|maintenance>` opens
+//! - `REWIND_OS_PAGE=<overview|analyzer|cleanup|leftovers|programs|startup|maintenance>` opens
 //!   that page first.
-//! - `REWINDOWS_SCAN=<path>` starts a disk scan of `path`.
-//! - `REWINDOWS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
+//! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path`.
+//! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
 //!   settled (or after 20 seconds) and closes the app.
 
 use std::path::PathBuf;
@@ -18,17 +18,17 @@ pub struct Devtools {
 }
 
 pub fn start_page() -> Option<String> {
-    std::env::var("REWINDOWS_PAGE").ok()
+    std::env::var("REWIND_OS_PAGE").ok()
 }
 
 pub fn scan_path() -> Option<PathBuf> {
-    std::env::var_os("REWINDOWS_SCAN").map(PathBuf::from)
+    std::env::var_os("REWIND_OS_SCAN").map(PathBuf::from)
 }
 
 impl Devtools {
     pub fn from_env() -> Self {
         Self {
-            screenshot: std::env::var_os("REWINDOWS_SCREENSHOT").map(PathBuf::from),
+            screenshot: std::env::var_os("REWIND_OS_SCREENSHOT").map(PathBuf::from),
             requested: false,
             started: Instant::now(),
             quiet_since: None,

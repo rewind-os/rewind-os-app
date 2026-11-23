@@ -1,47 +1,27 @@
-//! Programs that start with Windows. Enabling and disabling uses the same "startup approved"
-//! records the Windows settings use, so the program's own entry is never deleted and the
-//! change can be undone from Windows too.
+//! Windows: the Run registry keys and the Startup folders. Enabling and disabling uses the same
+//! "startup approved" records the Windows settings use, so the program's own entry is never
+//! deleted and the change can be undone from Windows too.
 
+use super::{Source, StartupEntry};
 use crate::{EngineError, Result};
 use chrono::{DateTime, TimeZone, Utc};
-use rewindows_platform::paths::Known;
-use rewindows_platform::registry::{self, Hive, Value};
-use rewindows_platform::{PlatformError, elevation};
-use serde::Serialize;
+use rewind_os_platform::paths::Known;
+use rewind_os_platform::registry::{self, Hive, Value};
+use rewind_os_platform::{PlatformError, elevation};
 use std::path::PathBuf;
 
 const RUN: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
 const RUN_32: &str = r"Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run";
 const APPROVED: &str = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Source {
-    UserRun,
-    MachineRun,
-    MachineRun32,
-    UserStartupFolder,
-    CommonStartupFolder,
-}
-
 impl Source {
-    const ALL: [Source; 5] = [
+    const WINDOWS: [Source; 5] = [
         Source::UserRun,
         Source::MachineRun,
         Source::MachineRun32,
         Source::UserStartupFolder,
         Source::CommonStartupFolder,
     ];
-
-    fn tag(self) -> &'static str {
-        match self {
-            Source::UserRun => "user_run",
-            Source::MachineRun => "machine_run",
-            Source::MachineRun32 => "machine_run32",
-            Source::UserStartupFolder => "user_folder",
-            Source::CommonStartupFolder => "common_folder",
-        }
-    }
 
     fn hive(self) -> Hive {
         match self {
@@ -53,22 +33,11 @@ impl Source {
     /// Where Windows records whether the entry is enabled.
     fn approved_key(self) -> String {
         let leaf = match self {
-            Source::UserRun | Source::MachineRun => "Run",
             Source::MachineRun32 => "Run32",
             Source::UserStartupFolder | Source::CommonStartupFolder => "StartupFolder",
+            _ => "Run",
         };
         format!(r"{APPROVED}\{leaf}")
-    }
-
-    /// English label; translate with `rewindows_i18n::tr`.
-    pub fn label(self) -> &'static str {
-        match self {
-            Source::UserRun => "Registry (you)",
-            Source::MachineRun => "Registry (all users)",
-            Source::MachineRun32 => "Registry (all users, 32-bit)",
-            Source::UserStartupFolder => "Startup folder (you)",
-            Source::CommonStartupFolder => "Startup folder (all users)",
-        }
     }
 
     fn folder(self) -> Option<PathBuf> {
@@ -81,21 +50,9 @@ impl Source {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub struct StartupEntry {
-    /// `<source>|<name>`, used by `startup.set`.
-    pub id: String,
-    pub name: String,
-    pub command: String,
-    pub source: Source,
-    pub enabled: bool,
-    /// Changing it needs administrator rights.
-    pub needs_admin: bool,
-}
-
-pub fn list() -> Vec<StartupEntry> {
+pub(super) fn list() -> Vec<StartupEntry> {
     let mut entries = Vec::new();
-    for source in Source::ALL {
+    for source in Source::WINDOWS {
         let items: Vec<(String, String)> = match source.folder() {
             Some(folder) => std::fs::read_dir(&folder)
                 .map(|rd| {
@@ -143,11 +100,11 @@ pub fn list() -> Vec<StartupEntry> {
     entries
 }
 
-pub fn set_enabled(id: &str, enabled: bool) -> Result<()> {
+pub(super) fn set_enabled(id: &str, enabled: bool) -> Result<()> {
     let (tag, name) = id
         .split_once('|')
         .ok_or_else(|| EngineError::NotFound(id.to_owned()))?;
-    let source = Source::ALL
+    let source = Source::WINDOWS
         .into_iter()
         .find(|s| s.tag() == tag)
         .ok_or_else(|| EngineError::NotFound(id.to_owned()))?;

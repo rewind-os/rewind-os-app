@@ -1,18 +1,18 @@
 [package]
-name = "rewindows-cli"
-description = "Command-line front end for the ReWindows engine."
+name = "rewind-os-cli"
+description = "Command-line front end for the Rewind OS engine."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [[bin]]
-name = "rewindows-cli"
+name = "rewind-os-cli"
 path = "src/main.rs"
 
 [dependencies]
-rewindows-engine.workspace = true
-rewindows-i18n.workspace = true
+rewind-os-engine.workspace = true
+rewind-os-i18n.workspace = true
 clap.workspace = true
 serde_json.workspace = true
 

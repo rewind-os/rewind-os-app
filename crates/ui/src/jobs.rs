@@ -1,6 +1,6 @@
 //! Runs engine requests on a background thread so the window never freezes.
 
-use rewindows_engine::{Engine, Request, Response, Task};
+use rewind_os_engine::{Engine, Request, Response, Task};
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};

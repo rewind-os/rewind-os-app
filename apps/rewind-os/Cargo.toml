@@ -1,13 +1,13 @@
 [package]
-name = "rewindows"
-description = "ReWindows desktop app: disk analysis and cleanup for Windows 11."
+name = "rewind-os"
+description = "Rewind OS desktop app: disk analysis and cleanup, Windows first."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rewindows-ui.workspace = true
+rewind-os-ui.workspace = true
 
 [build-dependencies]
 winresource.workspace = true

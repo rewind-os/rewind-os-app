@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Rewind OS
+GenericName=Disk cleaner
+GenericName[es]=Limpiador de disco
+Comment=See what uses your disk and remove what you do not need
+Comment[es]=Mira qué ocupa tu disco y elimina lo que no necesitas
+Exec=rewind-os
+Icon=io.github.r_dvl.rewind_os
+Terminal=false
+Categories=System;Utility;Filesystem;
+Keywords=disk;cleanup;cache;space;storage;
+StartupWMClass=io.github.r_dvl.rewind_os

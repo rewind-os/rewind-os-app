@@ -23,13 +23,13 @@ fn parse(source: &'static str) -> HashMap<&'static str, &'static str> {
         .collect()
 }
 
-/// Picks the language from `REWINDOWS_LANG`, then the system locale. Only the first call has
+/// Picks the language from `REWIND_OS_LANG`, then the system locale. Only the first call has
 /// an effect; later calls keep the language already chosen.
 pub fn init(explicit: Option<&str>) {
     ACTIVE.get_or_init(|| {
         let requested = explicit
             .map(str::to_owned)
-            .or_else(|| std::env::var("REWINDOWS_LANG").ok())
+            .or_else(|| std::env::var("REWIND_OS_LANG").ok())
             .or_else(sys_locale::get_locale)
             .unwrap_or_else(|| "en".to_owned());
         let lang: String = requested

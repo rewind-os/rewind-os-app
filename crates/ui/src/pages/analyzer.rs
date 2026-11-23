@@ -4,10 +4,10 @@ use crate::theme;
 use crate::treemap;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::{Color32, CornerRadius, RichText, Role, Sense, Stroke, WidgetInfo};
-use rewindows_engine::format::{bytes, count};
-use rewindows_engine::scan::{FileEntry, NodeId, ScanTree};
-use rewindows_engine::{Request, Response};
-use rewindows_i18n::{tr, trf};
+use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::scan::{FileEntry, NodeId, ScanTree};
+use rewind_os_engine::{Request, Response};
+use rewind_os_i18n::{tr, trf};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -467,7 +467,7 @@ fn row_menu(
 fn reveal(shared: &mut Shared, path: PathBuf) {
     if let Err(err) = shared.engine.run(
         Request::FilesReveal { path },
-        &rewindows_engine::Task::new(),
+        &rewind_os_engine::Task::new(),
     ) {
         shared.error(err.to_string());
     }

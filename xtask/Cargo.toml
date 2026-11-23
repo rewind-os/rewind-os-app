@@ -1,0 +1,14 @@
+[package]
+name = "xtask"
+description = "Repository chores: icon rendering. Run with `cargo xtask <command>`."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+resvg.workspace = true
+
+[lints]
+workspace = true

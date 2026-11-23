@@ -1,8 +1,8 @@
 name: CI
 
-# Quality gates for every push to main and every pull request. The Windows job also runs the
-# read-only CLI commands on a real Windows machine, so the registry, recycle bin and drive code
-# runs somewhere other than a developer's computer.
+# Quality gates for every push to main and every pull request. Each system's job also runs the
+# read-only CLI commands on a real machine of that system, so the registry, recycle bin, drive
+# and autostart code runs somewhere other than a developer's computer.
 on:
   push:
     branches: [main]
@@ -42,7 +42,7 @@ jobs:
       - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
         with:
           toolchain: stable
-          targets: x86_64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc, aarch64-apple-darwin
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
@@ -51,7 +51,22 @@ jobs:
       - run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Clippy for Windows (checks the Windows-only code paths)
         run: cargo clippy --locked --workspace --all-targets --target x86_64-pc-windows-msvc -- -D warnings
+      - name: Clippy for macOS
+        run: cargo clippy --locked --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
       - run: cargo test --locked --workspace
+      - name: Run the read-only tools on Linux
+        run: |
+          set -euo pipefail
+          cargo build --locked --release -p rewind-os-cli
+          cli=target/release/rewind-os-cli
+          "$cli" --version
+          for cmd in overview "clean analyze" "startup list" "scan $RUNNER_TEMP --top 5"; do
+            echo "==> rewind-os-cli $cmd"
+            # shellcheck disable=SC2086
+            "$cli" $cmd
+          done
+          "$cli" --json clean analyze | python3 -c 'import json,sys; json.load(sys.stdin)'
+          if "$cli" leftovers; then echo "::error::leftovers should say it is not available on Linux"; exit 1; fi
 
   windows:
     name: Windows tests and smoke run
@@ -71,16 +86,31 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: windows
+      - name: Clippy for macOS
+        run: cargo clippy --locked --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
       - run: cargo test --locked --workspace
-      - run: cargo build --locked --release -p rewindows -p rewindows-cli
+      - name: Run the read-only tools on Linux
+        run: |
+          set -euo pipefail
+          cargo build --locked --release -p rewind-os-cli
+          cli=target/release/rewind-os-cli
+          "$cli" --version
+          for cmd in overview "clean analyze" "startup list" "scan $RUNNER_TEMP --top 5"; do
+            echo "==> rewind-os-cli $cmd"
+            # shellcheck disable=SC2086
+            "$cli" $cmd
+          done
+          "$cli" --json clean analyze | python3 -c 'import json,sys; json.load(sys.stdin)'
+          if "$cli" leftovers; then echo "::error::leftovers should say it is not available on Linux"; exit 1; fi
+      - run: cargo build --locked --release -p rewind-os -p rewind-os-cli
       - name: Run the read-only tools on Windows
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $cli = '.\target\release\rewindows-cli.exe'
+          $cli = '.\target\release\rewind-os-cli.exe'
           & $cli --version
           foreach ($cmd in @('overview', 'programs', 'leftovers', 'files C:\Windows')) {
-            Write-Output "==> rewindows-cli --json $cmd"
+            Write-Output "==> rewind-os-cli --json $cmd"
             $json = & $cli --json @($cmd -split ' ')
             if ($LASTEXITCODE -ne 0) { throw "$cmd failed with exit code $LASTEXITCODE" }
             $null = $json | ConvertFrom-Json
@@ -92,3 +122,33 @@ jobs:
           & $cli --lang es clean analyze
           & $cli scan $env:RUNNER_TEMP --top 5
           & $cli startup list
+
+  macos:
+    name: macOS tests and smoke run
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: macos
+      - run: cargo test --locked --workspace
+      - run: cargo build --locked --release -p rewind-os -p rewind-os-cli
+      - name: Run the read-only tools on macOS
+        run: |
+          set -euo pipefail
+          cli=target/release/rewind-os-cli
+          "$cli" --version
+          "$cli" overview
+          "$cli" clean analyze
+          "$cli" scan "$RUNNER_TEMP" --top 5
+          "$cli" --json clean analyze | python3 -c 'import json,sys; json.load(sys.stdin)'

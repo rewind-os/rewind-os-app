@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  Build, sign and package ReWindows for Windows.
+  Build, sign and package Rewind OS for Windows.
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
-    rewindows-<version>-windows-<arch>-portable.zip   rewindows.exe, rewindows-cli.exe, README and licences
-    rewindows-<version>-windows-<arch>-portable.zip.sha256
+    rewind-os-<version>-windows-<arch>-portable.zip   rewind-os.exe, rewind-os-cli.exe, README and licences
+    rewind-os-<version>-windows-<arch>-portable.zip.sha256
 
   The binaries link the C runtime statically (+crt-static), so no Visual C++ redistributable is
   needed. They are signed when WINDOWS_CERTIFICATE (base64 .pfx) and WINDOWS_CERTIFICATE_PASSWORD
@@ -36,7 +36,7 @@ function Write-Summary([string] $Text) {
 }
 
 # The version lives in one place: [workspace.package] version in the root Cargo.toml.
-$Version = $env:REWINDOWS_VERSION
+$Version = $env:REWIND_OS_VERSION
 if (-not $Version) {
   $inPkg = $false
   foreach ($line in Get-Content (Join-Path $Root 'Cargo.toml')) {
@@ -50,9 +50,9 @@ $Target = switch ($Arch) { 'x64' { 'x86_64-pc-windows-msvc' } 'arm64' { 'aarch64
 $Dist = if ($env:DIST) { $env:DIST } else { Join-Path $Root 'dist\release' }
 $TargetDir = if ($env:CARGO_TARGET_DIR) { $env:CARGO_TARGET_DIR } else { Join-Path $Root 'target' }
 New-Item -ItemType Directory -Force -Path $Dist | Out-Null
-$Bins = @('rewindows', 'rewindows-cli')
+$Bins = @('rewind-os', 'rewind-os-cli')
 
-Write-Output "ReWindows $Version for Windows $Arch ($Target)"
+Write-Output "Rewind OS $Version for Windows $Arch ($Target)"
 
 if (-not $SkipBuild) {
   # Static C runtime, scoped to the target so build scripts and proc-macros are unaffected.
@@ -71,14 +71,14 @@ function Get-PeHeader([string] $Path) {
   return @{ Machine = [BitConverter]::ToUInt16($bytes, $pe + 4); Subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5C) }
 }
 $Machine = switch ($Arch) { 'x64' { 0x8664 } 'arm64' { 0xAA64 } }
-foreach ($check in @(@('rewindows.exe', 2), @('rewindows-cli.exe', 3))) {
+foreach ($check in @(@('rewind-os.exe', 2), @('rewind-os-cli.exe', 3))) {
   $h = Get-PeHeader (Join-Path $Bin $check[0])
   if ($h.Machine -ne $Machine) { throw "$($check[0]) is for machine 0x$('{0:X}' -f $h.Machine), expected 0x$('{0:X}' -f $Machine) ($Arch)" }
   if ($h.Subsystem -ne $check[1]) { throw "$($check[0]) has PE subsystem $($h.Subsystem), expected $($check[1])" }
   Write-Output "ok $($check[0]): $Arch, PE subsystem $($h.Subsystem)"
 }
 
-$Name = "rewindows-$Version-windows-$Arch-portable"
+$Name = "rewind-os-$Version-windows-$Arch-portable"
 $Stage = Join-Path $TargetDir "windows-package\$Name"
 Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
@@ -90,7 +90,7 @@ if ($env:WINDOWS_CERTIFICATE -and $env:WINDOWS_CERTIFICATE_PASSWORD) {
   $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
     Sort-Object FullName -Descending | Select-Object -First 1
   if (-not $signtool) { throw 'signtool.exe not found in the Windows SDK' }
-  $pfx = Join-Path ([System.IO.Path]::GetTempPath()) "rewindows-$([guid]::NewGuid()).pfx"
+  $pfx = Join-Path ([System.IO.Path]::GetTempPath()) "rewind-os-$([guid]::NewGuid()).pfx"
   try {
     [System.IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
     Invoke-Native 'signtool sign' {
@@ -119,9 +119,9 @@ Set-Content -Path "$Zip.sha256" -Value "$Hash  $Name.zip" -NoNewline -Encoding a
 # ---- smoke test --------------------------------------------------------------------------------
 $HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
 if ($Arch -eq 'x64' -or $HostArch -eq 'arm64') {
-  $cli = Join-Path $Stage 'rewindows-cli.exe'
-  Invoke-Native 'rewindows-cli --version' { & $cli --version | Out-Host }
-  Invoke-Native 'rewindows-cli overview' { & $cli --json overview | Out-Null }
+  $cli = Join-Path $Stage 'rewind-os-cli.exe'
+  Invoke-Native 'rewind-os-cli --version' { & $cli --version | Out-Host }
+  Invoke-Native 'rewind-os-cli overview' { & $cli --json overview | Out-Null }
 } else {
   Write-Output "skipping the smoke test: a $Arch build does not run on this $HostArch machine"
 }

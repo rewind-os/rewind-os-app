@@ -1,5 +1,5 @@
 [package]
-name = "rewindows-ui"
+name = "rewind-os-ui"
 description = "Desktop interface (egui). The only crate that uses egui, eframe or rfd."
 version.workspace = true
 edition.workspace = true
@@ -7,8 +7,8 @@ license.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-rewindows-engine.workspace = true
-rewindows-i18n.workspace = true
+rewind-os-engine.workspace = true
+rewind-os-i18n.workspace = true
 eframe.workspace = true
 egui.workspace = true
 rfd.workspace = true

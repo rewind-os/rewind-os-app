@@ -3,15 +3,20 @@ use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::RichText;
-use rewindows_engine::system::SystemFileKind;
-use rewindows_engine::{Request, Response};
-use rewindows_i18n::tr;
+use rewind_os_engine::system::SystemFileKind;
+use rewind_os_engine::{Request, Response};
+use rewind_os_i18n::tr;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Action {
     ComponentCleanup,
     HibernationOff,
     HibernationOn,
+    JournalVacuum,
+}
+
+fn available(id: &str) -> bool {
+    rewind_os_engine::tool(id).is_some_and(|t| t.available())
 }
 
 #[derive(Default)]
@@ -46,14 +51,32 @@ impl State {
         page_header(
             ui,
             tr("Maintenance"),
-            tr("Windows' own maintenance tools, run when you ask for them."),
+            tr("The system's own maintenance tools, run when you ask for them."),
         );
         if !shared.elevated {
             shared.admin_hint(ui);
             ui.add_space(t.gap);
         }
         let ready = shared.elevated && self.job.is_none();
+        let windows = available("maintenance.component_cleanup");
+        let journal = available("maintenance.journal_vacuum");
         egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
+            if journal {
+                card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    ui.label(RichText::new(tr("System journal")).strong());
+                    ui.label(RichText::new(tr("systemd keeps a log of everything the system does. Old entries are rarely needed and can take gigabytes.")).color(t.text_muted));
+                    ui.horizontal(|ui| {
+                        if ui.add_enabled(self.job.is_none(), egui::Button::new(tr("Measure"))).clicked() {
+                            self.job = Some(Job::start(&ctx, &shared.engine, Request::JournalUsage));
+                        }
+                        if widgets::primary_button(ui, tr("Keep only the last two weeks"), ready).clicked() {
+                            self.confirm = Some(Action::JournalVacuum);
+                        }
+                    });
+                });
+            }
+            if windows {
             card(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.label(RichText::new(tr("Windows component store")).strong());
@@ -81,6 +104,7 @@ impl State {
                     }
                 });
             });
+            }
             if let Some(job) = &self.job {
                 ui.add_space(t.gap);
                 card(ui, |ui| {
@@ -116,6 +140,12 @@ impl State {
                     ),
                     tr("Turn off"),
                     Request::Hibernation { enabled: false },
+                ),
+                Action::JournalVacuum => (
+                    tr("Delete old journal entries?"),
+                    tr("Entries older than two weeks are deleted for good."),
+                    tr("Delete"),
+                    Request::JournalVacuum,
                 ),
                 Action::HibernationOn => (
                     tr("Turn hibernation on?"),

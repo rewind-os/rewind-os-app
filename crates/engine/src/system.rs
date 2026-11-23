@@ -1,6 +1,6 @@
 //! Overview of the computer: drives, memory and the large files Windows keeps for itself.
 
-use rewindows_platform::elevation;
+use rewind_os_platform::elevation;
 use serde::Serialize;
 use std::path::PathBuf;
 use sysinfo::{DiskKind, Disks, System};
@@ -114,6 +114,9 @@ pub fn overview() -> Overview {
 /// Reads the sizes from the root folder listing: these files are always open, so opening
 /// them directly would fail.
 fn system_files() -> Vec<SystemFile> {
+    if !cfg!(windows) {
+        return Vec::new();
+    }
     let drive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".to_owned());
     let root = PathBuf::from(format!("{drive}\\"));
     let Ok(entries) = std::fs::read_dir(&root) else {

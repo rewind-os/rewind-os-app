@@ -1,5 +1,5 @@
 [package]
-name = "rewindows-i18n"
+name = "rewind-os-i18n"
 description = "Translation lookup with English text as the key."
 version.workspace = true
 edition.workspace = true

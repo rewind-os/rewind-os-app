@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/*"]
+members = ["crates/*", "apps/*", "xtask"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,10 +10,10 @@ rust-version = "1.90"
 
 [workspace.dependencies]
 # internal (layers, lowest first: i18n + platform = L0, engine = L1, ui = L2)
-rewindows-i18n = { path = "crates/i18n" }
-rewindows-platform = { path = "crates/platform" }
-rewindows-engine = { path = "crates/engine" }
-rewindows-ui = { path = "crates/ui" }
+rewind-os-i18n = { path = "crates/i18n" }
+rewind-os-platform = { path = "crates/platform" }
+rewind-os-engine = { path = "crates/engine" }
+rewind-os-ui = { path = "crates/ui" }
 
 # external
 thiserror = "2"
@@ -33,6 +33,7 @@ egui = "0.37"
 rfd = "0.18"
 tempfile = "3"
 winresource = "0.1"
+resvg = "0.50"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

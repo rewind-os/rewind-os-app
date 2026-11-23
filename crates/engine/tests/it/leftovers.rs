@@ -1,4 +1,4 @@
-use rewindows_engine::leftovers::{Confidence, Signals, confidence};
+use rewind_os_engine::leftovers::{Confidence, Signals, confidence};
 use std::time::{Duration, SystemTime};
 
 fn signals() -> Signals {

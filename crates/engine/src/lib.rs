@@ -1,4 +1,4 @@
-//! The ReWindows engine. Every user-visible action is a [`Request`] with a stable id listed in
+//! The Rewind OS engine. Every user-visible action is a [`Request`] with a stable id listed in
 //! [`TOOLS`]; the desktop app and the CLI both go through [`Engine::run`], so anything the GUI
 //! can do the CLI can do too.
 
@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::sync::Arc;
 
-pub use rewindows_platform::PlatformError;
+pub use rewind_os_platform::{Os, PlatformError};
 pub use task::{Progress, Task};
 
 #[derive(Debug, thiserror::Error)]
@@ -32,6 +32,11 @@ pub enum EngineError {
     UnknownCategory(String),
     #[error("not found: {0}")]
     NotFound(String),
+    #[error("{tool} is not available on {os} yet")]
+    Unsupported {
+        tool: &'static str,
+        os: &'static str,
+    },
     #[error("{path}: {source}")]
     Io {
         path: PathBuf,
@@ -52,115 +57,147 @@ pub enum AdminNeed {
     Yes,
 }
 
-/// Description of one tool, for `rewindows-cli commands` and for documentation.
+/// Description of one tool, for `rewind-os-cli commands` and for documentation.
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct ToolSpec {
     pub id: &'static str,
-    /// English text; translate with `rewindows_i18n::tr`.
+    /// English text; translate with `rewind_os_i18n::tr`.
     pub summary: &'static str,
     pub admin: AdminNeed,
     /// Deletes, moves or changes something on the computer.
     pub changes_system: bool,
+    /// The systems the tool works on. Elsewhere it answers [`EngineError::Unsupported`].
+    #[serde(serialize_with = "serialize_platforms")]
+    pub platforms: &'static [Os],
+}
+
+const EVERYWHERE: &[Os] = &[Os::Windows, Os::Linux, Os::MacOs];
+const WINDOWS: &[Os] = &[Os::Windows];
+const LINUX: &[Os] = &[Os::Linux];
+const WINDOWS_LINUX: &[Os] = &[Os::Windows, Os::Linux];
+
+impl ToolSpec {
+    const fn new(id: &'static str, summary: &'static str) -> Self {
+        Self {
+            id,
+            summary,
+            admin: AdminNeed::No,
+            changes_system: false,
+            platforms: EVERYWHERE,
+        }
+    }
+
+    const fn admin(mut self, admin: AdminNeed) -> Self {
+        self.admin = admin;
+        self
+    }
+
+    const fn changes(mut self) -> Self {
+        self.changes_system = true;
+        self
+    }
+
+    const fn only(mut self, platforms: &'static [Os]) -> Self {
+        self.platforms = platforms;
+        self
+    }
+
+    /// Whether the tool works on the system this program runs on.
+    pub fn available(&self) -> bool {
+        self.platforms.contains(&Os::current())
+    }
+}
+
+fn serialize_platforms<S: serde::Serializer>(
+    platforms: &&'static [Os],
+    serializer: S,
+) -> std::result::Result<S::Ok, S::Error> {
+    serializer.collect_seq(platforms.iter().map(|os| os.name()))
 }
 
 pub const TOOLS: &[ToolSpec] = &[
-    ToolSpec {
-        id: "system.overview",
-        summary: "Show drives, memory and large system files",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "system.relaunch_elevated",
-        summary: "Restart the app with administrator rights",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "disk.scan",
-        summary: "Measure every folder under a path and find the largest files",
-        admin: AdminNeed::Partly,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "disk.list_files",
-        summary: "List the files directly inside a folder, largest first",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "cleanup.analyze",
-        summary: "Measure temporary files, caches and other junk by category",
-        admin: AdminNeed::Partly,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "cleanup.run",
-        summary: "Delete the chosen junk categories",
-        admin: AdminNeed::Partly,
-        changes_system: true,
-    },
-    ToolSpec {
-        id: "programs.list",
-        summary: "List installed programs",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "programs.uninstall",
-        summary: "Start a program's own uninstaller",
-        admin: AdminNeed::No,
-        changes_system: true,
-    },
-    ToolSpec {
-        id: "leftovers.find",
-        summary: "Find folders that no installed program, service or startup entry refers to",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "files.trash",
-        summary: "Move files or folders to the recycle bin",
-        admin: AdminNeed::Partly,
-        changes_system: true,
-    },
-    ToolSpec {
-        id: "files.reveal",
-        summary: "Show a file or folder in the file manager",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "startup.list",
-        summary: "List programs that start with Windows",
-        admin: AdminNeed::No,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "startup.set",
-        summary: "Enable or disable a startup program",
-        admin: AdminNeed::Partly,
-        changes_system: true,
-    },
-    ToolSpec {
-        id: "maintenance.analyze_component_store",
-        summary: "Report how much space the Windows component store really uses",
-        admin: AdminNeed::Yes,
-        changes_system: false,
-    },
-    ToolSpec {
-        id: "maintenance.component_cleanup",
-        summary: "Remove superseded Windows components",
-        admin: AdminNeed::Yes,
-        changes_system: true,
-    },
-    ToolSpec {
-        id: "maintenance.hibernation",
-        summary: "Turn hibernation (and its hiberfil.sys file) on or off",
-        admin: AdminNeed::Yes,
-        changes_system: true,
-    },
+    ToolSpec::new(
+        "system.overview",
+        "Show drives, memory and large system files",
+    ),
+    ToolSpec::new(
+        "system.relaunch_elevated",
+        "Restart the app with administrator rights",
+    )
+    .only(WINDOWS),
+    ToolSpec::new(
+        "disk.scan",
+        "Measure every folder under a path and find the largest files",
+    )
+    .admin(AdminNeed::Partly),
+    ToolSpec::new(
+        "disk.list_files",
+        "List the files directly inside a folder, largest first",
+    ),
+    ToolSpec::new(
+        "cleanup.analyze",
+        "Measure temporary files, caches and other junk by category",
+    )
+    .admin(AdminNeed::Partly),
+    ToolSpec::new("cleanup.run", "Delete the chosen junk categories")
+        .admin(AdminNeed::Partly)
+        .changes(),
+    ToolSpec::new("programs.list", "List installed programs").only(WINDOWS),
+    ToolSpec::new("programs.uninstall", "Start a program's own uninstaller")
+        .changes()
+        .only(WINDOWS),
+    ToolSpec::new(
+        "leftovers.find",
+        "Find folders that no installed program, service or startup entry refers to",
+    )
+    .only(WINDOWS),
+    ToolSpec::new("files.trash", "Move files or folders to the recycle bin")
+        .admin(AdminNeed::Partly)
+        .changes(),
+    ToolSpec::new("files.reveal", "Show a file or folder in the file manager"),
+    ToolSpec::new("startup.list", "List programs that start with the system").only(WINDOWS_LINUX),
+    ToolSpec::new("startup.set", "Enable or disable a startup program")
+        .admin(AdminNeed::Partly)
+        .changes()
+        .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "maintenance.analyze_component_store",
+        "Report how much space the Windows component store really uses",
+    )
+    .admin(AdminNeed::Yes)
+    .only(WINDOWS),
+    ToolSpec::new(
+        "maintenance.component_cleanup",
+        "Remove superseded Windows components",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(WINDOWS),
+    ToolSpec::new(
+        "maintenance.hibernation",
+        "Turn hibernation (and its hiberfil.sys file) on or off",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(WINDOWS),
+    ToolSpec::new(
+        "maintenance.journal_usage",
+        "Report how much space the system journal uses",
+    )
+    .only(LINUX),
+    ToolSpec::new(
+        "maintenance.journal_vacuum",
+        "Delete system journal entries older than two weeks",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(LINUX),
 ];
+
+/// The tool with this id.
+pub fn tool(id: &str) -> Option<&'static ToolSpec> {
+    TOOLS.iter().find(|t| t.id == id)
+}
 
 /// One call into the engine. Serialized as `{"tool": "<id>", ...arguments}`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -198,6 +235,10 @@ pub enum Request {
     ComponentCleanup,
     #[serde(rename = "maintenance.hibernation")]
     Hibernation { enabled: bool },
+    #[serde(rename = "maintenance.journal_usage")]
+    JournalUsage,
+    #[serde(rename = "maintenance.journal_vacuum")]
+    JournalVacuum,
 }
 
 /// What a request produced.
@@ -237,10 +278,17 @@ impl Engine {
 
     /// Runs `request`. Long requests report through `task` and stop early when it is cancelled.
     pub fn run(&self, request: Request, task: &Task) -> Result<Response> {
+        let id = request.id();
+        if !tool(id).is_some_and(ToolSpec::available) {
+            return Err(EngineError::Unsupported {
+                tool: id,
+                os: Os::current().name(),
+            });
+        }
         match request {
             Request::SystemOverview => Ok(Response::Overview(system::overview())),
             Request::RelaunchElevated { args } => {
-                rewindows_platform::elevation::relaunch_elevated(&args)?;
+                rewind_os_platform::elevation::relaunch_elevated(&args)?;
                 Ok(Response::Done("An elevated copy was started"))
             }
             Request::DiskScan { root } => {
@@ -259,7 +307,7 @@ impl Engine {
             Request::LeftoversFind => Ok(Response::Leftovers(leftovers::find(task))),
             Request::FilesTrash { paths } => Ok(Response::Trashed(trash(&paths, task))),
             Request::FilesReveal { path } => {
-                rewindows_platform::shell::reveal(&path)?;
+                rewind_os_platform::shell::reveal(&path)?;
                 Ok(Response::Done("Opened in the file manager"))
             }
             Request::StartupList => Ok(Response::Startup(startup::list())),
@@ -283,6 +331,8 @@ impl Engine {
                     "Hibernation turned off; hiberfil.sys was removed"
                 }))
             }
+            Request::JournalUsage => maintenance::journal_usage().map(Response::ToolOutput),
+            Request::JournalVacuum => maintenance::journal_vacuum().map(Response::ToolOutput),
         }
     }
 }
@@ -307,6 +357,8 @@ impl Request {
             Request::AnalyzeComponentStore => "maintenance.analyze_component_store",
             Request::ComponentCleanup => "maintenance.component_cleanup",
             Request::Hibernation { .. } => "maintenance.hibernation",
+            Request::JournalUsage => "maintenance.journal_usage",
+            Request::JournalVacuum => "maintenance.journal_vacuum",
         }
     }
 }
@@ -318,7 +370,7 @@ fn trash(paths: &[PathBuf], task: &Task) -> Vec<TrashResult> {
         .iter()
         .map(|path| {
             let bytes = walk::measure(path, &walk::Filter::default(), task).bytes;
-            let outcome = rewindows_platform::shell::move_to_trash(std::slice::from_ref(path));
+            let outcome = rewind_os_platform::shell::move_to_trash(std::slice::from_ref(path));
             let error = outcome.into_iter().next().and_then(|o| o.error);
             task.add(1, if error.is_none() { bytes } else { 0 });
             TrashResult {

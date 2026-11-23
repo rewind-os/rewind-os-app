@@ -3,19 +3,11 @@ use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::RichText;
-use rewindows_engine::cleanup::{CategoryReport, CategoryResult, Disposal, Group, Risk};
-use rewindows_engine::format::{bytes, count};
-use rewindows_engine::{Request, Response};
-use rewindows_i18n::{tr, trf};
+use rewind_os_engine::cleanup::{CategoryReport, CategoryResult, Disposal, Group, Risk};
+use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::{Request, Response};
+use rewind_os_i18n::{tr, trf};
 use std::collections::HashSet;
-
-const GROUPS: [Group; 5] = [
-    Group::System,
-    Group::Browsers,
-    Group::Apps,
-    Group::Developer,
-    Group::Personal,
-];
 
 #[derive(Default)]
 pub struct State {
@@ -84,7 +76,7 @@ impl State {
             ui,
             tr("Junk cleanup"),
             tr(
-                "Temporary files and caches that Windows and your programs recreate when they need them.",
+                "Temporary files and caches that the system and your programs recreate when they need them.",
             ),
         );
 
@@ -112,8 +104,17 @@ impl State {
                     RichText::new(tr("Some categories need administrator rights."))
                         .color(t.text_muted),
                 );
-                if ui.button(tr("Restart as administrator")).clicked() {
-                    shared.relaunch_elevated(&ctx);
+                if rewind_os_engine::tool("system.relaunch_elevated").is_some_and(|t| t.available())
+                {
+                    if ui.button(tr("Restart as administrator")).clicked() {
+                        shared.relaunch_elevated(&ctx);
+                    }
+                } else {
+                    ui.label(
+                        RichText::new("sudo rewind-os-cli clean run --defaults --yes")
+                            .monospace()
+                            .color(t.text_muted),
+                    );
                 }
             }
         });
@@ -140,7 +141,7 @@ impl State {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
-                for group in GROUPS {
+                for group in Group::ALL {
                     let items: Vec<&CategoryReport> = reports
                         .iter()
                         .filter(|r| r.category.group == group && (r.present || r.bytes > 0))

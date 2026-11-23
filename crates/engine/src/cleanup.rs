@@ -1,12 +1,18 @@
-//! Junk cleanup by category. Each category is a list of path patterns plus rules (minimum age,
-//! extensions, whether it needs administrator rights). Patterns point at the entries to
-//! remove: `%TEMP%\*` empties the temporary folder but keeps the folder itself.
+//! Junk cleanup by category. Each category is a list of path templates plus rules (minimum age,
+//! extensions, whether it needs administrator rights). A template starts with a known folder,
+//! `{cache}/thumbnails/*`, or is absolute, `/var/crash/*`, and points at the entries to remove:
+//! `{temp}/*` empties the temporary folder but keeps the folder itself.
+//!
+//! Every system has its own list; [`categories`] returns the one for this computer. Shared
+//! ideas (browser caches, package caches, the recycle bin) keep the same id everywhere.
 
 use crate::walk::{self, Filter, Tally};
 use crate::{EngineError, Result, Task};
 use rayon::prelude::*;
-use rewindows_platform::{elevation, paths, shell};
+use rewind_os_platform::paths::Known;
+use rewind_os_platform::{Os, elevation, shell};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
@@ -21,10 +27,18 @@ pub enum Group {
 }
 
 impl Group {
-    /// English label; translate with `rewindows_i18n::tr`.
+    pub const ALL: [Group; 5] = [
+        Group::System,
+        Group::Browsers,
+        Group::Apps,
+        Group::Developer,
+        Group::Personal,
+    ];
+
+    /// English label; translate with `rewind_os_i18n::tr`.
     pub fn label(self) -> &'static str {
         match self {
-            Group::System => "Windows",
+            Group::System => "System",
             Group::Browsers => "Browsers",
             Group::Apps => "Applications",
             Group::Developer => "Developer tools",
@@ -60,7 +74,7 @@ enum Source {
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Category {
     pub id: &'static str,
-    /// English name and description; translate with `rewindows_i18n::tr`.
+    /// English name and description; translate with `rewind_os_i18n::tr`.
     pub name: &'static str,
     pub description: &'static str,
     pub group: Group,
@@ -122,25 +136,53 @@ impl Category {
         self.min_age_days = days;
         self
     }
+
+    /// Top-level files with these extensions, moved to the recycle bin (old installers).
+    const fn installers(mut self, extensions: &'static [&'static str]) -> Self {
+        self.extensions = extensions;
+        self.disposal = Disposal::RecycleBin;
+        self.risk = Risk::Review;
+        self.group = Group::Personal;
+        self.min_age_days = 30;
+        self
+    }
 }
 
-pub const CATEGORIES: &[Category] = &[
+const RECYCLE_BIN: Category = Category {
+    id: "personal.recycle_bin",
+    name: "Recycle bin",
+    description: "Files you already deleted. Emptying it is permanent.",
+    group: Group::Personal,
+    risk: Risk::Review,
+    needs_admin: false,
+    selected_by_default: false,
+    min_age_days: 0,
+    disposal: Disposal::Delete,
+    source: Source::RecycleBin,
+    extensions: &[],
+};
+
+const BROWSER_NOTE: &str =
+    "Downloaded copies of web pages and images. Close the browser first; files in use are skipped.";
+const PACKAGES_NOTE: &str = "Downloaded packages kept by package managers such as npm, pip, Cargo and Gradle. They are downloaded again when a project needs them.";
+const ELECTRON_NOTE: &str =
+    "Web caches of apps such as Discord, Slack, Teams and Spotify. Close them first.";
+
+pub const WINDOWS: &[Category] = &[
     Category::new(
         "windows.user_temp",
         "Your temporary files",
         "Files programs left in your temporary folder. Files from the last day are kept, in case an installer is still using them.",
-        &[r"%TEMP%\*"],
+        &["{temp}/*"],
     )
-    .group(Group::System)
     .preselected()
     .older_than_days(1),
     Category::new(
         "windows.system_temp",
         "Windows temporary files",
         "The system-wide temporary folder.",
-        &[r"%WINDIR%\Temp\*"],
+        &["{windows}/Temp/*"],
     )
-    .group(Group::System)
     .admin()
     .preselected()
     .older_than_days(1),
@@ -148,44 +190,48 @@ pub const CATEGORIES: &[Category] = &[
         "windows.update_cache",
         "Windows Update downloads",
         "Update packages Windows already installed. Windows downloads them again if it needs them.",
-        &[r"%WINDIR%\SoftwareDistribution\Download\*"],
+        &["{windows}/SoftwareDistribution/Download/*"],
     )
-    .group(Group::System)
     .admin()
     .preselected(),
     Category::new(
         "windows.delivery_optimization",
         "Delivery Optimization cache",
         "Update pieces kept to share with other computers.",
-        &[r"%WINDIR%\ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache\*"],
+        &["{windows}/ServiceProfiles/NetworkService/AppData/Local/Microsoft/Windows/DeliveryOptimization/Cache/*"],
     )
-    .group(Group::System)
     .admin()
     .preselected(),
     Category::new(
         "windows.user_crash_dumps",
         "Program crash reports",
         "Memory dumps and error reports written when a program crashed.",
-        &[r"%LOCALAPPDATA%\CrashDumps\*", r"%LOCALAPPDATA%\Microsoft\Windows\WER\ReportArchive\*", r"%LOCALAPPDATA%\Microsoft\Windows\WER\ReportQueue\*"],
+        &[
+            "{local_app_data}/CrashDumps/*",
+            "{local_app_data}/Microsoft/Windows/WER/ReportArchive/*",
+            "{local_app_data}/Microsoft/Windows/WER/ReportQueue/*",
+        ],
     )
-    .group(Group::System)
     .preselected(),
     Category::new(
         "windows.system_crash_dumps",
         "System crash reports",
         "Memory dumps from system crashes (blue screens) and Windows error reports.",
-        &[r"%WINDIR%\Minidump\*", r"%WINDIR%\MEMORY.DMP", r"%PROGRAMDATA%\Microsoft\Windows\WER\ReportArchive\*", r"%PROGRAMDATA%\Microsoft\Windows\WER\ReportQueue\*"],
+        &[
+            "{windows}/Minidump/*",
+            "{windows}/MEMORY.DMP",
+            "{program_data}/Microsoft/Windows/WER/ReportArchive/*",
+            "{program_data}/Microsoft/Windows/WER/ReportQueue/*",
+        ],
     )
-    .group(Group::System)
     .admin()
     .preselected(),
     Category::new(
         "windows.logs",
         "Old Windows logs",
         "Log files older than a week. Useful only for diagnosing past problems.",
-        &[r"%WINDIR%\Logs\*", r"%WINDIR%\Panther\*.log"],
+        &["{windows}/Logs/*", "{windows}/Panther/*.log"],
     )
-    .group(Group::System)
     .risk(Risk::Moderate)
     .admin()
     .older_than_days(7),
@@ -193,95 +239,368 @@ pub const CATEGORIES: &[Category] = &[
         "windows.thumbnails",
         "Thumbnail cache",
         "Image previews for File Explorer. Rebuilt as you browse folders; files in use are skipped.",
-        &[r"%LOCALAPPDATA%\Microsoft\Windows\Explorer\thumbcache_*.db", r"%LOCALAPPDATA%\Microsoft\Windows\Explorer\iconcache_*.db"],
+        &[
+            "{local_app_data}/Microsoft/Windows/Explorer/thumbcache_*.db",
+            "{local_app_data}/Microsoft/Windows/Explorer/iconcache_*.db",
+        ],
     )
-    .group(Group::System)
     .risk(Risk::Moderate),
     Category::new(
         "apps.shader_cache",
         "Graphics shader caches",
         "Compiled shaders from DirectX and graphics drivers. Games may stutter briefly while they rebuild them.",
-        &[r"%LOCALAPPDATA%\D3DSCache\*", r"%LOCALAPPDATA%\NVIDIA\DXCache\*", r"%LOCALAPPDATA%\NVIDIA\GLCache\*", r"%LOCALAPPDATA%\AMD\DxCache\*", r"%LOCALAPPDATA%\AMD\DxcCache\*", r"%LOCALAPPDATA%\AMD\VkCache\*", r"%LOCALAPPDATA%\Intel\ShaderCache\*"],
+        &[
+            "{local_app_data}/D3DSCache/*",
+            "{local_app_data}/NVIDIA/DXCache/*",
+            "{local_app_data}/NVIDIA/GLCache/*",
+            "{local_app_data}/AMD/DxCache/*",
+            "{local_app_data}/AMD/DxcCache/*",
+            "{local_app_data}/AMD/VkCache/*",
+            "{local_app_data}/Intel/ShaderCache/*",
+        ],
     )
     .group(Group::Apps)
     .risk(Risk::Moderate),
     Category::new(
         "browsers.chrome",
         "Google Chrome cache",
-        "Downloaded copies of web pages and images. Close the browser first; files in use are skipped.",
-        &[r"%LOCALAPPDATA%\Google\Chrome\User Data\*\Cache\*", r"%LOCALAPPDATA%\Google\Chrome\User Data\*\Code Cache\*", r"%LOCALAPPDATA%\Google\Chrome\User Data\*\GPUCache\*"],
+        BROWSER_NOTE,
+        &[
+            "{local_app_data}/Google/Chrome/User Data/*/Cache/*",
+            "{local_app_data}/Google/Chrome/User Data/*/Code Cache/*",
+            "{local_app_data}/Google/Chrome/User Data/*/GPUCache/*",
+        ],
     )
     .group(Group::Browsers)
     .preselected(),
     Category::new(
         "browsers.edge",
         "Microsoft Edge cache",
-        "Downloaded copies of web pages and images. Close the browser first; files in use are skipped.",
-        &[r"%LOCALAPPDATA%\Microsoft\Edge\User Data\*\Cache\*", r"%LOCALAPPDATA%\Microsoft\Edge\User Data\*\Code Cache\*", r"%LOCALAPPDATA%\Microsoft\Edge\User Data\*\GPUCache\*"],
+        BROWSER_NOTE,
+        &[
+            "{local_app_data}/Microsoft/Edge/User Data/*/Cache/*",
+            "{local_app_data}/Microsoft/Edge/User Data/*/Code Cache/*",
+            "{local_app_data}/Microsoft/Edge/User Data/*/GPUCache/*",
+        ],
     )
     .group(Group::Browsers)
     .preselected(),
     Category::new(
         "browsers.brave",
         "Brave cache",
-        "Downloaded copies of web pages and images. Close the browser first; files in use are skipped.",
-        &[r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\*\Cache\*", r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\*\Code Cache\*", r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\*\GPUCache\*"],
+        BROWSER_NOTE,
+        &[
+            "{local_app_data}/BraveSoftware/Brave-Browser/User Data/*/Cache/*",
+            "{local_app_data}/BraveSoftware/Brave-Browser/User Data/*/Code Cache/*",
+            "{local_app_data}/BraveSoftware/Brave-Browser/User Data/*/GPUCache/*",
+        ],
     )
     .group(Group::Browsers)
     .preselected(),
     Category::new(
         "browsers.firefox",
         "Firefox cache",
-        "Downloaded copies of web pages and images. Close the browser first; files in use are skipped.",
-        &[r"%LOCALAPPDATA%\Mozilla\Firefox\Profiles\*\cache2\*"],
+        BROWSER_NOTE,
+        &["{local_app_data}/Mozilla/Firefox/Profiles/*/cache2/*"],
     )
     .group(Group::Browsers)
     .preselected(),
     Category::new(
         "apps.electron_caches",
         "Desktop app caches",
-        "Web caches of apps such as Discord, Slack, Teams and Spotify. Close them first.",
-        &[r"%APPDATA%\discord\Cache\*", r"%APPDATA%\discord\Code Cache\*", r"%APPDATA%\Slack\Cache\*", r"%APPDATA%\Slack\Code Cache\*", r"%APPDATA%\Microsoft\Teams\Cache\*", r"%LOCALAPPDATA%\Spotify\Data\*", r"%APPDATA%\Code\Cache\*", r"%APPDATA%\Code\CachedData\*"],
+        ELECTRON_NOTE,
+        &[
+            "{roaming_app_data}/discord/Cache/*",
+            "{roaming_app_data}/discord/Code Cache/*",
+            "{roaming_app_data}/Slack/Cache/*",
+            "{roaming_app_data}/Slack/Code Cache/*",
+            "{roaming_app_data}/Microsoft/Teams/Cache/*",
+            "{local_app_data}/Spotify/Data/*",
+            "{roaming_app_data}/Code/Cache/*",
+            "{roaming_app_data}/Code/CachedData/*",
+        ],
     )
     .group(Group::Apps),
     Category::new(
         "developer.package_caches",
         "Package manager caches",
-        "Downloaded packages kept by npm, Yarn, pnpm, pip, NuGet, Cargo and Gradle. They are downloaded again when a project needs them.",
-        &[r"%LOCALAPPDATA%\npm-cache\*", r"%LOCALAPPDATA%\Yarn\Cache\*", r"%LOCALAPPDATA%\pnpm\store\*", r"%LOCALAPPDATA%\pip\Cache\*", r"%LOCALAPPDATA%\NuGet\v3-cache\*", r"%USERPROFILE%\.nuget\packages\*", r"%USERPROFILE%\.cargo\registry\cache\*", r"%USERPROFILE%\.gradle\caches\*"],
+        PACKAGES_NOTE,
+        &[
+            "{local_app_data}/npm-cache/*",
+            "{local_app_data}/Yarn/Cache/*",
+            "{local_app_data}/pnpm/store/*",
+            "{local_app_data}/pip/Cache/*",
+            "{local_app_data}/NuGet/v3-cache/*",
+            "{home}/.nuget/packages/*",
+            "{home}/.cargo/registry/cache/*",
+            "{home}/.gradle/caches/*",
+        ],
     )
     .group(Group::Developer)
     .risk(Risk::Moderate),
-    Category {
-        id: "personal.old_installers",
-        name: "Old installers in Downloads",
-        description: "Setup programs (.exe, .msi, .msix) in your Downloads folder that are more than 30 days old. They go to the recycle bin.",
-        group: Group::Personal,
-        risk: Risk::Review,
-        needs_admin: false,
-        selected_by_default: false,
-        min_age_days: 30,
-        disposal: Disposal::RecycleBin,
-        source: Source::Patterns(&[r"%USERPROFILE%\Downloads\*"]),
-        extensions: &["exe", "msi", "msix", "msixbundle", "appx"],
-    },
-    Category {
-        id: "personal.recycle_bin",
-        name: "Recycle bin",
-        description: "Files you already deleted. Emptying it is permanent.",
-        group: Group::Personal,
-        risk: Risk::Review,
-        needs_admin: false,
-        selected_by_default: false,
-        min_age_days: 0,
-        disposal: Disposal::Delete,
-        source: Source::RecycleBin,
-        extensions: &[],
-    },
+    Category::new(
+        "personal.old_installers",
+        "Old installers in Downloads",
+        "Setup programs (.exe, .msi, .msix) in your Downloads folder that are more than 30 days old. They go to the recycle bin.",
+        &["{downloads}/*"],
+    )
+    .installers(&["exe", "msi", "msix", "msixbundle", "appx"]),
+    RECYCLE_BIN,
 ];
 
+pub const LINUX: &[Category] = &[
+    Category::new(
+        "linux.thumbnails",
+        "Thumbnail cache",
+        "Image previews made by file managers. Rebuilt as you browse folders.",
+        &["{cache}/thumbnails/*"],
+    )
+    .preselected(),
+    Category::new(
+        "linux.crash_reports",
+        "Crash reports",
+        "Core dumps and reports left by programs that crashed.",
+        &["/var/crash/*", "/var/lib/systemd/coredump/*"],
+    )
+    .admin()
+    .preselected(),
+    Category::new(
+        "linux.package_downloads",
+        "Package manager downloads",
+        "Packages your system already installed. They are downloaded again if needed.",
+        &[
+            "/var/cache/apt/archives/*.deb",
+            "/var/cache/dnf/*",
+            "/var/cache/pacman/pkg/*",
+            "/var/cache/zypp/packages/*",
+        ],
+    )
+    .admin()
+    .preselected(),
+    Category::new(
+        "linux.old_logs",
+        "Old rotated logs",
+        "Compressed and rotated log files older than a week.",
+        &["/var/log/*.gz", "/var/log/*.old", "/var/log/*.[0-9]", "/var/log/*/*.gz"],
+    )
+    .risk(Risk::Moderate)
+    .admin()
+    .older_than_days(7),
+    Category::new(
+        "browsers.chrome",
+        "Google Chrome cache",
+        BROWSER_NOTE,
+        &[
+            "{cache}/google-chrome/*/Cache/*",
+            "{config}/google-chrome/*/Code Cache/*",
+            "{config}/google-chrome/*/GPUCache/*",
+        ],
+    )
+    .group(Group::Browsers)
+    .preselected(),
+    Category::new(
+        "browsers.chromium",
+        "Chromium cache",
+        BROWSER_NOTE,
+        &[
+            "{cache}/chromium/*/Cache/*",
+            "{config}/chromium/*/Code Cache/*",
+            "{config}/chromium/*/GPUCache/*",
+        ],
+    )
+    .group(Group::Browsers)
+    .preselected(),
+    Category::new(
+        "browsers.edge",
+        "Microsoft Edge cache",
+        BROWSER_NOTE,
+        &["{cache}/microsoft-edge/*/Cache/*", "{config}/microsoft-edge/*/Code Cache/*"],
+    )
+    .group(Group::Browsers)
+    .preselected(),
+    Category::new(
+        "browsers.brave",
+        "Brave cache",
+        BROWSER_NOTE,
+        &[
+            "{cache}/BraveSoftware/Brave-Browser/*/Cache/*",
+            "{config}/BraveSoftware/Brave-Browser/*/Code Cache/*",
+        ],
+    )
+    .group(Group::Browsers)
+    .preselected(),
+    Category::new(
+        "browsers.firefox",
+        "Firefox cache",
+        BROWSER_NOTE,
+        &[
+            "{cache}/mozilla/firefox/*/cache2/*",
+            "{home}/snap/firefox/common/.cache/mozilla/firefox/*/cache2/*",
+        ],
+    )
+    .group(Group::Browsers)
+    .preselected(),
+    Category::new(
+        "apps.electron_caches",
+        "Desktop app caches",
+        ELECTRON_NOTE,
+        &[
+            "{config}/discord/Cache/*",
+            "{config}/discord/Code Cache/*",
+            "{config}/Slack/Cache/*",
+            "{config}/Slack/Code Cache/*",
+            "{config}/Code/Cache/*",
+            "{config}/Code/CachedData/*",
+            "{cache}/spotify/Data/*",
+        ],
+    )
+    .group(Group::Apps),
+    Category::new(
+        "developer.package_caches",
+        "Package manager caches",
+        PACKAGES_NOTE,
+        &[
+            "{home}/.npm/_cacache/*",
+            "{cache}/yarn/*",
+            "{data}/pnpm/store/*",
+            "{cache}/pip/*",
+            "{cache}/go-build/*",
+            "{home}/.nuget/packages/*",
+            "{home}/.cargo/registry/cache/*",
+            "{home}/.gradle/caches/*",
+        ],
+    )
+    .group(Group::Developer)
+    .risk(Risk::Moderate),
+    Category::new(
+        "personal.old_installers",
+        "Old installers in Downloads",
+        "Installer packages (.deb, .rpm, .AppImage) in your Downloads folder that are more than 30 days old. They go to the recycle bin.",
+        &["{downloads}/*"],
+    )
+    .installers(&["deb", "rpm", "appimage", "run", "flatpakref"]),
+    RECYCLE_BIN,
+];
+
+pub const MACOS: &[Category] = &[
+    Category::new(
+        "macos.user_caches",
+        "App caches",
+        "Caches apps keep in your Library, browsers included. Apps recreate them, but may be slower the first time.",
+        &["{cache}/*"],
+    )
+    .risk(Risk::Moderate),
+    Category::new(
+        "macos.logs",
+        "Old logs and crash reports",
+        "Log files and crash reports older than a week.",
+        &["{home}/Library/Logs/*"],
+    )
+    .preselected()
+    .older_than_days(7),
+    Category::new(
+        "developer.xcode",
+        "Xcode build data",
+        "Build products, indexes and device support files. Xcode recreates them when needed.",
+        &[
+            "{home}/Library/Developer/Xcode/DerivedData/*",
+            "{home}/Library/Developer/Xcode/iOS DeviceSupport/*",
+            "{home}/Library/Developer/CoreSimulator/Caches/*",
+        ],
+    )
+    .group(Group::Developer)
+    .risk(Risk::Moderate),
+    Category::new(
+        "developer.package_caches",
+        "Package manager caches",
+        PACKAGES_NOTE,
+        &[
+            "{home}/.npm/_cacache/*",
+            "{home}/.nuget/packages/*",
+            "{home}/.cargo/registry/cache/*",
+            "{home}/.gradle/caches/*",
+        ],
+    )
+    .group(Group::Developer)
+    .risk(Risk::Moderate),
+    Category::new(
+        "personal.old_installers",
+        "Old installers in Downloads",
+        "Disk images and installer packages (.dmg, .pkg) in your Downloads folder that are more than 30 days old. They go to the recycle bin.",
+        &["{downloads}/*"],
+    )
+    .installers(&["dmg", "pkg", "mpkg"]),
+    RECYCLE_BIN,
+];
+
+/// The categories for this computer's system.
+pub fn categories() -> &'static [Category] {
+    categories_for(Os::current())
+}
+
+pub fn categories_for(os: Os) -> &'static [Category] {
+    match os {
+        Os::Windows => WINDOWS,
+        Os::Linux => LINUX,
+        Os::MacOs => MACOS,
+    }
+}
+
 pub fn category(id: &str) -> Option<&'static Category> {
-    CATEGORIES.iter().find(|c| c.id == id)
+    categories().iter().find(|c| c.id == id)
+}
+
+/// Where the known folders are. [`Places::current`] reads this computer; tests build their own.
+#[derive(Debug, Clone, Default)]
+pub struct Places {
+    folders: HashMap<&'static str, PathBuf>,
+}
+
+impl Places {
+    pub fn current() -> Self {
+        Self::from_pairs(
+            Known::ALL
+                .iter()
+                .filter_map(|k| k.path().map(|p| (k.token(), p))),
+        )
+    }
+
+    pub fn from_pairs(pairs: impl IntoIterator<Item = (&'static str, PathBuf)>) -> Self {
+        Self {
+            folders: pairs.into_iter().collect(),
+        }
+    }
+
+    /// Turns a template into a glob pattern, or `None` when its folder is unknown here, so a
+    /// template never silently becomes a relative path.
+    fn expand(&self, template: &str) -> Option<String> {
+        let Some(rest) = template.strip_prefix('{') else {
+            return template.starts_with('/').then(|| template.to_owned());
+        };
+        let (token, tail) = rest.split_once('}')?;
+        let base = self.folders.get(token)?;
+        Some(format!(
+            "{}{tail}",
+            glob::Pattern::escape(&base.to_string_lossy())
+        ))
+    }
+
+    /// Known folders themselves are never targets, whatever a template says.
+    fn is_protected(&self, path: &Path) -> bool {
+        if path.parent().is_none() || path.parent().and_then(Path::parent).is_none() {
+            return true;
+        }
+        self.folders.values().any(|k| same_path(k, path))
+    }
+}
+
+fn same_path(a: &Path, b: &Path) -> bool {
+    let norm = |p: &Path| {
+        p.to_string_lossy()
+            .trim_end_matches(['\\', '/'])
+            .to_lowercase()
+    };
+    norm(a) == norm(b)
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -323,67 +642,64 @@ impl Category {
         }
     }
 
-    /// The existing entries the patterns match on this computer.
-    fn targets(&self) -> Vec<PathBuf> {
+    /// The existing entries the templates match on this computer.
+    fn targets(&self, places: &Places) -> Vec<PathBuf> {
         let Source::Patterns(patterns) = self.source else {
             return Vec::new();
         };
         let options = glob::MatchOptions {
-            case_sensitive: false,
+            case_sensitive: !cfg!(windows),
             require_literal_separator: true,
             require_literal_leading_dot: false,
         };
         patterns
             .iter()
-            .filter_map(|p| paths::expand(p, glob::Pattern::escape))
+            .filter_map(|p| places.expand(p))
             .filter_map(|p| glob::glob_with(&p, options).ok())
             .flat_map(|matches| matches.filter_map(|m| m.ok()))
-            .filter(|p| !is_protected(p))
+            .filter(|p| !places.is_protected(p))
             .collect()
     }
 }
 
-/// Folders a pattern must never resolve to, whatever the environment says.
-fn is_protected(path: &Path) -> bool {
-    use rewindows_platform::paths::Known;
-    if path.parent().is_none() || path.parent().and_then(Path::parent).is_none() {
-        return true;
-    }
-    [
-        Known::UserProfile,
-        Known::RoamingAppData,
-        Known::LocalAppData,
-        Known::ProgramData,
-        Known::ProgramFiles,
-        Known::ProgramFilesX86,
-        Known::Windows,
-        Known::Temp,
-    ]
-    .iter()
-    .filter_map(|k| k.path())
-    .any(|k| same_path(&k, path))
-}
-
-fn same_path(a: &Path, b: &Path) -> bool {
-    let norm = |p: &Path| {
-        p.to_string_lossy()
-            .trim_end_matches(['\\', '/'])
-            .to_lowercase()
-    };
-    norm(a) == norm(b)
-}
-
-/// Measures every category on this computer.
+/// Measures every category of this computer.
 pub fn analyze(task: &Task) -> Vec<CategoryReport> {
+    analyze_in(
+        categories(),
+        &Places::current(),
+        elevation::is_elevated(),
+        task,
+    )
+}
+
+/// Measures `list` against `places`.
+pub fn analyze_in(
+    list: &'static [Category],
+    places: &Places,
+    elevated: bool,
+    task: &Task,
+) -> Vec<CategoryReport> {
     task.set_stage("Measuring junk files");
-    let elevated = elevation::is_elevated();
-    CATEGORIES
-        .par_iter()
-        .map(|category| measure(category, elevated, task))
+    list.par_iter()
+        .map(|category| measure(category, places, elevated, task))
         .collect()
 }
 
-fn measure(category: &'static Category, elevated: bool, task: &Task) -> CategoryReport {
+fn sum(tallies: impl ParallelIterator<Item = Tally>) -> Tally {
+    tallies.reduce(Tally::default, |mut a, b| {
+        a.files += b.files;
+        a.bytes += b.bytes;
+        a.failed += b.failed;
+        a
+    })
+}
+
+fn measure(
+    category: &'static Category,
+    places: &Places,
+    elevated: bool,
+    task: &Task,
+) -> CategoryReport {
     let mut report = CategoryReport {
         category: *category,
         files: 0,
@@ -402,7 +718,7 @@ fn measure(category: &'static Category, elevated: bool, task: &Task) -> Category
             Err(err) => report.note = Some(err.to_string()),
         },
         Source::Patterns(_) => {
-            let targets = category.targets();
+            let targets = category.targets(places);
             report.present = !targets.is_empty();
             if category.needs_admin && !elevated {
                 // Without rights the folders are unreadable; a partial number would mislead.
@@ -410,15 +726,7 @@ fn measure(category: &'static Category, elevated: bool, task: &Task) -> Category
                 return report;
             }
             let filter = category.filter();
-            let tally = targets
-                .par_iter()
-                .map(|t| walk::measure(t, &filter, task))
-                .reduce(Tally::default, |mut a, b| {
-                    a.files += b.files;
-                    a.bytes += b.bytes;
-                    a.failed += b.failed;
-                    a
-                });
+            let tally = sum(targets.par_iter().map(|t| walk::measure(t, &filter, task)));
             report.files = tally.files;
             report.bytes = tally.bytes;
         }
@@ -429,11 +737,31 @@ fn measure(category: &'static Category, elevated: bool, task: &Task) -> Category
 /// Cleans the categories with the given ids. Categories that need administrator rights are
 /// skipped, and reported as skipped, when the app is not elevated.
 pub fn run(ids: &[String], task: &Task) -> Result<Vec<CategoryResult>> {
+    run_in(
+        categories(),
+        &Places::current(),
+        elevation::is_elevated(),
+        ids,
+        task,
+    )
+}
+
+/// Cleans the categories of `list` with the given ids, against `places`.
+pub fn run_in(
+    list: &'static [Category],
+    places: &Places,
+    elevated: bool,
+    ids: &[String],
+    task: &Task,
+) -> Result<Vec<CategoryResult>> {
     let chosen: Vec<&'static Category> = ids
         .iter()
-        .map(|id| category(id).ok_or_else(|| EngineError::UnknownCategory(id.clone())))
+        .map(|id| {
+            list.iter()
+                .find(|c| c.id == id)
+                .ok_or_else(|| EngineError::UnknownCategory(id.clone()))
+        })
         .collect::<Result<_>>()?;
-    let elevated = elevation::is_elevated();
     let mut results = Vec::with_capacity(chosen.len());
     for category in chosen {
         if task.is_cancelled() {
@@ -441,7 +769,7 @@ pub fn run(ids: &[String], task: &Task) -> Result<Vec<CategoryResult>> {
             continue;
         }
         task.set_stage(category.name);
-        results.push(clean(category, elevated, task));
+        results.push(clean(category, places, elevated, task));
     }
     Ok(results)
 }
@@ -457,7 +785,12 @@ fn skipped(category: &'static Category, reason: &'static str) -> CategoryResult 
     }
 }
 
-fn clean(category: &'static Category, elevated: bool, task: &Task) -> CategoryResult {
+fn clean(
+    category: &'static Category,
+    places: &Places,
+    elevated: bool,
+    task: &Task,
+) -> CategoryResult {
     if category.needs_admin && !elevated {
         return skipped(category, "Needs administrator rights");
     }
@@ -483,18 +816,10 @@ fn clean(category: &'static Category, elevated: bool, task: &Task) -> CategoryRe
         }
         Source::Patterns(_) => {
             let filter = category.filter();
-            let targets = category.targets();
+            let targets = category.targets(places);
             match category.disposal {
                 Disposal::Delete => {
-                    let tally = targets
-                        .par_iter()
-                        .map(|t| walk::delete(t, &filter, task))
-                        .reduce(Tally::default, |mut a, b| {
-                            a.files += b.files;
-                            a.bytes += b.bytes;
-                            a.failed += b.failed;
-                            a
-                        });
+                    let tally = sum(targets.par_iter().map(|t| walk::delete(t, &filter, task)));
                     result.files = tally.files;
                     result.bytes = tally.bytes;
                     result.failed = tally.failed;
@@ -503,9 +828,10 @@ fn clean(category: &'static Category, elevated: bool, task: &Task) -> CategoryRe
                     // Only top-level files that pass the filter; folders are left alone.
                     let files: Vec<(PathBuf, u64)> = targets
                         .into_iter()
+                        .filter(|t| t.is_file())
                         .filter_map(|t| {
                             let m = walk::measure(&t, &filter, &Task::new());
-                            (m.files == 1 && t.is_file()).then_some((t, m.bytes))
+                            (m.files == 1).then_some((t, m.bytes))
                         })
                         .collect();
                     for (path, bytes) in files {
@@ -530,8 +856,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn protected_roots_are_refused() {
-        assert!(is_protected(Path::new("/")));
-        assert!(is_protected(Path::new("/home")));
+    fn known_folders_and_roots_are_refused() {
+        let places = Places::from_pairs([("home", PathBuf::from("/home/someone"))]);
+        assert!(places.is_protected(Path::new("/")));
+        assert!(places.is_protected(Path::new("/home")));
+        assert!(places.is_protected(Path::new("/home/someone/")));
+        assert!(!places.is_protected(Path::new("/home/someone/.cache")));
+    }
+
+    #[test]
+    fn a_template_with_an_unknown_folder_matches_nothing() {
+        let places = Places::from_pairs([("home", PathBuf::from("/home/someone"))]);
+        assert_eq!(places.expand("{cache}/thumbnails/*"), None);
+        assert_eq!(places.expand("relative/*"), None);
+        assert!(places.expand("{home}/.npm/*").is_some());
+    }
+
+    #[test]
+    fn folder_names_with_glob_characters_are_taken_literally() {
+        let places = Places::from_pairs([("home", PathBuf::from("/home/a[1]"))]);
+        let pattern = places.expand("{home}/*").unwrap_or_default();
+        let compiled = glob::Pattern::new(&pattern).unwrap();
+        assert!(compiled.matches("/home/a[1]/file"));
+        assert!(!compiled.matches("/home/a1/file"));
     }
 }

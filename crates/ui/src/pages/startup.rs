@@ -3,9 +3,9 @@ use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{card, page_header};
 use egui::RichText;
-use rewindows_engine::startup::StartupEntry;
-use rewindows_engine::{Request, Response, Task};
-use rewindows_i18n::tr;
+use rewind_os_engine::startup::StartupEntry;
+use rewind_os_engine::{Request, Response, Task};
+use rewind_os_i18n::tr;
 
 #[derive(Default)]
 pub struct State {

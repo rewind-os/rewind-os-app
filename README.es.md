@@ -25,6 +25,12 @@ No se borra nada sin preguntar. Los archivos que un programa tiene abiertos se o
 informa de ellos. La app arranca como usuario normal y ofrece reiniciarse como administrador
 cuando una tarea lo necesita.
 
+## Descargar
+
+Hay versiones listas para Windows x64 y ARM64 en la
+[página de releases](../../releases): descomprime `rewindows-<versión>-windows-<arq>-portable.zip`
+y ejecuta `rewindows.exe`. No se instala nada. Puedes comprobar la descarga con `SHA256SUMS.txt`.
+
 ## Compilar
 
 En Windows 11 con [Rust](https://rustup.rs) y las Build Tools de C++ de Visual Studio:

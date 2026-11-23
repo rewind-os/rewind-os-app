@@ -75,3 +75,16 @@ cargo test --workspace
   (`feature/r1.2-duplicates`). Pull requests are squash-merged; the title is the commit message.
 - One pull request per change. Moving code and changing behaviour go in separate pull requests.
 - The plan is [docs/ROADMAP.md](docs/ROADMAP.md); known traps are in [docs/pitfalls.md](docs/pitfalls.md).
+
+## Releases
+
+- The version lives only in `[workspace.package] version` in `Cargo.toml`. A suffix
+  (`0.2.0-rc.1`) makes a pre-release.
+- Pushing to the `release` branch runs `.github/workflows/release.yml`: it builds x64 and arm64
+  with `packaging/windows/package.ps1`, drafts the GitHub release `v<version>` with every package
+  and `SHA256SUMS.txt`, and publishes it only when every build passed and no file is missing
+  compared with the previous release. Running the workflow by hand is a dry run (artifacts only).
+- Publishing a release cannot be undone by a new commit: ask the maintainer before pushing to
+  `release`. A CI or release workflow change goes in its own pull request.
+- Signing is optional for now: set the `WINDOWS_CERTIFICATE` (base64 `.pfx`) and
+  `WINDOWS_CERTIFICATE_PASSWORD` secrets to sign. Unsigned builds say so in the run summary.

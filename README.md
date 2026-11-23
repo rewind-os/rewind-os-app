@@ -22,6 +22,12 @@ large forgotten files and programs that start with Windows for no reason.
 Nothing is deleted without asking. Files a program has open are skipped and reported. The app
 starts as a normal user and offers to restart as administrator when a task needs it.
 
+## Download
+
+Ready-made builds for Windows x64 and ARM64 are on the
+[releases page](../../releases): unzip `rewindows-<version>-windows-<arch>-portable.zip` and run
+`rewindows.exe`. Nothing is installed. Check the download against `SHA256SUMS.txt`.
+
 ## Build
 
 On Windows 11 with [Rust](https://rustup.rs) and the Visual Studio C++ Build Tools:

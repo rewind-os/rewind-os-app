@@ -24,7 +24,7 @@ env:
 
 jobs:
   lint:
-    name: Format and lints
+    name: Linux tests, format and lints
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

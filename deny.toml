@@ -1,0 +1,29 @@
+# cargo-deny configuration: `cargo deny check licenses bans sources`.
+[graph]
+targets = ["x86_64-pc-windows-msvc"]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "BSL-1.0",
+    "Unicode-3.0",
+    "Unlicense",
+    # egui's bundled fallback fonts (used only if the Windows UI font cannot be read).
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

@@ -1,0 +1,240 @@
+# Spanish catalog: English key<TAB>Spanish text. Keys are the exact English strings in the code.
+# CLI
+This changes your system. Run it again with --yes to confirm.	Esto modifica tu sistema. Vuelve a ejecutarlo con --yes para confirmarlo.
+changes your system	modifica tu sistema
+Name at least one category, or pass --defaults.	Indica al menos una categoría, o usa --defaults.
+Invalid request	Petición no válida
+included by --defaults	incluida con --defaults
+needs administrator	requiere administrador
+Total	Total
+Freed	Liberado
+Yes	Sí
+No	No
+of	de
+threads	hilos
+On	Activado
+Off	Desactivado
+Error	Error
+Done	Hecho
+Ready	Listo
+Working	Trabajando
+Stop	Detener
+Cancel	Cancelar
+# Counters
+{n} items	{n} elementos
+{n} files	{n} archivos
+{n} programs	{n} programas
+{n} files in use were kept	{n} archivos en uso se han conservado
+{n} items could not be moved.	{n} elementos no se han podido mover.
+{n} folders could not be read (administrator rights may help).	{n} carpetas no se han podido leer (con permisos de administrador puede que sí).
+# Stages
+Scanning	Escaneando
+Sorting results	Ordenando resultados
+Measuring junk files	Midiendo archivos basura
+Moving to the recycle bin	Moviendo a la papelera
+Reading installed programs and services	Leyendo programas instalados y servicios
+Checking folders	Revisando carpetas
+Measuring candidate folders	Midiendo carpetas candidatas
+# Engine messages
+An elevated copy was started	Se ha iniciado una copia con permisos de administrador
+The program's uninstaller was started	Se ha iniciado el desinstalador del programa
+Opened in the file manager	Abierto en el Explorador de archivos
+Startup program enabled	Programa de inicio activado
+Startup program disabled	Programa de inicio desactivado
+Hibernation turned on	Hibernación activada
+Hibernation turned off; hiberfil.sys was removed	Hibernación desactivada; se ha eliminado hiberfil.sys
+Cancelled	Cancelado
+Needs administrator rights	Requiere permisos de administrador
+# Tools
+Show drives, memory and large system files	Muestra las unidades, la memoria y los archivos grandes del sistema
+Restart the app with administrator rights	Reinicia la app con permisos de administrador
+Measure every folder under a path and find the largest files	Mide todas las carpetas bajo una ruta y encuentra los archivos más grandes
+List the files directly inside a folder, largest first	Lista los archivos de una carpeta, de mayor a menor
+Measure temporary files, caches and other junk by category	Mide archivos temporales, cachés y otra basura por categoría
+Delete the chosen junk categories	Borra las categorías de basura elegidas
+List installed programs	Lista los programas instalados
+Start a program's own uninstaller	Inicia el desinstalador del propio programa
+Find folders that no installed program, service or startup entry refers to	Busca carpetas a las que no hace referencia ningún programa instalado, servicio ni entrada de inicio
+Move files or folders to the recycle bin	Mueve archivos o carpetas a la papelera
+Show a file or folder in the file manager	Muestra un archivo o carpeta en el Explorador de archivos
+List programs that start with Windows	Lista los programas que se inician con Windows
+Enable or disable a startup program	Activa o desactiva un programa de inicio
+Report how much space the Windows component store really uses	Indica cuánto ocupa de verdad el almacén de componentes de Windows
+Remove superseded Windows components	Elimina componentes de Windows reemplazados
+Turn hibernation (and its hiberfil.sys file) on or off	Activa o desactiva la hibernación (y su archivo hiberfil.sys)
+# Cleanup groups
+Windows	Windows
+Browsers	Navegadores
+Applications	Aplicaciones
+Developer tools	Herramientas de desarrollo
+Your files	Tus archivos
+# Cleanup categories
+Your temporary files	Tus archivos temporales
+Files programs left in your temporary folder. Files from the last day are kept, in case an installer is still using them.	Archivos que los programas dejaron en tu carpeta temporal. Se conservan los del último día por si algún instalador aún los usa.
+Windows temporary files	Archivos temporales de Windows
+The system-wide temporary folder.	La carpeta temporal de todo el sistema.
+Windows Update downloads	Descargas de Windows Update
+Update packages Windows already installed. Windows downloads them again if it needs them.	Paquetes de actualizaciones ya instaladas. Windows los vuelve a descargar si los necesita.
+Delivery Optimization cache	Caché de Optimización de distribución
+Update pieces kept to share with other computers.	Fragmentos de actualizaciones guardados para compartir con otros equipos.
+Program crash reports	Informes de bloqueos de programas
+Memory dumps and error reports written when a program crashed.	Volcados de memoria e informes de error generados cuando un programa se bloqueó.
+System crash reports	Informes de bloqueos del sistema
+Memory dumps from system crashes (blue screens) and Windows error reports.	Volcados de memoria de bloqueos del sistema (pantallas azules) e informes de error de Windows.
+Old Windows logs	Registros antiguos de Windows
+Log files older than a week. Useful only for diagnosing past problems.	Archivos de registro de hace más de una semana. Solo sirven para diagnosticar problemas pasados.
+Thumbnail cache	Caché de miniaturas
+Image previews for File Explorer. Rebuilt as you browse folders; files in use are skipped.	Vistas previas del Explorador de archivos. Se regeneran al navegar por las carpetas; los archivos en uso se omiten.
+Graphics shader caches	Cachés de sombreadores gráficos
+Compiled shaders from DirectX and graphics drivers. Games may stutter briefly while they rebuild them.	Sombreadores compilados de DirectX y de los controladores gráficos. Los juegos pueden dar tirones un rato mientras los regeneran.
+Google Chrome cache	Caché de Google Chrome
+Microsoft Edge cache	Caché de Microsoft Edge
+Brave cache	Caché de Brave
+Firefox cache	Caché de Firefox
+Downloaded copies of web pages and images. Close the browser first; files in use are skipped.	Copias descargadas de páginas web e imágenes. Cierra antes el navegador; los archivos en uso se omiten.
+Desktop app caches	Cachés de aplicaciones de escritorio
+Web caches of apps such as Discord, Slack, Teams and Spotify. Close them first.	Cachés web de apps como Discord, Slack, Teams y Spotify. Ciérralas antes.
+Package manager caches	Cachés de gestores de paquetes
+Downloaded packages kept by npm, Yarn, pnpm, pip, NuGet, Cargo and Gradle. They are downloaded again when a project needs them.	Paquetes descargados que guardan npm, Yarn, pnpm, pip, NuGet, Cargo y Gradle. Se vuelven a descargar cuando un proyecto los necesita.
+Old installers in Downloads	Instaladores antiguos en Descargas
+Setup programs (.exe, .msi, .msix) in your Downloads folder that are more than 30 days old. They go to the recycle bin.	Instaladores (.exe, .msi, .msix) de tu carpeta Descargas con más de 30 días. Van a la papelera.
+Recycle bin	Papelera de reciclaje
+Files you already deleted. Emptying it is permanent.	Archivos que ya borraste. Vaciarla es definitivo.
+# Startup sources
+Registry (you)	Registro (tú)
+Registry (all users)	Registro (todos los usuarios)
+Registry (all users, 32-bit)	Registro (todos los usuarios, 32 bits)
+Startup folder (you)	Carpeta Inicio (tú)
+Startup folder (all users)	Carpeta Inicio (todos los usuarios)
+# Shell
+This needs administrator rights.	Esto requiere permisos de administrador.
+Restart as administrator	Reiniciar como administrador
+Some cleanups and settings need administrator rights. Windows will ask for permission.	Algunas limpiezas y ajustes requieren permisos de administrador. Windows te pedirá permiso.
+Administrator	Administrador
+Standard user	Usuario estándar
+Could not restart as administrator	No se ha podido reiniciar como administrador
+Overview	Resumen
+Disk analyzer	Analizador de disco
+Junk cleanup	Limpieza de basura
+Program leftovers	Restos de programas
+Installed programs	Programas instalados
+Startup programs	Programas de inicio
+Maintenance	Mantenimiento
+# Overview
+Your drives, memory and the large files Windows keeps for itself.	Tus unidades, la memoria y los archivos grandes que Windows guarda para sí.
+Refresh	Actualizar
+Drives	Unidades
+Removable	Extraíble
+{free} free of {total}	{free} libres de {total}
+used	usado
+Analyze	Analizar
+Memory	Memoria
+Memory in use	Memoria en uso
+{used} in use of {total}	{used} en uso de {total}
+System	Sistema
+Computer	Equipo
+Processor	Procesador
+Running for	Encendido desde hace
+{d} days {h} h	{d} días {h} h
+Large system files	Archivos grandes del sistema
+Windows manages these files itself. Never delete them by hand.	Windows gestiona estos archivos. No los borres nunca a mano.
+Hibernation and fast startup. You can turn it off in Maintenance.	Hibernación e inicio rápido. Puedes desactivarlo en Mantenimiento.
+Virtual memory. Windows sizes it automatically.	Memoria virtual. Windows ajusta su tamaño automáticamente.
+Virtual memory for Store apps.	Memoria virtual para las apps de la Store.
+Find junk files	Buscar archivos basura
+Find program leftovers	Buscar restos de programas
+# Analyzer
+Find out what takes up space, folder by folder.	Descubre qué ocupa espacio, carpeta por carpeta.
+Choose a drive or folder and press Scan.	Elige una unidad o carpeta y pulsa Escanear.
+Choose folder…	Elegir carpeta…
+Scan	Escanear
+Folders	Carpetas
+Largest folders	Carpetas más grandes
+Largest files	Archivos más grandes
+File types	Tipos de archivo
+{files} files in {dirs} folders · {secs} s	{files} archivos en {dirs} carpetas · {secs} s
+The scan was stopped; sizes are incomplete.	El escaneo se detuvo; los tamaños están incompletos.
+{n} files in this folder	{n} archivos en esta carpeta
+Files in this folder	Archivos de esta carpeta
+partial	parcial
+Some folders inside could not be read.	Algunas carpetas de dentro no se han podido leer.
+The {n} largest files found in the scan.	Los {n} archivos más grandes encontrados en el escaneo.
+(no extension)	(sin extensión)
+Actions	Acciones
+Show in File Explorer	Mostrar en el Explorador de archivos
+Move to recycle bin…	Mover a la papelera…
+Move to recycle bin	Mover a la papelera
+Move to the recycle bin?	¿Mover a la papelera?
+{path} ({size}) will be moved to the recycle bin. You can restore it from there.	{path} ({size}) se moverá a la papelera. Podrás restaurarlo desde allí.
+{n} items ({size}) will be moved to the recycle bin. You can restore them from there.	{n} elementos ({size}) se moverán a la papelera. Podrás restaurarlos desde allí.
+Moved {size} to the recycle bin. Space is freed when the recycle bin is emptied.	Se han movido {size} a la papelera. El espacio se libera al vaciar la papelera.
+Space is freed when the recycle bin is emptied.	El espacio se libera al vaciar la papelera.
+# Cleanup page
+Temporary files and caches that Windows and your programs recreate when they need them.	Archivos temporales y cachés que Windows y tus programas vuelven a crear cuando los necesitan.
+Analyze again	Volver a analizar
+Clean {size}	Limpiar {size}
+Some categories need administrator rights.	Algunas categorías requieren permisos de administrador.
+Freed {size}.	Liberados {size}.
+{n} categories, about {size}, will be deleted permanently.	Se borrarán definitivamente {n} categorías, unos {size}.
+Old installers go to the recycle bin instead.	Los instaladores antiguos van a la papelera.
+Files a program has open are skipped.	Los archivos que un programa tenga abiertos se omiten.
+Clean the selected categories?	¿Limpiar las categorías seleccionadas?
+Clean	Limpiar
+Needs administrator	Requiere administrador
+Safe	Seguro
+Rebuilt later	Se regenera
+Safe to delete, but something gets slower until it is rebuilt.	Se puede borrar, pero algo irá más lento hasta que se regenere.
+Review	Revisar
+Your own files. Check them before cleaning.	Son tus archivos. Revísalos antes de limpiar.
+Only files older than {n} days.	Solo archivos de hace más de {n} días.
+Last cleanup	Última limpieza
+None of the known junk locations exist on this computer.	Ninguna de las ubicaciones de basura conocidas existe en este equipo.
+# Leftovers page
+Folders in Program Files, ProgramData and AppData that no installed program, service, running program or startup entry refers to.	Carpetas de Program Files, ProgramData y AppData a las que no hace referencia ningún programa instalado, servicio, programa en ejecución ni entrada de inicio.
+This is an estimate. Portable programs and games installed outside Windows' list can show up here. Check each folder before moving it; everything goes to the recycle bin so you can restore it.	Es una estimación. Pueden aparecer programas portables y juegos instalados fuera de la lista de Windows. Revisa cada carpeta antes de moverla; todo va a la papelera para que puedas restaurarlo.
+Search	Buscar
+Search again	Volver a buscar
+Show all	Mostrar todo
+Likely unused	Probablemente sin uso
+Possibly unused	Posiblemente sin uso
+Recently used	Usado recientemente
+Move {size} to recycle bin	Mover {size} a la papelera
+{n} folders, {size} in total	{n} carpetas, {size} en total
+{location} · {n} files · last change {date}	{location} · {n} archivos · último cambio {date}
+No leftover folders found.	No se han encontrado restos.
+Open	Abrir
+# Programs page
+Uninstall what you no longer use, then look for its leftovers.	Desinstala lo que ya no uses y después busca sus restos.
+Search by name or publisher	Buscar por nombre o editor
+Sort by	Ordenar por
+Name	Nombre
+Size	Tamaño
+Install date	Fecha de instalación
+only for you	solo para ti
+Size the installer declared; it may be out of date.	Tamaño que declaró el instalador; puede estar desactualizado.
+Uninstall…	Desinstalar…
+Uninstall this program?	¿Desinstalar este programa?
+This starts the uninstaller of {name}. Follow its steps; afterwards, search for leftovers.	Se iniciará el desinstalador de {name}. Sigue sus pasos y después busca restos.
+Start uninstaller	Iniciar desinstalador
+# Startup page
+Programs that start when you sign in. Turning one off does not uninstall it, and you can turn it back on at any time.	Programas que se inician al entrar en tu sesión. Desactivar uno no lo desinstala y puedes volver a activarlo cuando quieras.
+No startup programs found.	No se han encontrado programas de inicio.
+# Maintenance page
+Windows' own maintenance tools, run when you ask for them.	Las herramientas de mantenimiento del propio Windows, ejecutadas cuando tú lo pidas.
+Windows component store	Almacén de componentes de Windows
+The WinSxS folder looks huge in a disk scan because most of its files are shared with Windows itself. This measures its real size and removes old versions of updated components.	La carpeta WinSxS parece enorme al escanear el disco porque la mayoría de sus archivos se comparten con el propio Windows. Esto mide su tamaño real y elimina versiones antiguas de componentes actualizados.
+Measure real size	Medir tamaño real
+Remove old components	Eliminar componentes antiguos
+Remove old components?	¿Eliminar componentes antiguos?
+Old versions of updated Windows components are removed. Installed updates can no longer be uninstalled afterwards.	Se eliminan versiones antiguas de componentes de Windows actualizados. Después no se podrán desinstalar las actualizaciones ya instaladas.
+Remove	Eliminar
+Hibernation	Hibernación
+Turning hibernation off deletes hiberfil.sys, which is often as large as your memory. Fast startup also stops working.	Al desactivar la hibernación se borra hiberfil.sys, que suele ocupar tanto como tu memoria. El inicio rápido también deja de funcionar.
+Turn off	Desactivar
+Turn on	Activar
+Turn hibernation off?	¿Desactivar la hibernación?
+hiberfil.sys is deleted and fast startup stops working. You can turn it back on here.	Se borra hiberfil.sys y el inicio rápido deja de funcionar. Puedes volver a activarla aquí.
+Turn hibernation on?	¿Activar la hibernación?
+Windows creates hiberfil.sys again.	Windows vuelve a crear hiberfil.sys.
+This can take several minutes.	Puede tardar varios minutos.
+Result	Resultado

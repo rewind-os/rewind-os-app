@@ -1,0 +1,14 @@
+ReWindows
+Copyright 2026 The ReWindows contributors
+
+Licensed under the MIT license or the Apache License 2.0, at your option.
+
+The development rules in AGENTS.md adapt the standards of the Craft apps
+(https://github.com/storytold/craft-anything, MIT OR Apache-2.0).
+
+The app icon is drawn in code (crates/ui/src/lib.rs, `icon_rgba`) and written to
+assets/rewindows.ico by `cargo run -p rewindows-ui --example write_icon`.
+
+egui bundles fallback fonts under the SIL Open Font License 1.1 and the Ubuntu Font
+Licence 1.0. On Windows the app uses the system's Segoe UI font, read at runtime and
+not distributed.

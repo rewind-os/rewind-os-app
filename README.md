@@ -64,12 +64,15 @@ macOS builds are checked in CI but not released yet.
 ## Download
 
 Ready-made builds are on the [releases page](../../releases); check them against
-`SHA256SUMS.txt`. Nothing is installed.
+`SHA256SUMS.txt`.
 
 - **Windows** x64 and ARM64: unzip `rewind-os-<version>-windows-<arch>-portable.zip` and run
   `rewind-os.exe`.
 - **Linux** x64 and ARM64: unpack `rewind-os-<version>-linux-<arch>.tar.gz` and run
   `bin/rewind-os`. Copy its `share/` folder into `~/.local/share` for the launcher entry and icon.
+  Or install the package: `sudo apt install ./rewind-os_<version>_amd64.deb` (Debian, Ubuntu)
+  or `sudo dnf install ./rewind-os-<version>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` and
+  `aarch64` for ARM.
 
 ## Build
 

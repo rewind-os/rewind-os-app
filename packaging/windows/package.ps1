@@ -6,6 +6,12 @@
   Produces, in $env:DIST (default: dist/release):
     rewind-os-<version>-windows-<arch>-portable.zip   rewind-os.exe, rewind-os-cli.exe, README and licences
     rewind-os-<version>-windows-<arch>-portable.zip.sha256
+    rewind-os-<version>-windows-<arch>.msi              installer (Program Files, Start menu)
+    rewind-os-<version>-windows-<arch>.msi.sha256
+
+  The installer is built with WiX 5 (packaging/windows/rewind-os.wxs), installed on the fly as a
+  .NET tool when `wix` is not on the PATH. MSI versions are numbers only, so a pre-release
+  (0.6.0-rc.1) gets no installer; the portable zip is still built.
 
   The binaries link the C runtime statically (+crt-static), so no Visual C++ redistributable is
   needed. They are signed when WINDOWS_CERTIFICATE (base64 .pfx) and WINDOWS_CERTIFICATE_PASSWORD
@@ -115,6 +121,40 @@ Remove-Item -Force $Zip -ErrorAction SilentlyContinue
 Compress-Archive -Path $Stage -DestinationPath $Zip
 $Hash = (Get-FileHash -Algorithm SHA256 $Zip).Hash.ToLowerInvariant()
 Set-Content -Path "$Zip.sha256" -Value "$Hash  $Name.zip" -NoNewline -Encoding ascii
+
+# ---- installer ---------------------------------------------------------------------------------
+if ($Version -match '^\d+\.\d+\.\d+$') {
+  $wix = Get-Command wix -ErrorAction SilentlyContinue
+  if (-not $wix) {
+    $toolDir = Join-Path $TargetDir 'wix-tool'
+    Invoke-Native 'install WiX 5' { dotnet tool install wix --version 5.0.2 --tool-path $toolDir }
+    $wix = Get-Command (Join-Path $toolDir 'wix.exe')
+  }
+  $Msi = Join-Path $Dist "rewind-os-$Version-windows-$Arch.msi"
+  Remove-Item -Force $Msi -ErrorAction SilentlyContinue
+  Invoke-Native 'wix build' {
+    & $wix.Source build (Join-Path $PSScriptRoot 'rewind-os.wxs') -arch $Arch -o $Msi `
+      -d "Version=$Version" -d "BinDir=$Stage" -d "DocDir=$Stage" `
+      -d "IconFile=$(Join-Path $Root 'assets\app-icon\rewind-os.ico')"
+  }
+  if ($env:WINDOWS_CERTIFICATE -and $env:WINDOWS_CERTIFICATE_PASSWORD) {
+    $pfx = Join-Path ([System.IO.Path]::GetTempPath()) "rewind-os-$([guid]::NewGuid()).pfx"
+    try {
+      [System.IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+      Invoke-Native 'signtool sign (msi)' {
+        & $signtool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com `
+          /f $pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD $Msi
+      }
+    } finally {
+      Remove-Item -Force $pfx -ErrorAction SilentlyContinue
+    }
+  }
+  $MsiHash = (Get-FileHash -Algorithm SHA256 $Msi).Hash.ToLowerInvariant()
+  Set-Content -Path "$Msi.sha256" -Value "$MsiHash  $(Split-Path -Leaf $Msi)" -NoNewline -Encoding ascii
+  Get-Item $Msi | Format-Table Name, Length
+} else {
+  Write-Summary "Windows $Arch`: no installer for pre-release $Version (MSI versions are numbers only)."
+}
 
 # ---- smoke test --------------------------------------------------------------------------------
 $HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()

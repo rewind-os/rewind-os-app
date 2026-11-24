@@ -1,6 +1,7 @@
 name: Release
 
-# Pushing to the `release` branch builds the Windows and Linux packages, drafts a GitHub release named
+# Pushing to the `release` branch builds the Windows and Linux packages (portable zip and MSI;
+# tar.gz), drafts a GitHub release named
 # after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages and
 # publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
 # Run it by hand (workflow_dispatch) for a dry run that only builds and keeps the artifacts.

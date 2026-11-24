@@ -69,8 +69,9 @@ funcionar. Las versiones para macOS se comprueban en CI pero aún no se publican
 Hay versiones listas en la [página de releases](../../releases); puedes comprobarlas con
 `SHA256SUMS.txt`. No se instala nada.
 
-- **Windows** x64 y ARM64: descomprime `rewind-os-<versión>-windows-<arq>-portable.zip` y
-  ejecuta `rewind-os.exe`.
+- **Windows** x64 y ARM64: ejecuta `rewind-os-<versión>-windows-<arq>.msi` para instalarlo (menú
+  Inicio, se desinstala desde Configuración), o descomprime
+  `rewind-os-<versión>-windows-<arq>-portable.zip` y ejecuta `rewind-os.exe` sin instalar nada.
 - **Linux** x64 y ARM64: descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta
   `bin/rewind-os`. Copia su carpeta `share/` en `~/.local/share` para tener el lanzador y el icono.
 

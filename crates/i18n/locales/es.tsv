@@ -326,7 +326,6 @@ If you never hibernate the computer, turning hibernation off frees this space.	S
 Make Windows lighter	Aligerar Windows
 List settings that make Windows lighter, and whether they are on	Lista los ajustes que aligeran Windows y si están aplicados
 Apply or undo a setting that makes Windows lighter	Aplica o deshace un ajuste que aligera Windows
-Turn off ads, tracking and extras you do not use. Nothing is uninstalled, and every change can be undone here.	Desactiva anuncios, rastreo y extras que no usas. No se desinstala nada y cada cambio se puede deshacer aquí.
 Apply {n} recommended	Aplicar {n} recomendados
 Apply the recommended settings?	¿Aplicar los ajustes recomendados?
 These settings will be turned off. You can undo each one here at any time.	Se desactivarán estos ajustes. Puedes deshacer cada uno aquí cuando quieras.
@@ -434,3 +433,48 @@ Service: starts with the system	Servicio: arranca con el sistema
 Service: starts when needed	Servicio: arranca cuando se necesita
 This service is part of Windows or a driver. Rewind OS only changes services that programs installed.	Este servicio forma parte de Windows o de un controlador. Rewind OS solo cambia servicios que instalaron programas.
 Rewind OS did not change this service, so it leaves how it starts as it is.	Rewind OS no cambió este servicio, así que deja su forma de arrancar como está.
+Turn off ads, tracking and extras you do not use. Every setting can be undone here, and removed apps can be installed again from the Microsoft Store.	Desactiva anuncios, rastreo y extras que no usas. Cada ajuste se puede deshacer aquí y las apps eliminadas se pueden volver a instalar desde Microsoft Store.
+List preinstalled Store apps that can be removed	Muestra las apps preinstaladas de la Store que se pueden quitar
+Remove preinstalled Store apps for you (they can be installed again from the Store)	Quita apps preinstaladas de la Store para ti (se pueden volver a instalar desde la Store)
+Preinstalled apps	Apps preinstaladas
+Removed for your account only. Any of them can be installed again from the Microsoft Store.	Solo se quitan de tu cuenta. Cualquiera se puede volver a instalar desde Microsoft Store.
+Select suggested	Marcar sugeridas
+Remove {n} apps…	Quitar {n} apps…
+Remove these apps?	¿Quitar estas apps?
+These apps will be removed for your account. You can install any of them again from the Microsoft Store.	Estas apps se quitarán de tu cuenta. Puedes volver a instalar cualquiera desde Microsoft Store.
+Removed {n} apps. They can be installed again from the Microsoft Store.	Se han quitado {n} apps. Se pueden volver a instalar desde Microsoft Store.
+Removed apps can be installed again from the Microsoft Store.	Las apps quitadas se pueden volver a instalar desde Microsoft Store.
+No preinstalled apps to remove.	No hay apps preinstaladas que quitar.
+Nothing to remove.	Nada que quitar.
+Removed	Quitada
+News	Noticias
+Weather	El tiempo
+Money	Dinero
+Sports	Deportes
+Get Help	Obtener ayuda
+Tips	Consejos
+Feedback Hub	Centro de opiniones
+Solitaire Collection	Solitaire Collection
+Microsoft 365 (Office) hub	Microsoft 365 (Office)
+Power Automate	Power Automate
+Cortana	Cortana
+Mixed Reality Portal	Portal de realidad mixta
+Maps	Mapas
+Movies & TV	Películas y TV
+People	Contactos
+Dev Home	Dev Home
+Microsoft Family	Microsoft Family
+Windows 365	Windows 365
+Clipchamp	Clipchamp
+Candy Crush and other King games	Candy Crush y otros juegos de King
+Disney+	Disney+
+TikTok	TikTok
+Facebook and Instagram	Facebook e Instagram
+Prime Video	Prime Video
+Bing Search (web results in Start)	Búsqueda de Bing (resultados web en Inicio)
+Microsoft To Do	Microsoft To Do
+Outlook (new)	Outlook (nuevo)
+Phone Link	Enlace Móvil
+Xbox	Xbox
+Skype	Skype
+Spotify	Spotify

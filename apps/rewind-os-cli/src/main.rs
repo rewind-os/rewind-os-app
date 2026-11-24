@@ -39,6 +39,9 @@ enum Command {
     /// Settings that make Windows lighter (every one can be undone).
     #[command(subcommand)]
     Tweaks(Tweaks),
+    /// Preinstalled Store apps that can be removed (and installed again from the Store).
+    #[command(subcommand)]
+    Apps(Apps),
     /// Measure every folder under PATH.
     Scan {
         path: PathBuf,
@@ -119,6 +122,19 @@ enum Tweaks {
     /// Undo a setting, back to Windows' default.
     Undo {
         id: String,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Apps {
+    List,
+    /// Remove apps by package name; `--recommended` removes every suggested one installed.
+    Remove {
+        ids: Vec<String>,
+        #[arg(long)]
+        recommended: bool,
         #[arg(long)]
         yes: bool,
     },
@@ -235,6 +251,26 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
         Command::Overview => Request::SystemOverview,
         Command::Recommend => Request::Recommendations,
         Command::Tweaks(Tweaks::List) => Request::TweaksList,
+        Command::Apps(Apps::List) => Request::AppsList,
+        Command::Apps(Apps::Remove {
+            mut ids,
+            recommended,
+            yes,
+        }) => {
+            confirm(yes)?;
+            if recommended
+                && let Ok(Response::Apps(apps)) = rewind_os_engine::Engine::new()
+                    .run(Request::AppsList, &rewind_os_engine::Task::new())
+            {
+                ids.extend(apps.into_iter().filter(|a| a.recommended).map(|a| a.id));
+            }
+            ids.sort();
+            ids.dedup();
+            if ids.is_empty() {
+                return Err(tr("Nothing to remove.").to_owned());
+            }
+            Request::AppsRemove { ids }
+        }
         Command::Tweaks(Tweaks::Apply {
             ids,
             recommended,
@@ -624,6 +660,30 @@ fn print_human(response: &Response, top: usize) {
                     )
                 );
             }
+        }
+        Response::Apps(apps) => {
+            if apps.is_empty() {
+                println!("{}", tr("No preinstalled apps to remove."));
+            }
+            for a in apps {
+                let mark = if a.recommended { "*" } else { " " };
+                println!("{mark} {:<45} {}", a.id, tr(a.name));
+            }
+            if apps.iter().any(|a| a.recommended) {
+                println!("\n* {}", tr("Suggested"));
+            }
+        }
+        Response::AppsRemoved(results) => {
+            for r in results {
+                match &r.error {
+                    None => println!("{}  {}", tr("Removed"), r.id),
+                    Some(err) => println!("{}  {}: {err}", tr("Error"), r.id),
+                }
+            }
+            println!(
+                "{}",
+                tr("Removed apps can be installed again from the Microsoft Store.")
+            );
         }
         Response::Trashed(results) => {
             for r in results {

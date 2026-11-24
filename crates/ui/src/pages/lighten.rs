@@ -3,9 +3,11 @@ use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::RichText;
+use rewind_os_engine::apps::StoreApp;
 use rewind_os_engine::tweaks::{Group, State as TweakState, TweakStatus};
 use rewind_os_engine::{Request, Response};
 use rewind_os_i18n::{tr, trf};
+use std::collections::HashSet;
 
 #[derive(Default)]
 pub struct State {
@@ -17,21 +19,65 @@ pub struct State {
     failures: Vec<String>,
     confirming: bool,
     started: bool,
+    apps_job: Option<Job>,
+    remove_job: Option<Job>,
+    apps: Option<Vec<StoreApp>>,
+    apps_selected: HashSet<String>,
+    confirming_apps: bool,
 }
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.list_job.is_some() || self.set_job.is_some()
+        self.list_job.is_some()
+            || self.set_job.is_some()
+            || self.apps_job.is_some()
+            || self.remove_job.is_some()
     }
 
     fn refresh(&mut self, ctx: &egui::Context, shared: &Shared) {
         self.started = true;
         self.list_job = Some(Job::start(ctx, &shared.engine, Request::TweaksList));
+        if rewind_os_engine::tool("apps.list").is_some_and(|t| t.available()) {
+            self.apps_job = Some(Job::start(ctx, &shared.engine, Request::AppsList));
+        }
     }
 
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         match jobs::finished(&mut self.list_job, ctx) {
             Some(Ok(Response::Tweaks(list))) => self.tweaks = Some(list),
+            Some(Ok(_)) => {}
+            Some(Err(err)) => shared.error(err),
+            None => {}
+        }
+        match jobs::finished(&mut self.apps_job, ctx) {
+            Some(Ok(Response::Apps(apps))) => {
+                self.apps_selected
+                    .retain(|id| apps.iter().any(|a| &a.id == id));
+                self.apps = Some(apps);
+            }
+            Some(Ok(_)) => {}
+            Some(Err(err)) => shared.error(err),
+            None => {}
+        }
+        match jobs::finished(&mut self.remove_job, ctx) {
+            Some(Ok(Response::AppsRemoved(results))) => {
+                let failed: Vec<String> = results
+                    .iter()
+                    .filter_map(|r| r.error.as_ref().map(|e| format!("{}: {e}", r.id)))
+                    .collect();
+                let removed = results.iter().filter(|r| r.error.is_none()).count();
+                let text = trf(
+                    "Removed {n} apps. They can be installed again from the Microsoft Store.",
+                    &[("n", &removed.to_string())],
+                );
+                if failed.is_empty() {
+                    shared.info(text);
+                } else {
+                    shared.error(format!("{text} {}", failed.join("; ")));
+                }
+                self.apps_selected.clear();
+                self.apps_job = Some(Job::start(ctx, &shared.engine, Request::AppsList));
+            }
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
             None => {}
@@ -76,7 +122,7 @@ impl State {
             ui,
             tr("Make Windows lighter"),
             tr(
-                "Turn off ads, tracking and extras you do not use. Nothing is uninstalled, and every change can be undone here.",
+                "Turn off ads, tracking and extras you do not use. Every setting can be undone here, and removed apps can be installed again from the Microsoft Store.",
             ),
         );
         let Some(tweaks) = self.tweaks.clone() else {
@@ -194,7 +240,9 @@ impl State {
                     });
                     ui.add_space(t.gap);
                 }
+                self.apps_section(ui, busy);
             });
+        self.confirm_apps(&ctx, shared);
         if let Some(one) = change {
             self.start(&ctx, shared, vec![one]);
         }
@@ -223,6 +271,110 @@ impl State {
                         .collect();
                     self.start(&ctx, shared, changes);
                 }
+            }
+        }
+    }
+
+    /// Preinstalled Store apps that can go, with a confirmation: removing one is not undone
+    /// here, but the Store can install it again.
+    fn apps_section(&mut self, ui: &mut egui::Ui, busy: bool) {
+        let Some(apps) = self.apps.clone() else {
+            return;
+        };
+        if apps.is_empty() {
+            return;
+        }
+        let t = theme::current(ui.ctx());
+        ui.label(RichText::new(tr("Preinstalled apps")).strong());
+        ui.label(
+            RichText::new(tr(
+                "Removed for your account only. Any of them can be installed again from the Microsoft Store.",
+            ))
+            .small()
+            .color(t.text_muted),
+        );
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(!busy, egui::Button::new(tr("Select suggested")))
+                .clicked()
+            {
+                self.apps_selected = apps
+                    .iter()
+                    .filter(|a| a.recommended)
+                    .map(|a| a.id.clone())
+                    .collect();
+            }
+            let label = trf(
+                "Remove {n} apps…",
+                &[("n", &self.apps_selected.len().to_string())],
+            );
+            if widgets::danger_button(ui, &label, !busy && !self.apps_selected.is_empty()).clicked()
+            {
+                self.confirming_apps = true;
+            }
+        });
+        ui.add_space(4.0);
+        card(ui, |ui| {
+            ui.set_width(ui.available_width());
+            for (index, app) in apps.iter().enumerate() {
+                widgets::list_row(ui, index, 40.0, |ui| {
+                    let mut checked = self.apps_selected.contains(&app.id);
+                    if ui
+                        .add_enabled(!busy, egui::Checkbox::without_text(&mut checked))
+                        .changed()
+                    {
+                        if checked {
+                            self.apps_selected.insert(app.id.clone());
+                        } else {
+                            self.apps_selected.remove(&app.id);
+                        }
+                    }
+                    ui.label(RichText::new(tr(app.name)).strong());
+                    if app.recommended {
+                        widgets::badge(ui, tr("Suggested"), t.accent);
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(RichText::new(&app.version).small().color(t.text_muted));
+                    });
+                });
+            }
+        });
+        ui.add_space(t.gap);
+    }
+
+    fn confirm_apps(&mut self, ctx: &egui::Context, shared: &Shared) {
+        if !self.confirming_apps {
+            return;
+        }
+        let names: Vec<&str> = self
+            .apps
+            .iter()
+            .flatten()
+            .filter(|a| self.apps_selected.contains(&a.id))
+            .map(|a| tr(a.name))
+            .collect();
+        let body = format!(
+            "{}\n\n• {}",
+            tr(
+                "These apps will be removed for your account. You can install any of them again from the Microsoft Store."
+            ),
+            names.join("\n• ")
+        );
+        match widgets::confirm(
+            ctx,
+            "confirm_apps",
+            tr("Remove these apps?"),
+            &body,
+            tr("Remove"),
+        ) {
+            Choice::Open => {}
+            Choice::Cancelled => self.confirming_apps = false,
+            Choice::Confirmed => {
+                self.confirming_apps = false;
+                let ids: Vec<String> = self.apps_selected.iter().cloned().collect();
+                self.remove_job =
+                    Some(Job::start(ctx, &shared.engine, Request::AppsRemove { ids }));
             }
         }
     }

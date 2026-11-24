@@ -45,7 +45,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.16 Linux: leftovers of removed programs in `~/.config`, `~/.local/share`
 - [x] R2.17 Linux: RPM uninstall (`rpm -e`, checked with `--test` first, never taking dependents along)
 - [x] R2.10 macOS: installed apps (`/Applications`, `~/Applications`), uninstalled to the Trash
-- [ ] R2.18 macOS: leftovers of removed apps in `~/Library`
+- [x] R2.18 macOS: leftovers of removed apps in `~/Library/Application Support` and `~/Library/Containers`
 - [ ] R2.11 macOS: login items and LaunchAgents
 - [ ] R2.12 macOS release: `.app` bundle, `.icns`, signing and notarization, `.dmg`
 - [ ] R2.13 Linux: `.deb`, `.rpm` and Flatpak packages next to the tar.gz

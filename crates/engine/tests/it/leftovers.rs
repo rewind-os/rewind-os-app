@@ -107,3 +107,23 @@ fn a_folder_named_like_a_program_on_the_path_is_not_a_leftover() {
     assert!(s.accounts_for("Code"));
     assert!(!s.accounts_for("netlify"));
 }
+
+#[test]
+fn macos_folders_of_apple_are_never_leftovers_and_bundle_ids_account_for_theirs() {
+    use rewind_os_engine::leftovers::mac_shared;
+    for apple in [
+        "com.apple.Safari",
+        "group.com.apple.notes",
+        "callhistorydb",
+        "mobile documents",
+    ] {
+        assert!(mac_shared(&apple.to_lowercase()), "{apple}");
+    }
+    assert!(!mac_shared("com.spotify.client"));
+    let mut s = Signals::default();
+    s.add_name("com.google.Chrome");
+    s.add_name("Google Chrome");
+    assert!(s.accounts_for("Google"));
+    assert!(s.accounts_for("com.google.Chrome"));
+    assert!(!s.accounts_for("com.spotify.client"));
+}

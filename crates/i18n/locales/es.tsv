@@ -490,3 +490,6 @@ Folders in ~/.config and ~/.local/share that no installed package, app, program 
 This is an estimate. Tools you run without installing them (npx, AppImages, scripts) can show up here. Check each folder before moving it; everything goes to the trash so you can restore it.	Es una estimación. Aquí pueden aparecer herramientas que usas sin instalarlas (npx, AppImages, scripts). Revisa cada carpeta antes de moverla; todo va a la papelera para que puedas restaurarlo.
 ~/.config	~/.config
 ~/.local/share	~/.local/share
+Folders in ~/Library/Application Support and ~/Library/Containers that no app, Homebrew package or running program refers to.	Carpetas en ~/Library/Application Support y ~/Library/Containers a las que no hace referencia ninguna app, paquete de Homebrew ni programa en ejecución.
+~/Library/Application Support	~/Library/Application Support
+~/Library/Containers	~/Library/Containers

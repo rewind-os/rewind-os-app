@@ -149,6 +149,8 @@ if ($Version -match '^\d+\.\d+\.\d+$') {
       Remove-Item -Force $pfx -ErrorAction SilentlyContinue
     }
   }
+  # WiX also writes debug symbols (.wixpdb) next to the package; they are not shipped.
+  Remove-Item -Force ([System.IO.Path]::ChangeExtension($Msi, '.wixpdb')) -ErrorAction SilentlyContinue
   $MsiHash = (Get-FileHash -Algorithm SHA256 $Msi).Hash.ToLowerInvariant()
   Set-Content -Path "$Msi.sha256" -Value "$MsiHash  $(Split-Path -Leaf $Msi)" -NoNewline -Encoding ascii
   Get-Item $Msi | Format-Table Name, Length

@@ -46,3 +46,13 @@ Things that look wrong but are not, and mistakes worth not repeating.
   Pass `/select,"C:\a b"` with `raw_arg` and drop the `\\?\` prefix.
 - Windows Installer saves an `<Icon>` under its `Id`: without an `.ico` extension the Start menu
   shortcut and the Settings entry show a blank icon. Small icon sizes are bitmaps, not PNG.
+
+## Starting a program's uninstaller
+
+`UninstallString` is a full command line in whatever shape the installer chose: quoted,
+unquoted with spaces in the path, or `MsiExec.exe /I{…}` (which opens change/repair, not
+remove). Do not run it through `cmd /C`: cmd strips the first and last quote when the line has
+more than two, and an uninstaller that needs administrator rights fails inside cmd with error
+740 while `spawn()` still reports success. `programs::launch` splits the line itself and starts
+it with `Start-Process` (ShellExecute), which shows the administrator prompt and returns the
+Windows error code (1223 declined, 2 missing).

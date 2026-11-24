@@ -553,3 +553,5 @@ free of {total}	libres de {total}
 Hibernation file	Archivo de hibernación
 Page file	Archivo de paginación
 Swap file	Archivo de intercambio
+The uninstaller was not started: the administrator prompt was declined.	No se inició el desinstalador: se rechazó la petición de permisos de administrador.
+The uninstaller this program registered is no longer on this computer. Open its folder to remove it by hand, then search for leftovers.	El desinstalador que registró este programa ya no está en este equipo. Abre su carpeta para quitarlo a mano y después busca restos.

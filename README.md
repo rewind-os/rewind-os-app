@@ -54,7 +54,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Startup programs | ✓ | ✓ (XDG autostart) | — |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
-| Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | — |
+| Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |
 | Make Windows lighter | ✓ | — | — |
 | Maintenance | component store, hibernation | journal | — |
 

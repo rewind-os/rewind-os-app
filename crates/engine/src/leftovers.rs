@@ -30,6 +30,10 @@ pub enum Location {
     UserConfig,
     /// Linux: `~/.local/share`.
     UserData,
+    /// macOS: `~/Library/Application Support`.
+    ApplicationSupport,
+    /// macOS: `~/Library/Containers`.
+    Containers,
 }
 
 impl Location {
@@ -44,6 +48,8 @@ impl Location {
             Location::UserPrograms => "AppData\\Local\\Programs",
             Location::UserConfig => "~/.config",
             Location::UserData => "~/.local/share",
+            Location::ApplicationSupport => "~/Library/Application Support",
+            Location::Containers => "~/Library/Containers",
         }
     }
 
@@ -57,6 +63,10 @@ impl Location {
             Location::UserPrograms => Known::LocalAppData.path().map(|p| p.join("Programs")),
             Location::UserConfig => Known::Config.path(),
             Location::UserData => Known::Data.path(),
+            Location::ApplicationSupport => Known::Home
+                .path()
+                .map(|h| h.join("Library/Application Support")),
+            Location::Containers => Known::Home.path().map(|h| h.join("Library/Containers")),
         }
     }
 }
@@ -370,6 +380,128 @@ const LINUX_SHARED: &[&str] = &[
     "jupyter",
 ];
 
+/// Folders in `~/Library` that belong to macOS itself or are shared. Lowercase.
+const MAC_SHARED: &[&str] = &[
+    "addressbook",
+    "callhistorydb",
+    "callhistorytransactions",
+    "clouddocs",
+    "knowledge",
+    "fileprovider",
+    "icloud",
+    "mobile documents",
+    "crashreporter",
+    "syncservices",
+    "dock",
+    "icdd",
+    "networkserviceproxy",
+    "diskimages",
+    "animoji",
+    "appstore",
+    "safari",
+    "mobilesync",
+    "accounts",
+    "accessibility",
+    "contextstoreagent",
+    "cloudkit",
+    "familycircle",
+    "homekit",
+    "identityservices",
+    "ubiquity",
+    "quick look",
+    "quicklook",
+    "siri",
+    "spotlight",
+    "assistant",
+    "assistantservices",
+    "notes",
+    "reminders",
+    "calendars",
+    "photos",
+    "facetime",
+    "messages",
+    "news",
+    "stocks",
+    "weather",
+    "maps",
+    "music",
+    "tv",
+    "podcasts",
+    "books",
+    "keychains",
+    "dmd",
+    "photoanalysisd",
+    "tipsd",
+    "transparencyd",
+    "trustd",
+    "useractivity",
+    "videoconference",
+    "audio units",
+    "audio",
+    "colorsync",
+    "fonts",
+    "input methods",
+    "keyboard layouts",
+    "preferencepanes",
+    "screen savers",
+    "services",
+    "sounds",
+    "spelling",
+    "voices",
+    "web plug-ins",
+    "internet plug-ins",
+    "sharedfilelistd",
+    "sharedfilelist",
+    "launchagents",
+    "logs",
+    "caches",
+    "group containers",
+    "metadata",
+    "keyboard services",
+    "backgroundtaskmanagement",
+    "applicationsupport",
+    "familysettings",
+    "gamekit",
+];
+
+/// Whether a folder in `~/Library` (lowercase name) belongs to macOS or is shared.
+pub fn mac_shared(lower: &str) -> bool {
+    lower.starts_with("com.apple.")
+        || lower.starts_with("group.com.apple.")
+        || MAC_SHARED.contains(&lower)
+}
+
+/// Evidence on macOS: every app's name and bundle id (Apple's included), Homebrew packages,
+/// the programs on the `PATH`, and the running programs.
+fn gather_mac_signals() -> Signals {
+    let mut signals = Signals::default();
+    for name in crate::macapps::known_names() {
+        signals.add_name(&name);
+    }
+    let bin_dirs: Vec<PathBuf> = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect())
+        .unwrap_or_default();
+    for dir in bin_dirs {
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            signals.add_name(&entry.file_name().to_string_lossy());
+        }
+    }
+    if let Ok(mut sys) = System::new() {
+        sys.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet),
+        );
+        for process in sys.processes().values() {
+            signals.add_name(&process.name().to_string_lossy());
+            if let Some(exe) = process.exe() {
+                signals.add_path(&exe.to_string_lossy());
+            }
+        }
+    }
+    signals
+}
+
 /// Evidence on Linux: every installed package and app, the programs on the `PATH`, the
 /// programs desktop entries start, and the running programs.
 fn gather_linux_signals() -> Signals {
@@ -435,9 +567,13 @@ fn gather_linux_signals() -> Signals {
 /// Lists candidate leftover folders, most likely first, then largest.
 pub fn find(task: &Task) -> Vec<Leftover> {
     task.set_stage("Reading installed programs and services");
-    let linux = rewind_os_platform::Os::current() == rewind_os_platform::Os::Linux;
+    let os = rewind_os_platform::Os::current();
+    let linux = os == rewind_os_platform::Os::Linux;
+    let mac = os == rewind_os_platform::Os::MacOs;
     let signals = if linux {
         gather_linux_signals()
+    } else if mac {
+        gather_mac_signals()
     } else {
         gather_signals()
     };
@@ -445,6 +581,8 @@ pub fn find(task: &Task) -> Vec<Leftover> {
     let mut candidates: Vec<(PathBuf, Location)> = Vec::new();
     let locations: &[Location] = if linux {
         &[Location::UserConfig, Location::UserData]
+    } else if mac {
+        &[Location::ApplicationSupport, Location::Containers]
     } else {
         &[
             Location::ProgramFiles,
@@ -468,7 +606,9 @@ pub fn find(task: &Task) -> Vec<Leftover> {
                 continue;
             }
             let name = entry.file_name().to_string_lossy().into_owned();
-            let shared_here = linux && LINUX_SHARED.contains(&name.to_lowercase().as_str());
+            let lower = name.to_lowercase();
+            let shared_here =
+                (linux && LINUX_SHARED.contains(&lower.as_str())) || (mac && mac_shared(&lower));
             if !shared_here && !signals.accounts_for(&name) {
                 candidates.push((entry.path(), location));
             }

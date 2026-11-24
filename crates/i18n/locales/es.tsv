@@ -497,3 +497,6 @@ The system asks for your password when you start one of these actions.	El sistem
 Clean {n} system categories (asks for your password)…	Limpiar {n} categorías del sistema (pide tu contraseña)…
 These system categories are deleted permanently. The system asks for your password for this one action; the app itself keeps running without administrator rights.	Estas categorías del sistema se borran para siempre. El sistema te pide la contraseña solo para esta acción; la app sigue funcionando sin permisos de administrador.
 Clean the system categories?	¿Limpiar las categorías del sistema?
+Folders in ~/Library/Application Support and ~/Library/Containers that no app, Homebrew package or running program refers to.	Carpetas en ~/Library/Application Support y ~/Library/Containers a las que no hace referencia ninguna app, paquete de Homebrew ni programa en ejecución.
+~/Library/Application Support	~/Library/Application Support
+~/Library/Containers	~/Library/Containers

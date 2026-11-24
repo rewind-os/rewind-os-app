@@ -179,8 +179,7 @@ pub const TOOLS: &[ToolSpec] = &[
     ToolSpec::new(
         "leftovers.find",
         "Find folders that no installed program, service or startup entry refers to",
-    )
-    .only(WINDOWS_LINUX),
+    ),
     ToolSpec::new(
         "leftovers.registry",
         "Report registry keys of programs that are no longer installed (never removes them)",

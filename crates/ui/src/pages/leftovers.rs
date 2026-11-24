@@ -113,6 +113,10 @@ impl State {
                 tr(
                     "Folders in Program Files, ProgramData and AppData that no installed program, service, running program or startup entry refers to.",
                 )
+            } else if rewind_os_engine::Os::current() == rewind_os_engine::Os::MacOs {
+                tr(
+                    "Folders in ~/Library/Application Support and ~/Library/Containers that no app, Homebrew package or running program refers to.",
+                )
             } else {
                 tr(
                     "Folders in ~/.config and ~/.local/share that no installed package, app, program on your PATH or running program refers to.",

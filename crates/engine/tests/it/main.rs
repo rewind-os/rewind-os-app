@@ -3,6 +3,7 @@
 mod cleanup;
 mod duplicates;
 mod leftovers;
+mod packages;
 mod recommend;
 mod safety;
 mod scan;

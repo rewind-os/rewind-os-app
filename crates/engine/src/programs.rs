@@ -34,6 +34,8 @@ pub struct InstalledProgram {
     pub estimated_bytes: Option<u64>,
     pub installed_on: Option<NaiveDate>,
     pub scope: Scope,
+    /// The package manager that installed it, on Linux (`APT`, `Flatpak`…).
+    pub manager: Option<&'static str>,
 }
 
 fn sources() -> [(Hive, &'static str, &'static str); 3] {
@@ -44,8 +46,17 @@ fn sources() -> [(Hive, &'static str, &'static str); 3] {
     ]
 }
 
-/// Every installed program that shows up in Windows' own list, sorted by name.
+/// Every installed program: Windows' own list, or the package managers on Linux. Sorted by
+/// name.
 pub fn installed() -> Vec<InstalledProgram> {
+    match rewind_os_platform::Os::current() {
+        rewind_os_platform::Os::Windows => windows_installed(),
+        rewind_os_platform::Os::Linux => crate::packages::installed(),
+        rewind_os_platform::Os::MacOs => Vec::new(),
+    }
+}
+
+fn windows_installed() -> Vec<InstalledProgram> {
     let mut seen = HashSet::new();
     let mut programs: Vec<InstalledProgram> = sources()
         .into_iter()
@@ -102,6 +113,7 @@ fn read(hive: Hive, base: &str, tag: &str, sub: &str) -> Option<InstalledProgram
         } else {
             Scope::Machine
         },
+        manager: None,
     })
 }
 

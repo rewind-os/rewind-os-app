@@ -49,7 +49,8 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | — |
 | Recommendations | ✓ | ✓ | ✓ |
-| Program leftovers, installed programs, make Windows lighter | ✓ | — | — |
+| Installed programs | ✓ | ✓ (list: APT, RPM, pacman, Flatpak, Snap) | — |
+| Program leftovers, make Windows lighter | ✓ | — | — |
 | Maintenance | component store, hibernation | journal | — |
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.

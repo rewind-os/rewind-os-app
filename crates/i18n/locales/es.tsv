@@ -417,3 +417,4 @@ Scheduled task: at startup	Tarea programada: al arrancar
 Scheduled task: when idle	Tarea programada: en reposo
 Scheduled task: on an event	Tarea programada: ante un evento
 Scheduled task: on a schedule	Tarea programada: según un horario
+Programs installed with the system's package managers, without libraries and the base system.	Programas instalados con los gestores de paquetes del sistema, sin bibliotecas ni el sistema base.

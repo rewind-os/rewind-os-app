@@ -1,0 +1,38 @@
+# Flatpak bundle of Rewind OS, built from the binaries packaging/linux/package.sh already made
+# (target/release), so the Flatpak runs the same code as the tar.gz, .deb and .rpm.
+#
+# A disk cleaner has to see the disk, so the sandbox is opened on purpose:
+#   --filesystem=host           read and clean the home folder and the drives
+#   --talk-name=org.freedesktop.Flatpak
+#                               run the system's own tools on the host (package managers, pkexec,
+#                               journalctl) with flatpak-spawn --host
+# This bundle is for direct download; it is not meant for Flathub.
+app-id: io.github.rewind_os.rewind_os_app
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: rewind-os
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --filesystem=host
+  - --talk-name=org.freedesktop.Flatpak
+modules:
+  - name: rewind-os
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 rewind-os rewind-os-cli -t /app/bin/
+      - install -Dm644 io.github.rewind_os.rewind_os_app.desktop -t /app/share/applications/
+      - cp -r hicolor /app/share/icons/
+    sources:
+      - type: file
+        path: ../../../target/release/rewind-os
+      - type: file
+        path: ../../../target/release/rewind-os-cli
+      - type: file
+        path: ../io.github.rewind_os.rewind_os_app.desktop
+      - type: dir
+        path: ../../../assets/app-icon
+        dest: .

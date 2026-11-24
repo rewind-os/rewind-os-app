@@ -74,6 +74,8 @@ Ready-made builds are on the [releases page](../../releases); check them against
   Or install the package: `sudo apt install ./rewind-os_<version>_amd64.deb` (Debian, Ubuntu)
   or `sudo dnf install ./rewind-os-<version>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` and
   `aarch64` for ARM.
+  Or install the Flatpak bundle: `flatpak install --user ./rewind-os-<version>-linux-<arch>.flatpak`
+  (it needs the host filesystem to see the disk, and runs the system's own tools on the host).
 
 ## Build
 

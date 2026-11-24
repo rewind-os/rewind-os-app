@@ -265,8 +265,6 @@ pub fn safe_package_name(name: &str) -> bool {
 
 /// English reasons; translate with `rewind_os_i18n::tr`.
 pub const REMOVES_OTHERS: &str = "Removing this package would also remove other packages, so Rewind OS does not do it. Use your package manager if you are sure.";
-pub const RPM_NOT_YET: &str =
-    "Removing RPM packages is not supported yet. Use your package manager (dnf, zypper).";
 
 /// Runs a command that needs administrator rights: directly when already elevated, through
 /// `pkexec` (which asks for the password) otherwise.
@@ -337,7 +335,14 @@ pub fn uninstall(key: &str) -> crate::Result<()> {
         }
         // snapd asks for rights itself.
         "snap" => finished("snap", process::run("snap", &["remove", name])?),
-        "rpm" => Err(crate::EngineError::Refused(RPM_NOT_YET)),
+        "rpm" => {
+            // `rpm -e` removes exactly one package and fails when anything depends on it;
+            // `--test` checks that first without changing anything.
+            if run("rpm", &["-e", "--test", name]).is_none() {
+                return Err(crate::EngineError::Refused(REMOVES_OTHERS));
+            }
+            run_as_admin("rpm", &["-e", name])
+        }
         _ => Err(crate::EngineError::NotFound(key.to_owned())),
     }
 }

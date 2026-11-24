@@ -18,7 +18,6 @@ pub fn is_cloud_placeholder(meta: &Metadata) -> bool {
 pub fn is_cloud_placeholder(_meta: &Metadata) -> bool {
     false
 }
-<<<<<<< HEAD
 
 /// Identifies a file with more than one name (hard links): the volume and the file's number on
 /// it. `None` for a file with a single name, or when the system cannot tell.
@@ -57,5 +56,3 @@ pub fn hard_links_expected(dir: &std::path::Path) -> bool {
         .path()
         .is_some_and(|windows| lower(dir).starts_with(lower(&windows)))
 }
-=======
->>>>>>> origin/main

@@ -26,7 +26,7 @@ large forgotten files and programs that start with the system for no reason.
   safe it is and whether it needs administrator rights.
 - **Program leftovers**: folders in Program Files, ProgramData and AppData that no installed
   program, service, running program or startup entry refers to. They go to the recycle bin.
-- **Installed programs** with search and their own uninstaller.
+- **Installed programs** with their icons, search and their own uninstaller.
 - **Startup programs** on and off, using the system's own records.
 - **Make Windows lighter**: turn off ads, suggestions, tracking and extras you do not use. A
   closed list of documented settings; nothing is uninstalled and every one can be undone.

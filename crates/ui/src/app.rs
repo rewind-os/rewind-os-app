@@ -132,6 +132,8 @@ pub struct Shared {
     /// Set by a recommendation: the cleanup categories to select.
     pub cleanup_request: Option<Vec<String>>,
     pub relaunch: Option<Job>,
+    /// Program icons, shared by the pages that list programs.
+    pub icons: crate::icons::IconCache,
 }
 
 impl Shared {
@@ -217,6 +219,7 @@ impl App {
                 scan_request: crate::devtools::scan_path(),
                 cleanup_request: None,
                 relaunch: None,
+                icons: Default::default(),
             },
             page,
             overview,

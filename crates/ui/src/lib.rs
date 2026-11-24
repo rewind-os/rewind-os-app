@@ -2,6 +2,7 @@
 
 mod app;
 mod devtools;
+mod icons;
 mod jobs;
 mod pages;
 mod theme;

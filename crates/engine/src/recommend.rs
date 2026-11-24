@@ -298,8 +298,13 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
             })
             .collect(),
         cleanup: cleanup::analyze(task),
-        startup_enabled: tool_available("startup.list")
-            .then(|| startup::list().iter().filter(|e| e.enabled).count()),
+        startup_enabled: tool_available("startup.list").then(|| {
+            // Scheduled tasks mostly run later (updaters), not while the computer starts.
+            startup::list()
+                .iter()
+                .filter(|e| e.enabled && e.source != startup::Source::ScheduledTask)
+                .count()
+        }),
         tweaks_pending: (Os::current() == Os::Windows).then(|| {
             tweaks::list()
                 .iter()

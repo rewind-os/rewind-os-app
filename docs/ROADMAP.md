@@ -21,7 +21,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [ ] R1.3 Size on disk (compressed and sparse files) next to logical size
 - [x] R1.4 Count hard links once, so WinSxS shows its real size in the analyzer
 - [ ] R1.5 Leftover registry keys of uninstalled programs (report only, export before removing)
-- [ ] R1.6 Scheduled tasks and services in the startup page
+- [x] R1.6 Scheduled tasks in the startup page (programs' own tasks; Windows' tasks are never listed)
+- [ ] R1.13 Third-party services in the startup page (set to manual start, never disabled)
 - [ ] R1.7 MCP server (`rewind-os-cli mcp`) with `--automation-read-root` / `--automation-write-root`
 - [ ] R1.8 Live-region announcements when a background job finishes
 - [x] R1.9 GitHub Actions: CI on Linux and Windows, release workflow with portable zips (x64, arm64)

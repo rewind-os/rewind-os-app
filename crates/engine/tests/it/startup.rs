@@ -101,3 +101,78 @@ fn essential_entries_cannot_be_turned_off() {
             .exists()
     );
 }
+
+mod scheduled_tasks {
+    use rewind_os_engine::startup::tasks::parse;
+
+    const SAMPLE: &str = r#"[
+      {"path":"\\GoogleUpdateTaskMachineUA","name":"GoogleUpdateTaskMachineUA","state":"Ready","user":"SYSTEM","triggers":["MSFT_TaskDailyTrigger"],"command":"C:\\Program Files (x86)\\Google\\Update\\GoogleUpdate.exe /ua"},
+      {"path":"\\Vendor\\Tray helper","name":"Tray helper","state":"Disabled","user":"PC\\ana","triggers":["MSFT_TaskLogonTrigger"],"command":"C:\\Users\\ana\\AppData\\Local\\Vendor\\tray.exe"},
+      {"path":"\\Microsoft\\Windows\\Defrag\\ScheduledDefrag","name":"ScheduledDefrag","state":"Ready","user":"SYSTEM","triggers":[],"command":"defrag.exe"}
+    ]"#;
+
+    #[test]
+    fn windows_own_tasks_are_never_listed() {
+        let entries = parse(SAMPLE, "ana");
+        assert_eq!(entries.len(), 2);
+        assert!(
+            entries
+                .iter()
+                .all(|e| !e.id.to_lowercase().contains("microsoft"))
+        );
+    }
+
+    #[test]
+    fn state_and_rights_come_from_the_task() {
+        let entries = parse(SAMPLE, "ana");
+        let google = entries
+            .iter()
+            .find(|e| e.name.starts_with("Google"))
+            .unwrap();
+        let tray = entries.iter().find(|e| e.name == "Tray helper").unwrap();
+        assert!(
+            google.enabled && google.needs_admin,
+            "a SYSTEM task needs rights"
+        );
+        assert!(
+            !tray.enabled && !tray.needs_admin,
+            "your own task is yours to change"
+        );
+        assert_ne!(google.when, tray.when);
+    }
+
+    #[test]
+    fn unexpected_output_lists_nothing() {
+        assert!(parse("Get-ScheduledTask : Access denied", "ana").is_empty());
+        assert!(parse("", "ana").is_empty());
+    }
+}
+
+mod scheduled_task_names {
+    use rewind_os_engine::startup::tasks::{display_name, parse};
+
+    #[test]
+    fn machine_made_suffixes_are_dropped_from_names() {
+        assert_eq!(
+            display_name("NVIDIA App SelfUpdate_{B2FE1952-0186-46C3-BAEC-A80AA35AC5B8}"),
+            "NVIDIA App SelfUpdate"
+        );
+        assert_eq!(
+            display_name("OneDrive Reporting Task-S-1-5-21-1097274811-1001"),
+            "OneDrive Reporting Task"
+        );
+        assert_eq!(
+            display_name(
+                "ActionCenterRefreshForExpirationTask-{97aa830e-eae8-490e-9369-c607022919c9}"
+            ),
+            "ActionCenterRefreshForExpirationTask"
+        );
+        assert_eq!(display_name("GHelper"), "GHelper");
+    }
+
+    #[test]
+    fn a_trigger_without_a_class_does_not_hide_every_task() {
+        let json = r#"[{"path":"\\Vendor","name":"Vendor","state":"Running","user":"me","triggers":[null],"command":"v.exe"}]"#;
+        assert_eq!(parse(json, "me").len(), 1);
+    }
+}

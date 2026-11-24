@@ -2,6 +2,7 @@
 //! autostart entries on Linux. Turning one off never deletes it; it can be turned back on here
 //! or from the system's own settings.
 
+pub mod tasks;
 mod windows;
 pub mod xdg;
 
@@ -23,6 +24,8 @@ pub enum Source {
     UserAutostart,
     /// Linux: `/etc/xdg/autostart` and the other `$XDG_CONFIG_DIRS`.
     SystemAutostart,
+    /// Windows: a scheduled task a program added (never one of Windows' own).
+    ScheduledTask,
 }
 
 impl Source {
@@ -35,6 +38,7 @@ impl Source {
             Source::UserStartupFolder => "user_folder",
             Source::CommonStartupFolder => "common_folder",
             Source::UserAutostart | Source::SystemAutostart => "xdg",
+            Source::ScheduledTask => "task",
         }
     }
 
@@ -48,6 +52,7 @@ impl Source {
             Source::CommonStartupFolder => "Startup folder (all users)",
             Source::UserAutostart => "Autostart (you)",
             Source::SystemAutostart => "Autostart (all users)",
+            Source::ScheduledTask => "Scheduled task",
         }
     }
 }
@@ -64,6 +69,8 @@ pub struct StartupEntry {
     pub needs_admin: bool,
     /// The system needs it (security, sign-in, accessibility, sound); it cannot be turned off.
     pub essential: bool,
+    /// When it runs, if not simply at sign-in (English; translate with `rewind_os_i18n::tr`).
+    pub when: Option<&'static str>,
 }
 
 /// English reason shown when an essential entry is not turned off.
@@ -78,6 +85,8 @@ const ESSENTIAL_PREFIXES: &[&str] = &[
     "windowsdefender",
     "windows defender",
     "msascuil",
+    // Realtek audio: the sound control panel and jack detection.
+    "rtkaud",
     // Linux desktop sessions
     "at-spi",
     "gnome-keyring",
@@ -105,7 +114,11 @@ pub fn is_essential(name: &str) -> bool {
 
 pub fn list() -> Vec<StartupEntry> {
     match Os::current() {
-        Os::Windows => windows::list(),
+        Os::Windows => {
+            let mut entries = windows::list();
+            entries.extend(tasks::list());
+            entries
+        }
         Os::Linux => xdg::Dirs::current().map(|d| d.list()).unwrap_or_default(),
         Os::MacOs => Vec::new(),
     }
@@ -113,7 +126,10 @@ pub fn list() -> Vec<StartupEntry> {
 
 pub fn set_enabled(id: &str, enabled: bool) -> Result<()> {
     match Os::current() {
-        Os::Windows => windows::set_enabled(id, enabled),
+        Os::Windows => match id.strip_prefix("task|") {
+            Some(path) => tasks::set_enabled(path, enabled),
+            None => windows::set_enabled(id, enabled),
+        },
         Os::Linux => xdg::Dirs::current()
             .ok_or_else(|| EngineError::NotFound("autostart folder".to_owned()))?
             .set_enabled(id, enabled),

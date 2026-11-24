@@ -34,7 +34,8 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   referencia ningún programa instalado, servicio, programa en ejecución ni entrada de inicio. Van
   a la papelera.
 - **Programas instalados**, con sus iconos, búsqueda y su propio desinstalador.
-- **Programas de inicio**: activar y desactivar, con los registros del propio sistema.
+- **Programas de inicio**: activar y desactivar, con los registros del propio sistema, incluidas
+  las tareas programadas que añaden los programas (las del propio Windows nunca se muestran).
 - **Aligerar Windows**: desactiva anuncios, sugerencias, rastreo y extras que no usas. Una lista
   cerrada de ajustes documentados; no se desinstala nada y cada uno se puede deshacer.
 - **Mantenimiento**: las herramientas del propio sistema (almacén de componentes e hibernación en

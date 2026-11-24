@@ -76,6 +76,9 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
   O instala el paquete: `sudo apt install ./rewind-os_<versión>_amd64.deb` (Debian, Ubuntu) o
   `sudo dnf install ./rewind-os-<versión>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` y `aarch64`
   para ARM.
+  O instala el Flatpak: `flatpak install --user ./rewind-os-<versión>-linux-<arq>.flatpak` (necesita
+  acceso al sistema de archivos para ver el disco y ejecuta las herramientas del sistema fuera del
+  sandbox).
 
 ## Compilar
 

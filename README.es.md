@@ -56,7 +56,7 @@ administrador cuando una tarea lo necesita.
 | Limpieza, papelera | ✓ | ✓ | ✓ |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | — |
 | Recomendaciones | ✓ | ✓ | ✓ |
-| Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | — |
+| Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, a la Papelera) |
 | Restos de programas | ✓ | ✓ (`~/.config`, `~/.local/share`) | — |
 | Aligerar Windows | ✓ | — | — |
 | Mantenimiento | almacén de componentes, hibernación | journal | — |

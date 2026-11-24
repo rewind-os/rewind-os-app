@@ -53,6 +53,7 @@ impl State {
         match jobs::finished(&mut self.uninstall_job, &ctx) {
             Some(Ok(Response::Done(message))) => {
                 shared.info(tr(message));
+                // Package managers and the Trash change the list at once.
                 // The list changes when a package manager removed the program.
                 if Os::current() != Os::Windows {
                     self.job = Some(Job::start(&ctx, &shared.engine, Request::ProgramsList));
@@ -67,6 +68,8 @@ impl State {
             tr("Installed programs"),
             if Page::Leftovers.available() {
                 tr("Uninstall what you no longer use, then look for its leftovers.")
+            } else if Os::current() == Os::MacOs {
+                tr("The apps in Applications. Uninstalling moves an app to the Trash.")
             } else {
                 tr(
                     "Programs installed with the system's package managers, without libraries and the base system.",
@@ -193,6 +196,11 @@ impl State {
             let body = if Os::current() == Os::Windows {
                 trf(
                     "This starts the uninstaller of {name}. Follow its steps; afterwards, search for leftovers.",
+                    &[("name", &program.name)],
+                )
+            } else if Os::current() == Os::MacOs {
+                trf(
+                    "{name} will be moved to the Trash, where you can put it back. Its settings in ~/Library stay.",
                     &[("name", &program.name)],
                 )
             } else {

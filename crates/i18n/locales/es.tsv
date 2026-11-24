@@ -487,3 +487,7 @@ The apps in Applications. Uninstalling moves an app to the Trash.	Las apps de Ap
 {name} will be moved to the Trash, where you can put it back. Its settings in ~/Library stay.	{name} se moverá a la Papelera, desde donde puedes recuperarla. Sus ajustes en ~/Library se quedan.
 This app is part of macOS and is not removed.	Esta app forma parte de macOS y no se elimina.
 App	App
+Folders in ~/.config and ~/.local/share that no installed package, app, program on your PATH or running program refers to.	Carpetas en ~/.config y ~/.local/share a las que no hace referencia ningún paquete instalado, app, programa de tu PATH ni programa en ejecución.
+This is an estimate. Tools you run without installing them (npx, AppImages, scripts) can show up here. Check each folder before moving it; everything goes to the trash so you can restore it.	Es una estimación. Aquí pueden aparecer herramientas que usas sin instalarlas (npx, AppImages, scripts). Revisa cada carpeta antes de moverla; todo va a la papelera para que puedas restaurarlo.
+~/.config	~/.config
+~/.local/share	~/.local/share

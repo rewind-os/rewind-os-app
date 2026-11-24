@@ -42,7 +42,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.8 CI on Linux, Windows and macOS; Linux x64/arm64 tar.gz in releases
 - [x] R2.9 Linux: installed programs (dpkg, rpm, pacman, Flatpak, Snap), without libraries and the base system
 - [x] R2.15 Linux: uninstall through the package manager (APT simulated first, never taking other packages along; pacman, Flatpak, Snap)
-- [ ] R2.16 Linux: leftovers of removed programs in `~/.config`, `~/.local/share`; RPM uninstall
+- [x] R2.16 Linux: leftovers of removed programs in `~/.config`, `~/.local/share`
+- [ ] R2.17 Linux: RPM uninstall (dnf/zypper without taking dependents along)
 - [x] R2.10 macOS: installed apps (`/Applications`, `~/Applications`), uninstalled to the Trash
 - [ ] R2.18 macOS: leftovers of removed apps in `~/Library`
 - [ ] R2.11 macOS: login items and LaunchAgents

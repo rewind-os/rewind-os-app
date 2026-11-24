@@ -64,3 +64,24 @@ fn rpm_pacman_flatpak_and_snap_outputs_are_read() {
     assert_eq!(names, vec!["spotify"]);
     assert_eq!(snap[0].publisher.as_deref(), Some("spotify"));
 }
+
+#[test]
+fn an_apt_removal_that_takes_other_packages_is_seen() {
+    use rewind_os_engine::packages::apt_removals;
+    let alone = "NOTE: simulation\nRemv neofetch [7.1.0-4]\n";
+    assert_eq!(apt_removals(alone), vec!["neofetch"]);
+    let cascade =
+        "Remv python3-pip [23.0]\nRemv python3:amd64 [3.11.2-1]\nRemv python3-venv [3.11]\n";
+    let removed = apt_removals(cascade);
+    assert!(removed.len() > 1 && removed.contains(&"python3".to_owned()));
+}
+
+#[test]
+fn package_names_can_never_become_options() {
+    use rewind_os_engine::packages::safe_package_name;
+    assert!(safe_package_name("python3.11-venv"));
+    assert!(safe_package_name("libstdc++6:amd64"));
+    assert!(!safe_package_name("--purge"));
+    assert!(!safe_package_name("foo bar"));
+    assert!(!safe_package_name("x;rm -rf /"));
+}

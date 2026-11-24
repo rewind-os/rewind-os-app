@@ -161,9 +161,12 @@ pub const TOOLS: &[ToolSpec] = &[
         .admin(AdminNeed::Partly)
         .changes(),
     ToolSpec::new("programs.list", "List installed programs").only(WINDOWS_LINUX),
-    ToolSpec::new("programs.uninstall", "Start a program's own uninstaller")
-        .changes()
-        .only(WINDOWS),
+    ToolSpec::new(
+        "programs.uninstall",
+        "Uninstall a program: its own uninstaller on Windows, the package manager on Linux",
+    )
+    .changes()
+    .only(WINDOWS_LINUX),
     ToolSpec::new(
         "leftovers.find",
         "Find folders that no installed program, service or startup entry refers to",
@@ -391,7 +394,11 @@ impl Engine {
             Request::ProgramsList => Ok(Response::Programs(programs::installed())),
             Request::ProgramUninstall { key } => {
                 programs::start_uninstaller(&key)?;
-                Ok(Response::Done("The program's uninstaller was started"))
+                Ok(Response::Done(if Os::current() == Os::Windows {
+                    "The program's uninstaller was started"
+                } else {
+                    "The program was uninstalled"
+                }))
             }
             Request::LeftoversFind => Ok(Response::Leftovers(leftovers::find(task))),
             Request::RegistryLeftovers => {

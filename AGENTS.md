@@ -43,10 +43,12 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
    Fix what a lint reports; do not silence it with `allow` or a lint-config change.
 6. Dates use `chrono`. Locks use `parking_lot::Mutex`.
 7. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`. The look
-   is minimal and follows the spirit of Termius in the warm, retro colours of the cassette icon:
-   espresso surfaces (cream in the light theme), one mustard accent, flat surfaces without borders, line icons drawn in
-   `crates/ui/src/glyphs.rs`, tags as words on a faint tint, muted secondary text, generous
-   spacing. Add no new colours, outlines or decorations without a reason.
+   is a professional, data-first dashboard: neutral graphite surfaces (white and cool greys in
+   the light theme), one blue accent for actions and selection, flat surfaces without borders,
+   line icons drawn in `crates/ui/src/glyphs.rs`, tags as words on a faint tint, muted
+   secondary text. Figures are shown as charts from `crates/ui/src/charts.rs` (key-figure
+   tiles, gauges, ring charts, stacked bars) in the theme's categorical `palette`, always next
+   to their numbers. Add no new colours, outlines or decorations without a reason.
 8. User-facing text goes through `tr()` with English as the key. Add the Spanish line to
    `crates/i18n/locales/es.tsv` in the same change; a missing translation shows English.
 9. Never present partial or unsupported behaviour as success. Files that could not be deleted,
@@ -72,7 +74,8 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
 - Integration tests are one binary per crate: `tests/it/main.rs`.
 - Never delete, weaken or skip a test to make a check pass.
 - UI checks: `REWIND_OS_PAGE=<page> REWIND_OS_SCREENSHOT=out.ppm cargo run -p rewind-os` saves the
-  window and exits; `REWIND_OS_SCAN=<path>` starts a scan first. See `crates/ui/src/devtools.rs`.
+  window and exits; `REWIND_OS_SCAN=<path>` starts a scan first;
+  `REWIND_OS_THEME=light` checks the light theme. See `crates/ui/src/devtools.rs`.
 
 ## Checks
 

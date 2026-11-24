@@ -1,4 +1,5 @@
 use crate::app::{Page, Shared};
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
@@ -206,13 +207,28 @@ impl State {
             return;
         }
         let total: u64 = visible.iter().map(|l| l.bytes).sum();
-        ui.label(
-            RichText::new(trf(
-                "{n} folders, {size} in total",
-                &[("n", &visible.len().to_string()), ("size", &bytes(total))],
-            ))
-            .color(t.text_muted),
-        );
+        let largest = visible.iter().max_by_key(|l| l.bytes);
+        let files: u64 = visible.iter().map(|l| l.files).sum();
+        charts::grid(ui, 3, 180.0, |ui, i| match i {
+            0 => charts::stat_tile(
+                ui,
+                tr("Leftover folders"),
+                &count(visible.len() as u64),
+                &trf("{n} files", &[("n", &count(files))]),
+                None,
+            ),
+            1 => charts::stat_tile(ui, tr("Total size"), &bytes(total), "", None),
+            _ => charts::stat_tile(
+                ui,
+                tr("Largest folder"),
+                &largest.map(|l| bytes(l.bytes)).unwrap_or_default(),
+                &largest
+                    .map(|l| l.path.display().to_string())
+                    .unwrap_or_default(),
+                None,
+            ),
+        });
+        ui.add_space(t.gap * 0.75);
         let row_height = 54.0;
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])

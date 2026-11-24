@@ -1,4 +1,5 @@
 use crate::app::Shared;
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
@@ -222,16 +223,31 @@ impl State {
         let busy = self.busy();
         let remaining = self.remaining(report);
         let free: u64 = remaining.iter().map(|s| s.reclaimable()).sum();
-        ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new(bytes(free)).strong().size(18.0));
-            ui.label(
-                RichText::new(trf(
-                    "can be freed by keeping one copy of each of {n} files",
-                    &[("n", &count(report.sets.len() as u64))],
-                ))
-                .color(t.text_muted),
-            );
+        let copies: u64 = remaining.iter().map(|s| s.copies.len() as u64).sum();
+        charts::grid(ui, 3, 180.0, |ui, i| match i {
+            0 => charts::stat_tile(
+                ui,
+                tr("Space you can free"),
+                &bytes(free),
+                tr("keeping one copy of each file"),
+                None,
+            ),
+            1 => charts::stat_tile(
+                ui,
+                tr("Files with copies"),
+                &count(report.sets.len() as u64),
+                &trf("{n} copies in total", &[("n", &count(copies))]),
+                None,
+            ),
+            _ => charts::stat_tile(
+                ui,
+                tr("Files compared"),
+                &count(report.files_seen),
+                &report.root.display().to_string(),
+                None,
+            ),
         });
+        ui.add_space(4.0);
         let mut notes = Vec::new();
         if report.cancelled {
             notes.push(tr("The search was stopped; some duplicates may be missing.").to_owned());

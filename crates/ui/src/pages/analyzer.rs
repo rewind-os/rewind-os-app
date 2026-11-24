@@ -1,4 +1,5 @@
 use crate::app::Shared;
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::treemap;
@@ -202,20 +203,27 @@ impl State {
     fn summary(&self, ui: &mut egui::Ui, tree: &ScanTree) {
         let t = theme::current(ui.ctx());
         let Some(root) = tree.root_node() else { return };
-        ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new(bytes(root.bytes)).strong().size(18.0));
-            ui.label(
-                RichText::new(trf(
-                    "{files} files in {dirs} folders · {secs} s",
-                    &[
-                        ("files", &count(root.files)),
-                        ("dirs", &count(tree.dir_count() as u64)),
-                        ("secs", &format!("{:.1}", tree.elapsed_ms as f64 / 1000.0)),
-                    ],
-                ))
-                .color(t.text_muted),
-            );
+        let folder = tree.path(ScanTree::ROOT).display().to_string();
+        let types = tree.extensions.len() as u64;
+        charts::grid(ui, 4, 160.0, |ui, i| match i {
+            0 => charts::stat_tile(ui, tr("Total size"), &bytes(root.bytes), &folder, None),
+            1 => charts::stat_tile(ui, tr("Files"), &count(root.files), "", None),
+            2 => charts::stat_tile(
+                ui,
+                tr("Folders"),
+                &count(tree.dir_count() as u64),
+                &trf("{n} file types", &[("n", &count(types))]),
+                None,
+            ),
+            _ => charts::stat_tile(
+                ui,
+                tr("Scan time"),
+                &format!("{:.1} s", tree.elapsed_ms as f64 / 1000.0),
+                "",
+                None,
+            ),
         });
+        ui.add_space(4.0);
         if tree.cancelled {
             ui.label(
                 RichText::new(tr("The scan was stopped; sizes are incomplete.")).color(t.warn),
@@ -529,22 +537,71 @@ fn file_rows(
         });
 }
 
+/// Size per file type: a ring chart of the largest types (the rest grouped as "Other") with
+/// its legend, then every type with its share as a bar.
 fn file_types(ui: &mut egui::Ui, tree: &ScanTree) {
     let t = theme::current(ui.ctx());
+    let total: u64 = tree.extensions.iter().map(|e| e.bytes).sum();
     let max = tree.extensions.first().map(|e| e.bytes).unwrap_or(1).max(1);
+    let name_of = |ext: &rewind_os_engine::scan::ExtensionStat| {
+        if ext.extension.is_empty() {
+            tr("(no extension)").to_owned()
+        } else {
+            format!(".{}", ext.extension)
+        }
+    };
+    let top = t.palette.len() - 1;
+    let mut sizes: Vec<u64> = tree.extensions.iter().take(top).map(|e| e.bytes).collect();
+    let mut names: Vec<String> = tree.extensions.iter().take(top).map(&name_of).collect();
+    let rest: u64 = tree.extensions.iter().skip(top).map(|e| e.bytes).sum();
+    if rest > 0 {
+        sizes.push(rest);
+        names.push(tr("Other").to_owned());
+    }
+    let parts = charts::shares(t, &sizes, total);
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
+            ui.add_space(6.0);
+            card(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal_top(|ui| {
+                    let summary = names
+                        .iter()
+                        .zip(&sizes)
+                        .map(|(n, b)| format!("{n} {}", bytes(*b)))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    charts::donut(
+                        ui,
+                        168.0,
+                        &parts,
+                        &bytes(total),
+                        &trf("{n} types", &[("n", &count(tree.extensions.len() as u64))]),
+                        &format!("{}: {summary}", tr("File types")),
+                    );
+                    ui.add_space(t.gap);
+                    ui.vertical(|ui| {
+                        ui.add_space(8.0);
+                        for ((name, size), (fraction, color)) in
+                            names.iter().zip(&sizes).zip(&parts)
+                        {
+                            charts::legend_row(ui, *color, name, &bytes(*size), Some(*fraction));
+                        }
+                    });
+                });
+            });
+            ui.add_space(t.gap);
             egui::Grid::new("ext_grid")
                 .num_columns(4)
-                .spacing([14.0, 6.0])
-                .striped(true)
+                .spacing([14.0, 8.0])
                 .show(ui, |ui| {
-                    for ext in &tree.extensions {
-                        let name = if ext.extension.is_empty() {
-                            tr("(no extension)").to_owned()
+                    for (i, ext) in tree.extensions.iter().enumerate() {
+                        let name = name_of(ext);
+                        let color = if i < top {
+                            t.palette[i % t.palette.len()]
                         } else {
-                            format!(".{}", ext.extension)
+                            t.control
                         };
                         ui.label(RichText::new(&name).strong());
                         ui.label(bytes(ext.bytes));
@@ -552,8 +609,8 @@ fn file_types(ui: &mut egui::Ui, tree: &ScanTree) {
                             RichText::new(trf("{n} files", &[("n", &count(ext.files))]))
                                 .color(t.text_muted),
                         );
-                        ui.allocate_ui(egui::vec2(220.0, 12.0), |ui| {
-                            widgets::usage_bar(ui, ext.bytes as f32 / max as f32, t.accent, &name);
+                        ui.allocate_ui(egui::vec2(240.0, 12.0), |ui| {
+                            widgets::usage_bar(ui, ext.bytes as f32 / max as f32, color, &name);
                         });
                         ui.end_row();
                     }

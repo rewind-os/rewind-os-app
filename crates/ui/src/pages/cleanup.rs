@@ -1,4 +1,5 @@
 use crate::app::Shared;
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
@@ -204,6 +205,8 @@ impl State {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                breakdown(ui, reports, selected_bytes, self.selected.len());
+                ui.add_space(t.gap * 1.5);
                 for group in Group::ALL {
                     let items: Vec<&CategoryReport> = reports
                         .iter()
@@ -212,7 +215,7 @@ impl State {
                     if items.is_empty() {
                         continue;
                     }
-                    ui.label(RichText::new(tr(group.label())).strong());
+                    charts::section_title(ui, tr(group.label()));
                     card(ui, |ui| {
                         ui.set_width(ui.available_width());
                         for (i, report) in items.iter().enumerate() {
@@ -301,6 +304,89 @@ impl State {
             }
         }
     }
+}
+
+/// Key figures and where the junk is: one bar split by group, with its legend.
+fn breakdown(ui: &mut egui::Ui, reports: &[CategoryReport], selected_bytes: u64, selected: usize) {
+    let t = theme::current(ui.ctx());
+    let found: u64 = reports.iter().map(|r| r.bytes).sum();
+    let with_junk = reports.iter().filter(|r| r.bytes > 0).count();
+    let files: u64 = reports.iter().map(|r| r.files).sum();
+    charts::grid(ui, 3, 180.0, |ui, i| match i {
+        0 => charts::stat_tile(
+            ui,
+            tr("Junk found"),
+            &bytes(found),
+            &trf("{n} files", &[("n", &count(files))]),
+            None,
+        ),
+        1 => charts::stat_tile(
+            ui,
+            tr("Selected to clean"),
+            &bytes(selected_bytes),
+            &trf("{n} categories", &[("n", &selected.to_string())]),
+            Some((
+                if found > 0 {
+                    (selected_bytes as f64 / found as f64) as f32
+                } else {
+                    0.0
+                },
+                t.accent,
+            )),
+        ),
+        _ => charts::stat_tile(
+            ui,
+            tr("Categories with junk"),
+            &with_junk.to_string(),
+            &trf("of {n} checked", &[("n", &reports.len().to_string())]),
+            None,
+        ),
+    });
+    let groups: Vec<(Group, u64)> = Group::ALL
+        .into_iter()
+        .map(|g| {
+            let size = reports
+                .iter()
+                .filter(|r| r.category.group == g)
+                .map(|r| r.bytes)
+                .sum();
+            (g, size)
+        })
+        .filter(|(_, size)| *size > 0)
+        .collect();
+    if groups.is_empty() {
+        return;
+    }
+    ui.add_space(t.gap * 0.75);
+    card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(RichText::new(tr("Where the junk is")).strong());
+        ui.add_space(8.0);
+        let sizes: Vec<u64> = groups.iter().map(|(_, s)| *s).collect();
+        let parts = charts::shares(t, &sizes, found);
+        let summary = groups
+            .iter()
+            .map(|(g, s)| format!("{} {}", tr(g.label()), bytes(*s)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        charts::stacked_bar(ui, 12.0, &parts, &summary);
+        ui.add_space(8.0);
+        ui.horizontal_wrapped(|ui| {
+            for ((group, size), (fraction, color)) in groups.iter().zip(&parts) {
+                ui.allocate_ui(egui::vec2(230.0, 20.0), |ui| {
+                    ui.set_width(230.0);
+                    charts::legend_row(
+                        ui,
+                        *color,
+                        tr(group.label()),
+                        &bytes(*size),
+                        Some(*fraction),
+                    );
+                });
+                ui.add_space(t.gap);
+            }
+        });
+    });
 }
 
 fn category_row(ui: &mut egui::Ui, report: &CategoryReport, selected: &mut HashSet<&'static str>) {

@@ -3,6 +3,7 @@
 //!
 //! - `REWIND_OS_PAGE=<overview|analyzer|duplicates|cleanup|leftovers|programs|startup|lighten|maintenance>`
 //!   opens that page first.
+//! - `REWIND_OS_THEME=<light|dark>` shows that theme instead of following the system.
 //! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a duplicate search on the duplicates
 //!   page).
 //! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
@@ -20,6 +21,14 @@ pub struct Devtools {
 
 pub fn start_page() -> Option<String> {
     std::env::var("REWIND_OS_PAGE").ok()
+}
+
+pub fn apply_theme(ctx: &egui::Context) {
+    match std::env::var("REWIND_OS_THEME").as_deref() {
+        Ok("light") => ctx.set_theme(egui::ThemePreference::Light),
+        Ok("dark") => ctx.set_theme(egui::ThemePreference::Dark),
+        _ => {}
+    }
 }
 
 pub fn scan_path() -> Option<PathBuf> {

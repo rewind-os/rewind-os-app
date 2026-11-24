@@ -1,9 +1,10 @@
 use crate::app::{Page, Shared};
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, page_header};
 use egui::RichText;
-use rewind_os_engine::format::bytes;
+use rewind_os_engine::format::{bytes, count};
 use rewind_os_engine::programs::{InstalledProgram, Scope};
 use rewind_os_engine::{Os, Request, Response, Task};
 use rewind_os_i18n::{tr, trf};
@@ -119,10 +120,36 @@ impl State {
             Sort::Size => shown.sort_by_key(|p| std::cmp::Reverse(p.estimated_bytes.unwrap_or(0))),
             Sort::Date => shown.sort_by_key(|p| std::cmp::Reverse(p.installed_on)),
         }
-        ui.label(
-            RichText::new(trf("{n} programs", &[("n", &shown.len().to_string())]))
-                .color(t.text_muted),
-        );
+        let declared: u64 = shown.iter().filter_map(|p| p.estimated_bytes).sum();
+        let recent_since = chrono::Local::now().date_naive() - chrono::Days::new(30);
+        let recent = shown
+            .iter()
+            .filter(|p| p.installed_on.is_some_and(|d| d >= recent_since))
+            .count();
+        charts::grid(ui, 3, 180.0, |ui, i| match i {
+            0 => charts::stat_tile(
+                ui,
+                tr("Programs"),
+                &count(shown.len() as u64),
+                &trf("{n} in total", &[("n", &count(programs.len() as u64))]),
+                None,
+            ),
+            1 => charts::stat_tile(
+                ui,
+                tr("Size reported by installers"),
+                &bytes(declared),
+                tr("Often missing or out of date"),
+                None,
+            ),
+            _ => charts::stat_tile(
+                ui,
+                tr("Installed in the last 30 days"),
+                &count(recent as u64),
+                "",
+                None,
+            ),
+        });
+        ui.add_space(t.gap * 0.75);
         let row_height = 52.0;
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])

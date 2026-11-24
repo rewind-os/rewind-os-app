@@ -1,6 +1,7 @@
 //! The Rewind OS desktop interface.
 
 mod app;
+mod charts;
 mod devtools;
 mod glyphs;
 mod icons;
@@ -30,6 +31,7 @@ pub fn run() -> eframe::Result {
         options,
         Box::new(|cc| {
             theme::install(&cc.egui_ctx);
+            devtools::apply_theme(&cc.egui_ctx);
             load_system_font(&cc.egui_ctx);
             Ok(Box::new(app::App::new(&cc.egui_ctx)))
         }),

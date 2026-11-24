@@ -500,3 +500,37 @@ Clean the system categories?	¿Limpiar las categorías del sistema?
 Folders in ~/Library/Application Support and ~/Library/Containers that no app, Homebrew package or running program refers to.	Carpetas en ~/Library/Application Support y ~/Library/Containers a las que no hace referencia ninguna app, paquete de Homebrew ni programa en ejecución.
 ~/Library/Application Support	~/Library/Application Support
 ~/Library/Containers	~/Library/Containers
+# Dashboard (key figures and charts)
+Storage used	Almacenamiento usado
+{used} of {total}	{used} de {total}
+Free space	Espacio libre
+on {n} drives	en {n} unidades
+Space you can recover	Espacio recuperable
+1 recommendation	1 recomendación
+{n} recommendations	{n} recomendaciones
+Used	Usado
+Free	Libre
+memory	memoria
+Total size	Tamaño total
+Files	Archivos
+{n} file types	{n} tipos de archivo
+Scan time	Tiempo de análisis
+Other	Otros
+{n} types	{n} tipos
+Junk found	Basura encontrada
+Selected to clean	Seleccionado para limpiar
+{n} categories	{n} categorías
+Categories with junk	Categorías con basura
+of {n} checked	de {n} revisadas
+Where the junk is	Dónde está la basura
+Space you can free	Espacio que puedes liberar
+keeping one copy of each file	conservando una copia de cada archivo
+Files with copies	Archivos con copias
+{n} copies in total	{n} copias en total
+Files compared	Archivos comparados
+Leftover folders	Carpetas sobrantes
+Largest folder	Carpeta más grande
+{n} in total	{n} en total
+Size reported by installers	Tamaño declarado por los instaladores
+Often missing or out of date	A menudo falta o está desactualizado
+Installed in the last 30 days	Instalados en los últimos 30 días

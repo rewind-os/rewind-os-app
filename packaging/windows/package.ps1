@@ -126,9 +126,14 @@ Set-Content -Path "$Zip.sha256" -Value "$Hash  $Name.zip" -NoNewline -Encoding a
 if ($Version -match '^\d+\.\d+\.\d+$') {
   $wix = Get-Command wix -ErrorAction SilentlyContinue
   if (-not $wix) {
-    $toolDir = Join-Path $TargetDir 'wix-tool'
-    Invoke-Native 'install WiX 5' { dotnet tool install wix --version 5.0.2 --tool-path $toolDir }
-    $wix = Get-Command (Join-Path $toolDir 'wix.exe')
+    # Outside target\: the build cache restores target\ only partly, which leaves a broken tool.
+    $toolDir = Join-Path ([System.IO.Path]::GetTempPath()) 'rewind-os-wix-5.0.2'
+    $toolExe = Join-Path $toolDir 'wix.exe'
+    if (-not (Test-Path $toolExe)) {
+      Remove-Item -Recurse -Force $toolDir -ErrorAction SilentlyContinue
+      Invoke-Native 'install WiX 5' { dotnet tool install wix --version 5.0.2 --tool-path $toolDir }
+    }
+    $wix = Get-Command $toolExe
   }
   $Msi = Join-Path $Dist "rewind-os-$Version-windows-$Arch.msi"
   Remove-Item -Force $Msi -ErrorAction SilentlyContinue

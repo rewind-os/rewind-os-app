@@ -60,13 +60,14 @@ jobs:
           cargo build --locked --release -p rewind-os-cli
           cli=target/release/rewind-os-cli
           "$cli" --version
-          for cmd in overview recommend "clean analyze" "startup list" "scan $RUNNER_TEMP --top 5"; do
+          for cmd in overview recommend "clean analyze" "startup list" programs "scan $RUNNER_TEMP --top 5"; do
             echo "==> rewind-os-cli $cmd"
             # shellcheck disable=SC2086
             "$cli" $cmd
           done
           "$cli" --json clean analyze | python3 -c 'import json,sys; json.load(sys.stdin)'
-          if "$cli" leftovers; then echo "::error::leftovers should say it is not available on Linux"; exit 1; fi
+          # Windows-only tools must say they are not available, never pretend to work.
+          if "$cli" tweaks list; then echo "::error::tweaks should say it is not available on Linux"; exit 1; fi
 
   windows:
     name: Windows tests and smoke run

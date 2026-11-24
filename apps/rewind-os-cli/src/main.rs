@@ -1,6 +1,8 @@
 //! `rewind-os-cli`: every engine tool from the command line. Destructive tools ask for
 //! `--yes`; `--json` prints the engine's response for scripts and agents.
 
+mod mcp;
+
 use clap::{Parser, Subcommand};
 use rewind_os_engine::format::{bytes, count};
 use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
@@ -39,6 +41,19 @@ enum Command {
     /// Settings that make Windows lighter (every one can be undone).
     #[command(subcommand)]
     Tweaks(Tweaks),
+    /// Serve the engine's tools to an assistant over the Model Context Protocol (stdin/stdout).
+    /// Only tools that change nothing are offered unless the flags allow more.
+    Mcp {
+        /// A folder the assistant may scan and list (repeatable).
+        #[arg(long = "automation-read-root")]
+        read_roots: Vec<PathBuf>,
+        /// A folder where the assistant may also move files to the recycle bin (repeatable).
+        #[arg(long = "automation-write-root")]
+        write_roots: Vec<PathBuf>,
+        /// Also offer cleanup, startup, settings, apps, uninstall and maintenance tools.
+        #[arg(long)]
+        allow_system_changes: bool,
+    },
     /// Preinstalled Store apps that can be removed (and installed again from the Store).
     #[command(subcommand)]
     Apps(Apps),
@@ -250,6 +265,19 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
         }
         Command::Overview => Request::SystemOverview,
         Command::Recommend => Request::Recommendations,
+        Command::Mcp {
+            read_roots,
+            write_roots,
+            allow_system_changes,
+        } => {
+            let policy = mcp::Policy {
+                read_roots,
+                write_roots,
+                allow_system_changes,
+            };
+            mcp::serve(&policy).map_err(|e| e.to_string())?;
+            return Ok(None);
+        }
         Command::Tweaks(Tweaks::List) => Request::TweaksList,
         Command::Apps(Apps::List) => Request::AppsList,
         Command::Apps(Apps::Remove {

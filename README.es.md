@@ -88,6 +88,10 @@ target/release/rewind-os-cli    # línea de comandos
 Todas las funciones de la app son también comandos; consulta el [README en inglés](README.md#command-line).
 Añade `--lang es` para los mensajes en español.
 
+`rewind-os-cli mcp` ofrece las mismas herramientas a un asistente con el Model Context Protocol.
+Por defecto solo las que no cambian nada; `--automation-read-root`, `--automation-write-root` y
+`--allow-system-changes` abren más, de una en una ([detalles](README.md#assistants-mcp)).
+
 ## Licencia
 
 MIT OR Apache-2.0, a tu elección. Consulta [NOTICE](NOTICE).

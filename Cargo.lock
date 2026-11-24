@@ -2849,6 +2849,7 @@ dependencies = [
  "rewind-os-engine",
  "rewind-os-i18n",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

@@ -103,6 +103,21 @@ sudo rewind-os-cli clean run --defaults --yes   # Linux/macOS: system-wide categ
 rewind-os-cli --json run '{"tool":"cleanup.analyze"}'
 ```
 
+### Assistants (MCP)
+
+`rewind-os-cli mcp` serves the same tools to an assistant over the Model Context Protocol
+(stdin/stdout). By default it offers only tools that change nothing; folders and changes are
+opened up one flag at a time:
+
+```sh
+# Claude Code: read-only, may scan your Downloads folder
+claude mcp add rewind-os -- rewind-os-cli mcp --automation-read-root ~/Downloads
+# also allow moving files to the recycle bin inside Downloads
+rewind-os-cli mcp --automation-write-root ~/Downloads
+# also allow cleanup, startup, settings, apps and uninstall tools
+rewind-os-cli mcp --allow-system-changes
+```
+
 `--json` prints the engine's response for scripts. `--lang es` switches the language.
 
 ## Development

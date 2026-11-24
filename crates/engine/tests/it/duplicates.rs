@@ -14,6 +14,12 @@ fn write(path: &Path, contents: &[u8]) -> std::io::Result<()> {
 }
 
 /// Contents larger than the first block, so both comparison passes run.
+/// A temporary folder outside the system's temp folder: on macOS that lives in `/private/var`,
+/// where duplicates are never searched.
+fn tempdir() -> std::io::Result<tempfile::TempDir> {
+    tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR"))
+}
+
 fn big(fill: u8, last: u8) -> Vec<u8> {
     let mut v = vec![fill; 100_000];
     if let Some(end) = v.last_mut() {
@@ -32,7 +38,7 @@ fn paths_of(report: &duplicates::DuplicateReport) -> Vec<HashSet<PathBuf>> {
 
 #[test]
 fn identical_files_are_grouped_and_lookalikes_are_not() -> Outcome {
-    let dir = tempfile::tempdir()?;
+    let dir = tempdir()?;
     let root = dir.path();
     write(&root.join("a/photo.jpg"), &big(1, 9))?;
     write(&root.join("b/photo copy.jpg"), &big(1, 9))?;
@@ -56,7 +62,7 @@ fn identical_files_are_grouped_and_lookalikes_are_not() -> Outcome {
 
 #[test]
 fn files_below_the_minimum_size_are_not_compared() -> Outcome {
-    let dir = tempfile::tempdir()?;
+    let dir = tempdir()?;
     write(&dir.path().join("x.txt"), b"same")?;
     write(&dir.path().join("y.txt"), b"same")?;
     let report = duplicates::find(dir.path(), 1024, &Task::new())?;
@@ -66,7 +72,7 @@ fn files_below_the_minimum_size_are_not_compared() -> Outcome {
 
 #[test]
 fn hard_links_to_one_file_are_not_duplicates() -> Outcome {
-    let dir = tempfile::tempdir()?;
+    let dir = tempdir()?;
     write(&dir.path().join("original.bin"), &big(3, 3))?;
     fs::hard_link(dir.path().join("original.bin"), dir.path().join("link.bin"))?;
     let report = duplicates::find(dir.path(), 1, &Task::new())?;
@@ -80,8 +86,8 @@ fn hard_links_to_one_file_are_not_duplicates() -> Outcome {
 #[cfg(unix)]
 #[test]
 fn links_to_other_folders_are_not_followed() -> Outcome {
-    let dir = tempfile::tempdir()?;
-    let outside = tempfile::tempdir()?;
+    let dir = tempdir()?;
+    let outside = tempdir()?;
     write(&dir.path().join("mine.bin"), &big(5, 5))?;
     write(&outside.path().join("theirs.bin"), &big(5, 5))?;
     std::os::unix::fs::symlink(outside.path(), dir.path().join("link"))?;
@@ -92,7 +98,7 @@ fn links_to_other_folders_are_not_followed() -> Outcome {
 
 #[test]
 fn choosing_all_but_the_oldest_keeps_one_copy_of_each() -> Outcome {
-    let dir = tempfile::tempdir()?;
+    let dir = tempdir()?;
     for name in ["a.bin", "b.bin", "c.bin"] {
         write(&dir.path().join(name), &big(7, 7))?;
     }

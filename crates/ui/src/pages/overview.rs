@@ -87,6 +87,7 @@ impl State {
                         let label = match r.action {
                             Action::Clean { .. } => tr("Clean"),
                             Action::Analyze { .. } => tr("Analyze"),
+                            Action::Duplicates { .. } | Action::Leftovers => tr("Review"),
                             Action::Hibernation => tr("Open"),
                             Action::ReviewStartup | Action::Lighten => tr("Review"),
                         };
@@ -128,6 +129,14 @@ impl State {
                 Action::Analyze { path } => {
                     shared.scan_request = Some(path);
                     shared.goto = Some(Page::Analyzer);
+                }
+                Action::Duplicates { path } => {
+                    shared.scan_request = Some(path);
+                    shared.goto = Some(Page::Duplicates);
+                }
+                Action::Leftovers => {
+                    shared.leftovers_request = true;
+                    shared.goto = Some(Page::Leftovers);
                 }
                 Action::ReviewStartup => shared.goto = Some(Page::Startup),
                 Action::Lighten => shared.goto = Some(Page::Lighten),

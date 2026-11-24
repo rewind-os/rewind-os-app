@@ -17,7 +17,8 @@ It removes what you do not need: temporary files, caches, leftovers of programs 
 large forgotten files and programs that start with the system for no reason.
 
 - **Home**: recommendations for this computer (a drive almost full, junk worth cleaning, too
-  many startup programs…), each with a button that does it; drives (SSD/HDD), memory, and Windows' own large files (`hiberfil.sys`,
+  many startup programs, duplicates in Downloads, leftovers of removed programs…), each with a
+  button that does it; drives (SSD/HDD), memory, and Windows' own large files (`hiberfil.sys`,
   `pagefile.sys`).
 - **Disk analyzer**: scans a drive or folder in parallel; folder list, treemap, largest files and
   size per file type. Anything can be shown in the file manager or moved to the recycle bin.

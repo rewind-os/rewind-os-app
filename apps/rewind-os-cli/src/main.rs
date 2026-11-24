@@ -70,7 +70,11 @@ enum Command {
         yes: bool,
     },
     /// Folders no installed program refers to.
-    Leftovers,
+    Leftovers {
+        /// Report registry keys instead of folders (never removes them).
+        #[arg(long)]
+        registry: bool,
+    },
     /// Move files or folders to the recycle bin.
     Trash {
         paths: Vec<PathBuf>,
@@ -286,7 +290,8 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             confirm(yes)?;
             Request::ProgramUninstall { key }
         }
-        Command::Leftovers => Request::LeftoversFind,
+        Command::Leftovers { registry: false } => Request::LeftoversFind,
+        Command::Leftovers { registry: true } => Request::RegistryLeftovers,
         Command::Trash { paths, yes } => {
             confirm(yes)?;
             Request::FilesTrash { paths }
@@ -601,6 +606,22 @@ fn print_human(response: &Response, top: usize) {
                     bytes(l.bytes),
                     format!("{:?}", l.confidence),
                     l.path.display()
+                );
+            }
+        }
+        Response::RegistryLeftovers(keys) => {
+            if keys.is_empty() {
+                println!("{}", tr("No leftover registry keys found."));
+            }
+            for k in keys {
+                println!("{}", k.key);
+            }
+            if !keys.is_empty() {
+                println!(
+                    "\n{}",
+                    tr(
+                        "Report only: Rewind OS never removes registry keys. Export a key in Registry Editor before removing it by hand."
+                    )
                 );
             }
         }

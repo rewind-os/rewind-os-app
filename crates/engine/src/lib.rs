@@ -168,6 +168,11 @@ pub const TOOLS: &[ToolSpec] = &[
         "Find folders that no installed program, service or startup entry refers to",
     )
     .only(WINDOWS),
+    ToolSpec::new(
+        "leftovers.registry",
+        "Report registry keys of programs that are no longer installed (never removes them)",
+    )
+    .only(WINDOWS),
     ToolSpec::new("files.trash", "Move files or folders to the recycle bin")
         .admin(AdminNeed::Partly)
         .changes(),
@@ -263,6 +268,8 @@ pub enum Request {
     ProgramUninstall { key: String },
     #[serde(rename = "leftovers.find")]
     LeftoversFind,
+    #[serde(rename = "leftovers.registry")]
+    RegistryLeftovers,
     #[serde(rename = "files.trash")]
     FilesTrash { paths: Vec<PathBuf> },
     #[serde(rename = "files.reveal")]
@@ -297,6 +304,7 @@ pub enum Response {
     CleanupDone(Vec<cleanup::CategoryResult>),
     Programs(Vec<programs::InstalledProgram>),
     Leftovers(Vec<leftovers::Leftover>),
+    RegistryLeftovers(Vec<leftovers::RegistryLeftover>),
     Trashed(Vec<TrashResult>),
     Startup(Vec<startup::StartupEntry>),
     /// Output of an external Windows tool, shown as is.
@@ -366,6 +374,9 @@ impl Engine {
                 Ok(Response::Done("The program's uninstaller was started"))
             }
             Request::LeftoversFind => Ok(Response::Leftovers(leftovers::find(task))),
+            Request::RegistryLeftovers => {
+                Ok(Response::RegistryLeftovers(leftovers::find_registry(task)))
+            }
             Request::FilesTrash { paths } => Ok(Response::Trashed(trash(&paths, task))),
             Request::FilesReveal { path } => {
                 rewind_os_platform::shell::reveal(&path)?;
@@ -415,6 +426,7 @@ impl Request {
             Request::ProgramsList => "programs.list",
             Request::ProgramUninstall { .. } => "programs.uninstall",
             Request::LeftoversFind => "leftovers.find",
+            Request::RegistryLeftovers => "leftovers.registry",
             Request::FilesTrash { .. } => "files.trash",
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",

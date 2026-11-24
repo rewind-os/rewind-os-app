@@ -422,3 +422,10 @@ Search finished: {n} sets of identical files, {size} can be freed.	Búsqueda ter
 Search finished: {n} leftover folders found.	Búsqueda terminada: {n} carpetas de restos encontradas.
 Analysis finished: {size} of junk found.	Análisis terminado: {size} de basura encontrada.
 Programs installed with the system's package managers, without libraries and the base system.	Programas instalados con los gestores de paquetes del sistema, sin bibliotecas ni el sistema base.
+Report registry keys of programs that are no longer installed (never removes them)	Informa de claves de registro de programas que ya no están instalados (nunca las elimina)
+Checking registry keys	Revisando claves del registro
+No leftover registry keys found.	No se han encontrado claves de registro sobrantes.
+Report only: Rewind OS never removes registry keys. Export a key in Registry Editor before removing it by hand.	Solo informe: Rewind OS nunca elimina claves del registro. Exporta una clave en el Editor del Registro antes de eliminarla a mano.
+Registry keys of removed programs ({n})	Claves de registro de programas eliminados ({n})
+Copy	Copiar
+Copy the key's path	Copiar la ruta de la clave

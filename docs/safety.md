@@ -13,6 +13,7 @@ guarantees, where they are enforced, and the tests that hold them.
 | Make Windows lighter | Only the settings in a closed catalog (`crates/engine/src/tweaks.rs`): documented registry values and policies. Each records exactly how it goes back to Windows' default, and a setting that fails halfway puts back the values it already wrote. Nothing is uninstalled. |
 | Startup programs | Only the system's own on/off records (Windows "startup approved", XDG `Hidden=` in the user's folder, `schtasks /Change /DISABLE` for scheduled tasks). Nothing is deleted. Windows' own scheduled tasks (`\Microsoft\…`) are never listed and are refused if asked for. Essential entries (security, sign-in, accessibility, sound, the desktop session) cannot be turned off. |
 | Maintenance | Only the system's own tools (DISM component cleanup, `powercfg /hibernate`, `journalctl --vacuum-time`), which their vendors support. |
+| Registry leftovers | Report only. Rewind OS lists vendor keys under `Software` that nothing installed refers to, and never removes a registry key. |
 | Uninstall | Starts the program's own uninstaller; Rewind OS removes nothing itself. |
 
 Everything that deletes or changes something asks first in the app and needs `--yes` in the

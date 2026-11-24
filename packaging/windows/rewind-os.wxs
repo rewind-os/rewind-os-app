@@ -35,13 +35,12 @@
         <Component Id="Cli">
           <File Id="RewindOsCliExe" Source="$(BinDir)\rewind-os-cli.exe" KeyPath="yes" />
         </Component>
-        <Component Id="Docs">
-          <File Id="Readme" Source="$(DocDir)\README.md" KeyPath="yes" />
-          <File Id="ReadmeEs" Source="$(DocDir)\README.es.md" />
-          <File Id="LicenseMit" Source="$(DocDir)\LICENSE-MIT" />
-          <File Id="LicenseApache" Source="$(DocDir)\LICENSE-APACHE" />
-          <File Id="Notice" Source="$(DocDir)\NOTICE" />
-        </Component>
+        <!-- One file per component: text files have no version, so each needs its own key path. -->
+        <Component Id="Readme"><File Id="Readme" Source="$(DocDir)\README.md" KeyPath="yes" /></Component>
+        <Component Id="ReadmeEs"><File Id="ReadmeEs" Source="$(DocDir)\README.es.md" KeyPath="yes" /></Component>
+        <Component Id="LicenseMit"><File Id="LicenseMit" Source="$(DocDir)\LICENSE-MIT" KeyPath="yes" /></Component>
+        <Component Id="LicenseApache"><File Id="LicenseApache" Source="$(DocDir)\LICENSE-APACHE" KeyPath="yes" /></Component>
+        <Component Id="Notice"><File Id="Notice" Source="$(DocDir)\NOTICE" KeyPath="yes" /></Component>
       </Directory>
     </StandardDirectory>
   </Package>

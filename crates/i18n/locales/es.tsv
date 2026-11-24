@@ -481,7 +481,6 @@ Uninstall a program: its own uninstaller on Windows, the package manager on Linu
 The program was uninstalled	El programa se ha desinstalado
 {name} will be removed with the package manager, which asks for your password. Its settings in your home folder stay. If removing it would take other packages along, Rewind OS stops.	{name} se quitará con el gestor de paquetes, que te pedirá la contraseña. Sus ajustes en tu carpeta personal se quedan. Si quitarlo arrastrara otros paquetes, Rewind OS se detiene.
 Removing this package would also remove other packages, so Rewind OS does not do it. Use your package manager if you are sure.	Quitar este paquete también quitaría otros, así que Rewind OS no lo hace. Usa tu gestor de paquetes si estás seguro.
-Removing RPM packages is not supported yet. Use your package manager (dnf, zypper).	Quitar paquetes RPM aún no está disponible. Usa tu gestor de paquetes (dnf, zypper).
 The app was moved to the Trash	La app se ha movido a la Papelera
 The apps in Applications. Uninstalling moves an app to the Trash.	Las apps de Aplicaciones. Desinstalar mueve la app a la Papelera.
 {name} will be moved to the Trash, where you can put it back. Its settings in ~/Library stay.	{name} se moverá a la Papelera, desde donde puedes recuperarla. Sus ajustes en ~/Library se quedan.

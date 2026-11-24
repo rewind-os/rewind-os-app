@@ -1,6 +1,7 @@
 name: Release
 
-# Pushing to the `release` branch builds the Windows and Linux packages, drafts a GitHub release named
+# Pushing to the `release` branch builds the Windows and Linux packages (Linux: tar.gz and a
+# Flatpak bundle), drafts a GitHub release named
 # after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages and
 # publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
 # Run it by hand (workflow_dispatch) for a dry run that only builds and keeps the artifacts.
@@ -124,6 +125,10 @@ jobs:
           key: release-linux-${{ matrix.arch }}
       - name: Build and package
         run: ./packaging/linux/package.sh
+      - name: Install flatpak-builder
+        run: sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+      - name: Flatpak bundle
+        run: ./packaging/linux/flatpak.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-linux-${{ matrix.arch }}

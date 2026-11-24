@@ -48,7 +48,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.18 macOS: leftovers of removed apps in `~/Library/Application Support` and `~/Library/Containers`
 - [ ] R2.11 macOS: login items and LaunchAgents
 - [ ] R2.12 macOS release: `.app` bundle, `.icns`, signing and notarization, `.dmg`
-- [ ] R2.13 Linux: `.deb`, `.rpm` and Flatpak packages next to the tar.gz
+- [ ] R2.13 Linux: `.deb` and `.rpm` packages next to the tar.gz
+- [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)
 - [ ] R2.14 Linux and macOS: restart the GUI with administrator rights (polkit / authorization prompt)
 
 ## R3 — Easier and lighter

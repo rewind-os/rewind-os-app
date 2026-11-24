@@ -17,9 +17,22 @@ impl Finished {
     }
 }
 
-/// Builds a command that never opens a console window on Windows.
+/// Whether this copy runs inside a Flatpak sandbox.
+pub fn in_flatpak() -> bool {
+    cfg!(target_os = "linux") && std::path::Path::new("/.flatpak-info").exists()
+}
+
+/// Builds a command that never opens a console window on Windows. Inside a Flatpak sandbox the
+/// program runs on the host (`flatpak-spawn --host`), where the package managers, `pkexec` and
+/// the system's tools are.
 pub fn command(program: &str) -> Command {
-    let cmd = Command::new(program);
+    let cmd = if in_flatpak() {
+        let mut cmd = Command::new("flatpak-spawn");
+        cmd.args(["--host", program]);
+        cmd
+    } else {
+        Command::new(program)
+    };
     #[cfg(windows)]
     let cmd = {
         use std::os::windows::process::CommandExt;

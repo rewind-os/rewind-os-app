@@ -70,6 +70,8 @@ Ready-made builds are on the [releases page](../../releases); check them against
   `rewind-os.exe`.
 - **Linux** x64 and ARM64: unpack `rewind-os-<version>-linux-<arch>.tar.gz` and run
   `bin/rewind-os`. Copy its `share/` folder into `~/.local/share` for the launcher entry and icon.
+  Or install the Flatpak bundle: `flatpak install --user ./rewind-os-<version>-linux-<arch>.flatpak`
+  (it needs the host filesystem to see the disk, and runs the system's own tools on the host).
 
 ## Build
 

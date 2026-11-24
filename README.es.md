@@ -73,6 +73,9 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
   ejecuta `rewind-os.exe`.
 - **Linux** x64 y ARM64: descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta
   `bin/rewind-os`. Copia su carpeta `share/` en `~/.local/share` para tener el lanzador y el icono.
+  O instala el Flatpak: `flatpak install --user ./rewind-os-<versión>-linux-<arq>.flatpak` (necesita
+  acceso al sistema de archivos para ver el disco y ejecuta las herramientas del sistema fuera del
+  sandbox).
 
 ## Compilar
 

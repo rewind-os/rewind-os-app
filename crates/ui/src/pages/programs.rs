@@ -5,7 +5,7 @@ use crate::widgets::{self, Choice, page_header};
 use egui::RichText;
 use rewind_os_engine::format::bytes;
 use rewind_os_engine::programs::{InstalledProgram, Scope};
-use rewind_os_engine::{Request, Response, Task};
+use rewind_os_engine::{Os, Request, Response, Task};
 use rewind_os_i18n::{tr, trf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -19,6 +19,7 @@ enum Sort {
 #[derive(Default)]
 pub struct State {
     job: Option<Job>,
+    uninstall_job: Option<Job>,
     programs: Option<Vec<InstalledProgram>>,
     search: String,
     sort: Sort,
@@ -28,7 +29,7 @@ pub struct State {
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.job.is_some()
+        self.job.is_some() || self.uninstall_job.is_some()
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
@@ -44,6 +45,18 @@ impl State {
                     .icons
                     .request(&ctx, list.iter().filter_map(|p| p.display_icon.clone()));
                 self.programs = Some(list);
+            }
+            Some(Ok(_)) => {}
+            Some(Err(err)) => shared.error(err),
+            None => {}
+        }
+        match jobs::finished(&mut self.uninstall_job, &ctx) {
+            Some(Ok(Response::Done(message))) => {
+                shared.info(tr(message));
+                // The list changes when a package manager removed the program.
+                if Os::current() != Os::Windows {
+                    self.job = Some(Job::start(&ctx, &shared.engine, Request::ProgramsList));
+                }
             }
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
@@ -145,7 +158,14 @@ impl State {
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let can_uninstall = rewind_os_engine::tool("programs.uninstall")
                                 .is_some_and(|t| t.available());
-                            if can_uninstall && ui.button(tr("Uninstall…")).clicked() {
+                            if can_uninstall
+                                && ui
+                                    .add_enabled(
+                                        self.uninstall_job.is_none(),
+                                        egui::Button::new(tr("Uninstall…")),
+                                    )
+                                    .clicked()
+                            {
                                 self.uninstall = Some((*program).clone());
                             }
                             if let Some(location) = &program.install_location
@@ -170,10 +190,17 @@ impl State {
             });
 
         if let Some(program) = &self.uninstall {
-            let body = trf(
-                "This starts the uninstaller of {name}. Follow its steps; afterwards, search for leftovers.",
-                &[("name", &program.name)],
-            );
+            let body = if Os::current() == Os::Windows {
+                trf(
+                    "This starts the uninstaller of {name}. Follow its steps; afterwards, search for leftovers.",
+                    &[("name", &program.name)],
+                )
+            } else {
+                trf(
+                    "{name} will be removed with the package manager, which asks for your password. Its settings in your home folder stay. If removing it would take other packages along, Rewind OS stops.",
+                    &[("name", &program.name)],
+                )
+            };
             match widgets::confirm(
                 &ctx,
                 "confirm_uninstall",
@@ -185,14 +212,13 @@ impl State {
                 Choice::Cancelled => self.uninstall = None,
                 Choice::Confirmed => {
                     let key = program.key.clone();
-                    match shared
-                        .engine
-                        .run(Request::ProgramUninstall { key }, &Task::new())
-                    {
-                        Ok(Response::Done(message)) => shared.info(tr(message)),
-                        Ok(_) => {}
-                        Err(err) => shared.error(crate::widgets::error_text(&err)),
-                    }
+                    // On Linux the package manager runs until it is done: off the window's
+                    // thread.
+                    self.uninstall_job = Some(Job::start(
+                        &ctx,
+                        &shared.engine,
+                        Request::ProgramUninstall { key },
+                    ));
                     self.uninstall = None;
                 }
             }

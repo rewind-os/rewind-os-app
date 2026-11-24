@@ -120,6 +120,9 @@ fn read(hive: Hive, base: &str, tag: &str, sub: &str) -> Option<InstalledProgram
 /// Starts the uninstaller the program registered. It shows its own window; this returns as
 /// soon as it started.
 pub fn start_uninstaller(key: &str) -> Result<()> {
+    if rewind_os_platform::Os::current() == rewind_os_platform::Os::Linux {
+        return crate::packages::uninstall(key);
+    }
     let program = installed()
         .into_iter()
         .find(|p| p.key == key)

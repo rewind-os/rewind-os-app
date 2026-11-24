@@ -53,7 +53,6 @@ List the files directly inside a folder, largest first	Lista los archivos de una
 Measure temporary files, caches and other junk by category	Mide archivos temporales, cachés y otra basura por categoría
 Delete the chosen junk categories	Borra las categorías de basura elegidas
 List installed programs	Lista los programas instalados
-Start a program's own uninstaller	Inicia el desinstalador del propio programa
 Find folders that no installed program, service or startup entry refers to	Busca carpetas a las que no hace referencia ningún programa instalado, servicio ni entrada de inicio
 Move files or folders to the recycle bin	Mueve archivos o carpetas a la papelera
 Show a file or folder in the file manager	Muestra un archivo o carpeta en el Explorador de archivos
@@ -478,3 +477,8 @@ Phone Link	Enlace Móvil
 Xbox	Xbox
 Skype	Skype
 Spotify	Spotify
+Uninstall a program: its own uninstaller on Windows, the package manager on Linux	Desinstala un programa: con su propio desinstalador en Windows y con el gestor de paquetes en Linux
+The program was uninstalled	El programa se ha desinstalado
+{name} will be removed with the package manager, which asks for your password. Its settings in your home folder stay. If removing it would take other packages along, Rewind OS stops.	{name} se quitará con el gestor de paquetes, que te pedirá la contraseña. Sus ajustes en tu carpeta personal se quedan. Si quitarlo arrastrara otros paquetes, Rewind OS se detiene.
+Removing this package would also remove other packages, so Rewind OS does not do it. Use your package manager if you are sure.	Quitar este paquete también quitaría otros, así que Rewind OS no lo hace. Usa tu gestor de paquetes si estás seguro.
+Removing RPM packages is not supported yet. Use your package manager (dnf, zypper).	Quitar paquetes RPM aún no está disponible. Usa tu gestor de paquetes (dnf, zypper).

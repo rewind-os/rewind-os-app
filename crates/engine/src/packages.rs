@@ -242,3 +242,102 @@ pub fn installed() -> Vec<InstalledProgram> {
     all.sort_by_key(|p| p.name.to_lowercase());
     all
 }
+
+/// Packages `apt-get -s remove` would remove (`Remv name [version]` lines).
+pub fn apt_removals(simulation: &str) -> Vec<String> {
+    simulation
+        .lines()
+        .filter_map(|l| l.strip_prefix("Remv "))
+        .filter_map(|rest| rest.split_whitespace().next())
+        .map(|n| n.split(':').next().unwrap_or(n).to_owned())
+        .collect()
+}
+
+/// Package names are letters, digits and `.+_:-`, and never start with `-`, so a name can
+/// never be read as an option of the package tool.
+pub fn safe_package_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('-')
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '+' | '_' | ':' | '-'))
+}
+
+/// English reasons; translate with `rewind_os_i18n::tr`.
+pub const REMOVES_OTHERS: &str = "Removing this package would also remove other packages, so Rewind OS does not do it. Use your package manager if you are sure.";
+pub const RPM_NOT_YET: &str =
+    "Removing RPM packages is not supported yet. Use your package manager (dnf, zypper).";
+
+/// Runs a command that needs administrator rights: directly when already elevated, through
+/// `pkexec` (which asks for the password) otherwise.
+fn run_as_admin(program: &str, args: &[&str]) -> crate::Result<()> {
+    let done = if rewind_os_platform::elevation::is_elevated() {
+        process::run(program, args)?
+    } else {
+        let mut all = vec![program];
+        all.extend_from_slice(args);
+        process::run("pkexec", &all)?
+    };
+    finished(program, done)
+}
+
+fn finished(program: &str, done: process::Finished) -> crate::Result<()> {
+    if done.success() {
+        return Ok(());
+    }
+    // pkexec: 126 = the person dismissed the password prompt, 127 = not authorized.
+    if matches!(done.code, Some(126) | Some(127)) {
+        return Err(crate::EngineError::NeedsAdmin);
+    }
+    Err(rewind_os_platform::PlatformError::Command {
+        program: program.to_owned(),
+        code: done.code,
+        detail: done.stderr.trim().to_owned(),
+    }
+    .into())
+}
+
+/// Uninstalls a program listed by [`installed`], by its key (`apt|name`, `flatpak|id`…).
+/// Nothing that would take other packages along is removed.
+pub fn uninstall(key: &str) -> crate::Result<()> {
+    let program = installed()
+        .into_iter()
+        .find(|p| p.key == key)
+        .ok_or_else(|| crate::EngineError::NotFound(key.to_owned()))?;
+    let (manager, name) = key
+        .split_once('|')
+        .ok_or_else(|| crate::EngineError::NotFound(key.to_owned()))?;
+    if !safe_package_name(name) {
+        return Err(crate::EngineError::NotFound(key.to_owned()));
+    }
+    match manager {
+        "apt" => {
+            let simulation = run("apt-get", &["-s", "remove", name]).unwrap_or_default();
+            let removals = apt_removals(&simulation);
+            if removals != [name.to_owned()] {
+                return Err(crate::EngineError::Refused(REMOVES_OTHERS));
+            }
+            // `remove`, not `purge`: the program's settings stay, as on Windows.
+            run_as_admin("apt-get", &["remove", "-y", name])
+        }
+        // Without `-s` or `-c`, pacman refuses when anything depends on the package.
+        "pacman" => run_as_admin("pacman", &["-R", "--noconfirm", name]),
+        "flatpak" => {
+            let scope = if program.scope == crate::programs::Scope::User {
+                "--user"
+            } else {
+                "--system"
+            };
+            // Flatpak asks for rights itself when the app is installed for everyone.
+            let done = process::run(
+                "flatpak",
+                &["uninstall", "-y", "--noninteractive", scope, name],
+            )?;
+            finished("flatpak", done)
+        }
+        // snapd asks for rights itself.
+        "snap" => finished("snap", process::run("snap", &["remove", name])?),
+        "rpm" => Err(crate::EngineError::Refused(RPM_NOT_YET)),
+        _ => Err(crate::EngineError::NotFound(key.to_owned())),
+    }
+}

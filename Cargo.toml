@@ -36,6 +36,8 @@ winresource = "0.1"
 resvg = "0.50"
 pelite = { version = "0.10", default-features = false, features = ["std", "derive_pod", "mmap"] }
 ico = "0.5"
+blake3 = { version = "1", features = ["pure"] }
+same-file = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

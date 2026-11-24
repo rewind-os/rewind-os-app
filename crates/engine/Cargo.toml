@@ -17,6 +17,8 @@ glob.workspace = true
 sysinfo.workspace = true
 pelite.workspace = true
 ico.workspace = true
+blake3.workspace = true
+same-file.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

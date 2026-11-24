@@ -22,6 +22,10 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 - **Analizador de disco**: escanea una unidad o carpeta en paralelo; lista de carpetas, treemap,
   archivos más grandes y tamaño por tipo de archivo. Cualquier elemento se puede mostrar en el
   gestor de archivos o mover a la papelera.
+- **Archivos duplicados**: archivos con exactamente el mismo contenido (tamaño, después el primer
+  bloque y después un hash BLAKE3 completo). Los enlaces duros no cuentan como copias y los
+  archivos que solo están en la nube no se descargan. Siempre queda una copia de cada archivo; las
+  demás van a la papelera.
 - **Limpieza de basura**: temporales, descargas de actualizaciones, informes de bloqueos, cachés
   de navegadores y apps, cachés de gestores de paquetes, instaladores antiguos en Descargas y la
   papelera. Cada categoría indica lo segura que es y si necesita permisos de administrador.
@@ -43,7 +47,7 @@ administrador cuando una tarea lo necesita.
 
 | Función | Windows | Linux | macOS |
 |---|:-:|:-:|:-:|
-| Resumen, analizador de disco | ✓ | ✓ | ✓ |
+| Resumen, analizador de disco, archivos duplicados | ✓ | ✓ | ✓ |
 | Limpieza, papelera | ✓ | ✓ | ✓ |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | — |
 | Recomendaciones | ✓ | ✓ | ✓ |

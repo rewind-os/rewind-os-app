@@ -21,6 +21,9 @@ large forgotten files and programs that start with the system for no reason.
   `pagefile.sys`).
 - **Disk analyzer**: scans a drive or folder in parallel; folder list, treemap, largest files and
   size per file type. Anything can be shown in the file manager or moved to the recycle bin.
+- **Duplicate files**: files with exactly the same contents (size, then first block, then a full
+  BLAKE3 hash). Hard links are not counted as copies and cloud-only files are not downloaded. One
+  copy of each file always stays; the others go to the recycle bin.
 - **Junk cleanup**: temporary files, update downloads, crash reports, browser and app caches,
   package manager caches, old installers in Downloads, the recycle bin. Each category says how
   safe it is and whether it needs administrator rights.
@@ -40,7 +43,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 
 | Feature | Windows | Linux | macOS |
 |---|:-:|:-:|:-:|
-| Overview, disk analyzer | ✓ | ✓ | ✓ |
+| Overview, disk analyzer, duplicate files | ✓ | ✓ | ✓ |
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | — |
 | Recommendations | ✓ | ✓ | ✓ |
@@ -81,6 +84,7 @@ Every feature of the app is also a command:
 rewind-os-cli commands                       # every tool and its id
 rewind-os-cli overview
 rewind-os-cli scan C:\ --top 30
+rewind-os-cli duplicates C:\Users\me --min-mb 10
 rewind-os-cli clean analyze
 rewind-os-cli clean run --defaults --yes     # the categories marked safe
 rewind-os-cli leftovers

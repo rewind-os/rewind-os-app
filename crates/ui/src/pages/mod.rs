@@ -1,5 +1,6 @@
 pub mod analyzer;
 pub mod cleanup;
+pub mod duplicates;
 pub mod leftovers;
 pub mod lighten;
 pub mod maintenance;

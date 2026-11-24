@@ -1,6 +1,7 @@
 //! Engine behaviour tests: one binary, one module per area.
 
 mod cleanup;
+mod duplicates;
 mod leftovers;
 mod recommend;
 mod safety;

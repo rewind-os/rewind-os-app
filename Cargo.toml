@@ -34,6 +34,8 @@ rfd = "0.18"
 tempfile = "3"
 winresource = "0.1"
 resvg = "0.50"
+blake3 = { version = "1", features = ["pure"] }
+same-file = "1"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -32,3 +32,6 @@ Things that look wrong but are not, and mistakes worth not repeating.
   name a path outside the autostart folders.
 - **macOS Trash and Full Disk Access.** Listing `~/.Trash` can fail without Full Disk Access;
   the recycle bin category then shows the error instead of 0 B.
+- **Cloud placeholders.** OneDrive "files on demand" look like normal files, but reading one
+  downloads it. Anything that reads contents (the duplicate finder) checks
+  `platform::files::is_cloud_placeholder` first and reports what it skipped.

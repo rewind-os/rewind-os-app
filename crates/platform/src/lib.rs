@@ -3,6 +3,7 @@
 //! [`PlatformError::Unsupported`] elsewhere instead of pretending to succeed.
 
 pub mod elevation;
+pub mod files;
 pub mod paths;
 pub mod process;
 pub mod registry;

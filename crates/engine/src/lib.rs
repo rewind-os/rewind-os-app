@@ -3,6 +3,7 @@
 //! can do the CLI can do too.
 
 pub mod cleanup;
+pub mod duplicates;
 pub mod format;
 pub mod leftovers;
 pub mod maintenance;
@@ -145,6 +146,10 @@ pub const TOOLS: &[ToolSpec] = &[
         "List the files directly inside a folder, largest first",
     ),
     ToolSpec::new(
+        "disk.duplicates",
+        "Find files with identical contents under a folder",
+    ),
+    ToolSpec::new(
         "cleanup.analyze",
         "Measure temporary files, caches and other junk by category",
     )
@@ -239,6 +244,13 @@ pub enum Request {
     DiskScan { root: PathBuf },
     #[serde(rename = "disk.list_files")]
     ListFiles { dir: PathBuf },
+    /// `min_bytes` defaults to [`duplicates::DEFAULT_MIN_BYTES`].
+    #[serde(rename = "disk.duplicates")]
+    Duplicates {
+        root: PathBuf,
+        #[serde(default)]
+        min_bytes: Option<u64>,
+    },
     #[serde(rename = "cleanup.analyze")]
     CleanupAnalyze,
     #[serde(rename = "cleanup.run")]
@@ -278,6 +290,7 @@ pub enum Response {
     Tweaks(Vec<tweaks::TweakStatus>),
     Scan(#[serde(serialize_with = "scan::serialize_summary")] Arc<scan::ScanTree>),
     Files(Vec<scan::FileEntry>),
+    Duplicates(duplicates::DuplicateReport),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
     CleanupDone(Vec<cleanup::CategoryResult>),
     Programs(Vec<programs::InstalledProgram>),
@@ -335,6 +348,12 @@ impl Engine {
                 scan::scan(&root, task).map(|t| Response::Scan(Arc::new(t)))
             }
             Request::ListFiles { dir } => scan::list_files(&dir).map(Response::Files),
+            Request::Duplicates { root, min_bytes } => duplicates::find(
+                &root,
+                min_bytes.unwrap_or(duplicates::DEFAULT_MIN_BYTES),
+                task,
+            )
+            .map(Response::Duplicates),
             Request::CleanupAnalyze => Ok(Response::CleanupAnalysis(cleanup::analyze(task))),
             Request::CleanupRun { categories } => {
                 cleanup::run(&categories, task).map(Response::CleanupDone)
@@ -388,6 +407,7 @@ impl Request {
             Request::RelaunchElevated { .. } => "system.relaunch_elevated",
             Request::DiskScan { .. } => "disk.scan",
             Request::ListFiles { .. } => "disk.list_files",
+            Request::Duplicates { .. } => "disk.duplicates",
             Request::CleanupAnalyze => "cleanup.analyze",
             Request::CleanupRun { .. } => "cleanup.run",
             Request::ProgramsList => "programs.list",

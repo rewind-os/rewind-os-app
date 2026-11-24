@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing to the `release` branch builds the Windows and Linux packages (Linux: tar.gz and a
+# Pushing to the `release` branch builds the Windows and Linux packages (zip; tar.gz, .deb, .rpm,
 # Flatpak bundle), drafts a GitHub release named
 # after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages and
 # publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
@@ -113,10 +113,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install system libraries for eframe
+      - name: Install system libraries for eframe, and rpmbuild for the .rpm
         run: >-
           sudo apt-get update && sudo apt-get install -y --no-install-recommends
-          libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev
+          libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev rpm
       - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
         with:
           toolchain: stable

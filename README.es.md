@@ -67,12 +67,15 @@ funcionar. Las versiones para macOS se comprueban en CI pero aún no se publican
 ## Descargar
 
 Hay versiones listas en la [página de releases](../../releases); puedes comprobarlas con
-`SHA256SUMS.txt`. No se instala nada.
+`SHA256SUMS.txt`.
 
 - **Windows** x64 y ARM64: descomprime `rewind-os-<versión>-windows-<arq>-portable.zip` y
   ejecuta `rewind-os.exe`.
 - **Linux** x64 y ARM64: descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta
   `bin/rewind-os`. Copia su carpeta `share/` en `~/.local/share` para tener el lanzador y el icono.
+  O instala el paquete: `sudo apt install ./rewind-os_<versión>_amd64.deb` (Debian, Ubuntu) o
+  `sudo dnf install ./rewind-os-<versión>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` y `aarch64`
+  para ARM.
   O instala el Flatpak: `flatpak install --user ./rewind-os-<versión>-linux-<arq>.flatpak` (necesita
   acceso al sistema de archivos para ver el disco y ejecuta las herramientas del sistema fuera del
   sandbox).

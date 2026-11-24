@@ -406,3 +406,4 @@ frees {size}	libera {size}
 Keep at least one copy.	Conserva al menos una copia.
 {n} copies ({size}) will be moved to the recycle bin. One copy of each file stays where it is.	Se moverán {n} copias ({size}) a la papelera. Una copia de cada archivo se queda donde está.
 {n} sets of identical files; keeping one copy of each frees {size}.	{n} grupos de archivos idénticos; conservar una copia de cada uno libera {size}.
+{size} of hard links (one file under several names) was counted once.	{size} de enlaces duros (un mismo archivo con varios nombres) se han contado una sola vez.

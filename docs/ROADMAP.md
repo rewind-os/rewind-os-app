@@ -19,7 +19,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [ ] R1.1 Verify every feature on a real Windows 11 machine (only cross-checked so far)
 - [x] R1.2 Duplicate files finder (size, then partial hash, then full hash)
 - [ ] R1.3 Size on disk (compressed and sparse files) next to logical size
-- [ ] R1.4 Count hard links once, so WinSxS shows its real size in the analyzer
+- [x] R1.4 Count hard links once, so WinSxS shows its real size in the analyzer
 - [ ] R1.5 Leftover registry keys of uninstalled programs (report only, export before removing)
 - [ ] R1.6 Scheduled tasks and services in the startup page
 - [ ] R1.7 MCP server (`rewind-os-cli mcp`) with `--automation-read-root` / `--automation-write-root`

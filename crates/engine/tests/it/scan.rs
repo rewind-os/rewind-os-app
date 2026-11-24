@@ -99,3 +99,23 @@ fn listing_a_folder_shows_only_its_own_files() {
     assert_eq!(files.len(), 2);
     assert!(files[0].bytes >= files[1].bytes);
 }
+
+#[cfg(unix)]
+#[test]
+fn a_hard_linked_file_is_counted_once() {
+    let (dir, total) = sample().unwrap();
+    std::fs::hard_link(
+        dir.path().join("a/big.bin"),
+        dir.path().join("b/big-link.bin"),
+    )
+    .unwrap();
+    let tree = scan::scan(dir.path(), &Task::new()).unwrap();
+    assert_eq!(tree.root_node().unwrap().bytes, total);
+    assert_eq!(tree.hard_linked_bytes, 50_000);
+    let listed = tree
+        .top_files
+        .iter()
+        .filter(|f| f.path.ends_with("big.bin") || f.path.ends_with("big-link.bin"))
+        .count();
+    assert_eq!(listed, 1, "the same file must not be listed twice");
+}

@@ -383,3 +383,26 @@ Transparency effects	Efectos de transparencia
 Windows, the taskbar and Start become solid instead of see-through. Lighter on older computers.	Las ventanas, la barra de tareas e Inicio pasan a ser opacas. Más ligero en equipos antiguos.
 Window animations	Animaciones de ventanas
 Windows open and minimise instantly, without animation.	Las ventanas se abren y minimizan al instante, sin animación.
+Duplicate files	Archivos duplicados
+Find files you have more than once	Encuentra archivos que tienes más de una vez
+Find files with identical contents under a folder	Busca archivos con el mismo contenido dentro de una carpeta
+Files with exactly the same contents. Keep one copy and move the others to the recycle bin.	Archivos con exactamente el mismo contenido. Conserva una copia y mueve las demás a la papelera.
+Duplicates are not searched inside the operating system's folders.	No se buscan duplicados dentro de las carpetas del sistema operativo.
+Looking for files	Buscando archivos
+Comparing files	Comparando archivos
+{size} or larger	{size} o más
+No folder chosen	Ninguna carpeta elegida
+Choose a folder and press Search.	Elige una carpeta y pulsa Buscar.
+No duplicate files found.	No se han encontrado archivos duplicados.
+can be freed by keeping one copy of each of {n} files	se pueden liberar conservando una copia de cada uno de {n} archivos
+The search was stopped; some duplicates may be missing.	La búsqueda se detuvo; puede que falten duplicados.
+{n} files or folders could not be read.	No se pudieron leer {n} archivos o carpetas.
+{n} files that are only in the cloud were not compared.	No se compararon {n} archivos que solo están en la nube.
+Select all but the oldest	Marcar todos menos el más antiguo
+Chooses every copy except the oldest of each file, which is usually the original.	Marca todas las copias excepto la más antigua de cada archivo, que suele ser el original.
+Clear	Desmarcar
+{n} copies of {size}	{n} copias de {size}
+frees {size}	libera {size}
+Keep at least one copy.	Conserva al menos una copia.
+{n} copies ({size}) will be moved to the recycle bin. One copy of each file stays where it is.	Se moverán {n} copias ({size}) a la papelera. Una copia de cada archivo se queda donde está.
+{n} sets of identical files; keeping one copy of each frees {size}.	{n} grupos de archivos idénticos; conservar una copia de cada uno libera {size}.

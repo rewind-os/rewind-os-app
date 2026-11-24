@@ -48,6 +48,16 @@ enum Command {
     },
     /// Files directly inside DIR, largest first.
     Files { dir: PathBuf },
+    /// Files with identical contents under PATH.
+    Duplicates {
+        path: PathBuf,
+        /// Smallest file to compare, in megabytes.
+        #[arg(long, default_value_t = 1)]
+        min_mb: u64,
+        /// How many sets to print.
+        #[arg(long, default_value_t = 20)]
+        top: usize,
+    },
     /// Junk cleanup.
     #[command(subcommand)]
     Clean(Clean),
@@ -148,7 +158,7 @@ fn main() -> ExitCode {
     rewind_os_i18n::init(cli.lang.as_deref());
     let mut json = cli.json;
     let top = match &cli.command {
-        Command::Scan { top, .. } => *top,
+        Command::Scan { top, .. } | Command::Duplicates { top, .. } => *top,
         _ => 20,
     };
     let request = match build(cli.command, &mut json) {
@@ -246,6 +256,10 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::TweakSet { id, applied: false }
         }
         Command::Scan { path, .. } => Request::DiskScan { root: path },
+        Command::Duplicates { path, min_mb, .. } => Request::Duplicates {
+            root: path,
+            min_bytes: Some(min_mb.saturating_mul(1024 * 1024)),
+        },
         Command::Files { dir } => Request::ListFiles { dir },
         Command::Clean(Clean::Analyze) => Request::CleanupAnalyze,
         Command::Clean(Clean::Run {
@@ -456,6 +470,52 @@ fn print_human(response: &Response, top: usize) {
             println!("\n{}", tr("Largest files"));
             for f in tree.top_files.iter().take(top) {
                 println!("{:>10}  {}", bytes(f.bytes), f.path.display());
+            }
+        }
+        Response::Duplicates(report) => {
+            println!(
+                "{}",
+                trf(
+                    "{n} sets of identical files; keeping one copy of each frees {size}.",
+                    &[
+                        ("n", &count(report.sets.len() as u64)),
+                        ("size", &bytes(report.reclaimable())),
+                    ]
+                )
+            );
+            if report.cancelled {
+                println!(
+                    "{}",
+                    tr("The search was stopped; some duplicates may be missing.")
+                );
+            }
+            if report.unreadable > 0 {
+                println!(
+                    "{}",
+                    trf(
+                        "{n} files or folders could not be read.",
+                        &[("n", &count(report.unreadable))]
+                    )
+                );
+            }
+            if report.cloud_skipped > 0 {
+                println!(
+                    "{}",
+                    trf(
+                        "{n} files that are only in the cloud were not compared.",
+                        &[("n", &count(report.cloud_skipped))]
+                    )
+                );
+            }
+            for set in report.sets.iter().take(top) {
+                println!(
+                    "\n{} × {}",
+                    bytes(set.bytes),
+                    count(set.copies.len() as u64)
+                );
+                for copy in &set.copies {
+                    println!("  {}", copy.path.display());
+                }
             }
         }
         Response::Files(files) => {

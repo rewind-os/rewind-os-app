@@ -8,7 +8,8 @@ guarantees, where they are enforced, and the tests that hold them.
 | Action | Limit |
 |---|---|
 | Junk cleanup | Only curated categories of caches and temporary files, each a fixed path template. Every matched path passes the guard's cleanup check. In system locations only files are deleted and every folder is kept. Files in use are skipped. Categories that need rights are skipped without them. |
-| Move to recycle bin (analyzer, leftovers) | Passes the guard's removal check. Goes to the recycle bin, so it can be restored. |
+| Move to recycle bin (analyzer, leftovers, duplicates) | Passes the guard's removal check. Goes to the recycle bin, so it can be restored. |
+| Duplicate files | Only files with identical contents, compared in full. Hard links to one file are not offered, since removing one frees nothing. The operating system's folders are not searched. The app never lets the last copy of a file be chosen (`duplicates::keeps_a_copy`, checked again when the dialog is confirmed). |
 | Make Windows lighter | Only the settings in a closed catalog (`crates/engine/src/tweaks.rs`): documented registry values and policies. Each records exactly how it goes back to Windows' default, and a setting that fails halfway puts back the values it already wrote. Nothing is uninstalled. |
 | Startup programs | Only the system's own on/off records (Windows "startup approved", XDG `Hidden=` in the user's folder). Nothing is deleted. Essential entries (security, sign-in, accessibility, sound, the desktop session) cannot be turned off. |
 | Maintenance | Only the system's own tools (DISM component cleanup, `powercfg /hibernate`, `journalctl --vacuum-time`), which their vendors support. |

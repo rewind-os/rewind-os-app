@@ -16,6 +16,7 @@ use std::sync::Arc;
 pub enum Page {
     Overview,
     Analyzer,
+    Duplicates,
     Cleanup,
     Leftovers,
     Programs,
@@ -29,16 +30,22 @@ const SECTIONS: [(&str, &[Page]); 4] = [
     ("", &[Page::Overview]),
     (
         "Free up space",
-        &[Page::Analyzer, Page::Cleanup, Page::Leftovers],
+        &[
+            Page::Analyzer,
+            Page::Duplicates,
+            Page::Cleanup,
+            Page::Leftovers,
+        ],
     ),
     ("Programs", &[Page::Programs, Page::Startup]),
     ("System", &[Page::Lighten, Page::Maintenance]),
 ];
 
 impl Page {
-    const ALL: [Page; 8] = [
+    const ALL: [Page; 9] = [
         Page::Overview,
         Page::Analyzer,
+        Page::Duplicates,
         Page::Cleanup,
         Page::Leftovers,
         Page::Programs,
@@ -52,6 +59,7 @@ impl Page {
         match self {
             Page::Overview => &["system.overview"],
             Page::Analyzer => &["disk.scan"],
+            Page::Duplicates => &["disk.duplicates"],
             Page::Cleanup => &["cleanup.analyze"],
             Page::Leftovers => &["leftovers.find"],
             Page::Programs => &["programs.list"],
@@ -74,6 +82,7 @@ impl Page {
         match self {
             Page::Overview => "Home",
             Page::Analyzer => "Disk analyzer",
+            Page::Duplicates => "Duplicate files",
             Page::Cleanup => "Junk cleanup",
             Page::Leftovers => "Program leftovers",
             Page::Programs => "Installed programs",
@@ -88,6 +97,7 @@ impl Page {
         match self {
             Page::Overview => "Recommendations and your drives",
             Page::Analyzer => "See what takes up space, folder by folder",
+            Page::Duplicates => "Find files you have more than once",
             Page::Cleanup => "Delete temporary files and caches",
             Page::Leftovers => "Folders left by uninstalled programs",
             Page::Programs => "Uninstall what you no longer use",
@@ -186,6 +196,7 @@ pub struct App {
     page: Page,
     overview: pages::overview::State,
     analyzer: pages::analyzer::State,
+    duplicates: pages::duplicates::State,
     cleanup: pages::cleanup::State,
     leftovers: pages::leftovers::State,
     programs: pages::programs::State,
@@ -221,6 +232,7 @@ impl App {
             page,
             overview,
             analyzer: Default::default(),
+            duplicates: Default::default(),
             cleanup: Default::default(),
             leftovers: Default::default(),
             programs: Default::default(),
@@ -235,6 +247,7 @@ impl App {
     fn busy(&self) -> bool {
         self.overview.busy()
             || self.analyzer.busy()
+            || self.duplicates.busy()
             || self.cleanup.busy()
             || self.leftovers.busy()
             || self.programs.busy()
@@ -390,6 +403,7 @@ impl eframe::App for App {
                 match self.page {
                     Page::Overview => self.overview.ui(ui, shared),
                     Page::Analyzer => self.analyzer.ui(ui, shared),
+                    Page::Duplicates => self.duplicates.ui(ui, shared),
                     Page::Cleanup => self.cleanup.ui(ui, shared),
                     Page::Leftovers => self.leftovers.ui(ui, shared),
                     Page::Programs => self.programs.ui(ui, shared),

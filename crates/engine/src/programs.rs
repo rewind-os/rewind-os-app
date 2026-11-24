@@ -52,7 +52,7 @@ pub fn installed() -> Vec<InstalledProgram> {
     match rewind_os_platform::Os::current() {
         rewind_os_platform::Os::Windows => windows_installed(),
         rewind_os_platform::Os::Linux => crate::packages::installed(),
-        rewind_os_platform::Os::MacOs => Vec::new(),
+        rewind_os_platform::Os::MacOs => crate::macapps::installed(),
     }
 }
 
@@ -120,8 +120,10 @@ fn read(hive: Hive, base: &str, tag: &str, sub: &str) -> Option<InstalledProgram
 /// Starts the uninstaller the program registered. It shows its own window; this returns as
 /// soon as it started.
 pub fn start_uninstaller(key: &str) -> Result<()> {
-    if rewind_os_platform::Os::current() == rewind_os_platform::Os::Linux {
-        return crate::packages::uninstall(key);
+    match rewind_os_platform::Os::current() {
+        rewind_os_platform::Os::Linux => return crate::packages::uninstall(key),
+        rewind_os_platform::Os::MacOs => return crate::macapps::uninstall(key),
+        rewind_os_platform::Os::Windows => {}
     }
     let program = installed()
         .into_iter()

@@ -8,6 +8,7 @@ pub mod duplicates;
 pub mod format;
 pub mod icons;
 pub mod leftovers;
+pub mod macapps;
 pub mod maintenance;
 pub mod packages;
 pub mod programs;
@@ -160,13 +161,12 @@ pub const TOOLS: &[ToolSpec] = &[
     ToolSpec::new("cleanup.run", "Delete the chosen junk categories")
         .admin(AdminNeed::Partly)
         .changes(),
-    ToolSpec::new("programs.list", "List installed programs").only(WINDOWS_LINUX),
+    ToolSpec::new("programs.list", "List installed programs"),
     ToolSpec::new(
         "programs.uninstall",
-        "Uninstall a program: its own uninstaller on Windows, the package manager on Linux",
+        "Uninstall a program: its own uninstaller on Windows, the package manager on Linux, the Trash on macOS",
     )
-    .changes()
-    .only(WINDOWS_LINUX),
+    .changes(),
     ToolSpec::new(
         "leftovers.find",
         "Find folders that no installed program, service or startup entry refers to",
@@ -394,10 +394,10 @@ impl Engine {
             Request::ProgramsList => Ok(Response::Programs(programs::installed())),
             Request::ProgramUninstall { key } => {
                 programs::start_uninstaller(&key)?;
-                Ok(Response::Done(if Os::current() == Os::Windows {
-                    "The program's uninstaller was started"
-                } else {
-                    "The program was uninstalled"
+                Ok(Response::Done(match Os::current() {
+                    Os::Windows => "The program's uninstaller was started",
+                    Os::Linux => "The program was uninstalled",
+                    Os::MacOs => "The app was moved to the Trash",
                 }))
             }
             Request::LeftoversFind => Ok(Response::Leftovers(leftovers::find(task))),

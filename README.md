@@ -53,7 +53,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | — |
 | Recommendations | ✓ | ✓ | ✓ |
-| Installed programs | ✓ | ✓ (APT, pacman, Flatpak, Snap; RPM listed only) | — |
+| Installed programs | ✓ | ✓ (APT, pacman, Flatpak, Snap; RPM listed only) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | — |
 | Make Windows lighter | ✓ | — | — |
 | Maintenance | component store, hibernation | journal | — |

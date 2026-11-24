@@ -1,4 +1,5 @@
 use crate::app::Shared;
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
@@ -155,17 +156,19 @@ impl State {
         ui.add_space(t.gap);
 
         let mut change = None;
+        let removable = self.apps.as_ref().map(Vec::len);
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                progress(ui, &tweaks, pending.len(), removable);
+                ui.add_space(t.gap * 1.5);
                 for group in Group::ALL {
                     let rows: Vec<&TweakStatus> =
                         tweaks.iter().filter(|s| s.tweak.group == group).collect();
                     if rows.is_empty() {
                         continue;
                     }
-                    ui.label(RichText::new(tr(group.label())).strong());
-                    ui.add_space(4.0);
+                    charts::section_title(ui, tr(group.label()));
                     card(ui, |ui| {
                         ui.set_width(ui.available_width());
                         for (index, status) in rows.iter().enumerate() {
@@ -378,4 +381,75 @@ impl State {
             }
         }
     }
+}
+
+/// Key figures, and how far each group of settings is turned off.
+fn progress(ui: &mut egui::Ui, tweaks: &[TweakStatus], pending: usize, removable: Option<usize>) {
+    let t = theme::current(ui.ctx());
+    let applied = tweaks
+        .iter()
+        .filter(|s| s.state == TweakState::Applied)
+        .count();
+    let share = applied as f32 / tweaks.len().max(1) as f32;
+    let tiles = if removable.is_some() { 3 } else { 2 };
+    charts::grid(ui, tiles, 180.0, |ui, i| match i {
+        0 => charts::stat_tile(
+            ui,
+            tr("Settings turned off"),
+            &format!("{applied} / {}", tweaks.len()),
+            &format!("{:.0}%", share * 100.0),
+            Some((share, t.ok)),
+        ),
+        1 => charts::stat_tile(
+            ui,
+            tr("Recommended still on"),
+            &pending.to_string(),
+            tr("Apply them all with one button"),
+            None,
+        ),
+        _ => charts::stat_tile(
+            ui,
+            tr("Preinstalled apps"),
+            &removable.unwrap_or(0).to_string(),
+            tr("Can be removed for your account"),
+            None,
+        ),
+    });
+    ui.add_space(t.gap * 0.75);
+    card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(RichText::new(tr("Progress by group")).strong());
+        ui.add_space(8.0);
+        egui::Grid::new("tweak_progress")
+            .num_columns(3)
+            .spacing([16.0, 10.0])
+            .show(ui, |ui| {
+                for group in Group::ALL {
+                    let rows: Vec<&TweakStatus> =
+                        tweaks.iter().filter(|s| s.tweak.group == group).collect();
+                    if rows.is_empty() {
+                        continue;
+                    }
+                    let done = rows
+                        .iter()
+                        .filter(|s| s.state == TweakState::Applied)
+                        .count();
+                    let fraction = done as f32 / rows.len() as f32;
+                    let name = tr(group.label());
+                    ui.label(name);
+                    ui.allocate_ui(egui::vec2(260.0, 12.0), |ui| {
+                        widgets::usage_bar(ui, fraction, t.ok, name);
+                    });
+                    ui.label(
+                        RichText::new(trf(
+                            "{done} of {n} turned off",
+                            &[("done", &done.to_string()), ("n", &rows.len().to_string())],
+                        ))
+                        .small()
+                        .color(t.text_muted),
+                    );
+                    ui.end_row();
+                }
+            });
+    });
 }

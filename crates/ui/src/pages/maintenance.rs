@@ -1,11 +1,13 @@
 use crate::app::Shared;
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::RichText;
-use rewind_os_engine::system::SystemFileKind;
+use rewind_os_engine::format::bytes;
+use rewind_os_engine::system::{Overview, SystemFileKind};
 use rewind_os_engine::{Request, Response};
-use rewind_os_i18n::tr;
+use rewind_os_i18n::{tr, trf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Action {
@@ -76,6 +78,10 @@ impl State {
         let windows = available("maintenance.component_cleanup");
         let journal = available("maintenance.journal_vacuum");
         egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
+            if let Some(overview) = &shared.overview {
+                figures(ui, overview);
+                ui.add_space(t.gap * 1.5);
+            }
             if journal {
                 card(ui, |ui| {
                     ui.set_width(ui.available_width());
@@ -182,4 +188,49 @@ impl State {
             }
         }
     }
+}
+
+/// A key figure: label, value, detail and an optional meter.
+struct Tile(String, String, String, Option<(f32, egui::Color32)>);
+
+/// The system drive, and the files the system manages itself, as key figures.
+fn figures(ui: &mut egui::Ui, overview: &Overview) {
+    let t = theme::current(ui.ctx());
+    let system = overview.drives.iter().find(|d| {
+        let mount = d.mount.to_string_lossy();
+        mount == "/" || mount.eq_ignore_ascii_case(r"C:\")
+    });
+    let mut tiles: Vec<Tile> = Vec::new();
+    if let Some(drive) = system {
+        let fraction = if drive.total > 0 {
+            drive.used() as f32 / drive.total as f32
+        } else {
+            0.0
+        };
+        tiles.push(Tile(
+            tr("System drive").to_owned(),
+            bytes(drive.available),
+            trf("free of {total}", &[("total", &bytes(drive.total))]),
+            Some((fraction, widgets::fill_color(t, fraction))),
+        ));
+    }
+    for file in &overview.system_files {
+        let name = match file.kind {
+            SystemFileKind::Hibernation => tr("Hibernation file"),
+            SystemFileKind::PageFile => tr("Page file"),
+            SystemFileKind::SwapFile => tr("Swap file"),
+        };
+        tiles.push(Tile(
+            name.to_owned(),
+            bytes(file.bytes),
+            file.path.display().to_string(),
+            None,
+        ));
+    }
+    // At least three columns, so a lone tile keeps the size it has next to others.
+    charts::grid(ui, tiles.len().max(3), 180.0, |ui, i| {
+        if let Some(Tile(label, value, detail, meter)) = tiles.get(i) {
+            charts::stat_tile(ui, label, value, detail, *meter);
+        }
+    });
 }

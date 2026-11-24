@@ -215,7 +215,7 @@ Uninstall this program?	¿Desinstalar este programa?
 This starts the uninstaller of {name}. Follow its steps; afterwards, search for leftovers.	Se iniciará el desinstalador de {name}. Sigue sus pasos y después busca restos.
 Start uninstaller	Iniciar desinstalador
 # Startup page
-Programs that start when you sign in. Turning one off does not uninstall it, and you can turn it back on at any time.	Programas que se inician al entrar en tu sesión. Desactivar uno no lo desinstala y puedes volver a activarlo cuando quieras.
+Programs that start when you sign in, and the tasks programs scheduled for themselves. Turning one off does not uninstall it, and you can turn it back on at any time.	Programas que se inician al entrar en tu sesión y tareas que los programas programaron para sí mismos. Desactivar uno no lo desinstala y puedes volver a activarlo cuando quieras.
 No startup programs found.	No se han encontrado programas de inicio.
 # Maintenance page
 Windows component store	Almacén de componentes de Windows
@@ -411,3 +411,9 @@ Duplicate files in Downloads use {size}	Los archivos duplicados en Descargas ocu
 The same file downloaded more than once. Keep one copy of each.	El mismo archivo descargado más de una vez. Conserva una copia de cada uno.
 {n} folders of removed programs use {size}	{n} carpetas de programas eliminados ocupan {size}
 Nothing installed refers to them and nothing in them changed for months. Check each before moving it to the recycle bin.	Ningún programa instalado las usa y no han cambiado en meses. Revisa cada una antes de moverla a la papelera.
+Scheduled task	Tarea programada
+Scheduled task: at sign-in	Tarea programada: al iniciar sesión
+Scheduled task: at startup	Tarea programada: al arrancar
+Scheduled task: when idle	Tarea programada: en reposo
+Scheduled task: on an event	Tarea programada: ante un evento
+Scheduled task: on a schedule	Tarea programada: según un horario

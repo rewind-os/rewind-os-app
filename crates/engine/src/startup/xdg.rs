@@ -76,6 +76,7 @@ impl Dirs {
                     enabled: entry.enabled(),
                     needs_admin: false,
                     essential: super::is_essential(&file),
+                    when: None,
                 })
             })
             .collect();

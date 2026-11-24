@@ -47,7 +47,7 @@ impl State {
             ui,
             tr("Startup programs"),
             tr(
-                "Programs that start when you sign in. Turning one off does not uninstall it, and you can turn it back on at any time.",
+                "Programs that start when you sign in, and the tasks programs scheduled for themselves. Turning one off does not uninstall it, and you can turn it back on at any time.",
             ),
         );
         let Some(entries) = &self.entries else {
@@ -118,9 +118,11 @@ impl State {
                                             ui.horizontal(|ui| {
                                                 ui.label(RichText::new(&entry.name).strong());
                                                 ui.label(
-                                                    RichText::new(tr(entry.source.label()))
-                                                        .small()
-                                                        .color(t.text_muted),
+                                                    RichText::new(tr(entry
+                                                        .when
+                                                        .unwrap_or(entry.source.label())))
+                                                    .small()
+                                                    .color(t.text_muted),
                                                 );
                                             });
                                             ui.add(

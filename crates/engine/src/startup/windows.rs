@@ -96,6 +96,7 @@ pub(super) fn list() -> Vec<StartupEntry> {
                 enabled,
                 needs_admin: source.hive() == Hive::LocalMachine,
                 essential,
+                when: None,
             });
         }
     }

@@ -32,7 +32,7 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   papelera. Cada categoría indica lo segura que es y si necesita permisos de administrador.
 - **Restos de programas**: carpetas en Program Files, ProgramData y AppData a las que no hace
   referencia ningún programa instalado, servicio, programa en ejecución ni entrada de inicio. Van
-  a la papelera.
+  a la papelera. También informa de las claves de registro de programas eliminados, sin borrarlas nunca.
 - **Programas instalados**, con sus iconos, búsqueda y su propio desinstalador.
 - **Programas de inicio**: activar y desactivar, con los registros del propio sistema, incluidas
   las tareas programadas que añaden los programas (las del propio Windows nunca se muestran).

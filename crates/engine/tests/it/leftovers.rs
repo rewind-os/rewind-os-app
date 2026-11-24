@@ -50,3 +50,47 @@ fn older_folders_are_at_least_as_likely_abandoned() {
     assert!(levels.windows(2).all(|w| w[0] <= w[1]));
     assert!(levels.first() < levels.last());
 }
+
+mod registry_keys {
+    use rewind_os_engine::leftovers::{Signals, registry_candidates};
+
+    const ROOT: &str = r"HKEY_CURRENT_USER\Software";
+
+    fn names(keys: &[&str], signals: &Signals) -> Vec<String> {
+        let keys: Vec<(&str, String)> = keys.iter().map(|k| (ROOT, (*k).to_owned())).collect();
+        registry_candidates(&keys, signals)
+            .into_iter()
+            .map(|l| l.name)
+            .collect()
+    }
+
+    #[test]
+    fn keys_of_installed_programs_and_windows_keys_are_kept_out() {
+        let mut signals = Signals::default();
+        signals.add_name("7-Zip 23.01 (x64)");
+        signals.add_name("Blackmagic Design");
+        signals.add_path(r"C:\Program Files\Focusrite\Control\Focusrite Control.exe");
+        let found = names(
+            &[
+                "7-Zip",
+                "Blackmagic Design",
+                "Focusrite",
+                "Microsoft",
+                "Classes",
+                "Policies",
+                "{4D57AFA0-265F-4DED-810B-8B81A02761BC}",
+                "3d0ba22d-e02b-5c6d-93a1-4e2a9af9c1f2",
+                "Battlestate Games",
+            ],
+            &signals,
+        );
+        assert_eq!(found, vec!["Battlestate Games"]);
+    }
+
+    #[test]
+    fn the_report_names_the_full_key() {
+        let keys = vec![(ROOT, "Old Vendor".to_owned())];
+        let found = registry_candidates(&keys, &Signals::default());
+        assert!(found[0].key.starts_with(ROOT) && found[0].key.ends_with("Old Vendor"));
+    }
+}

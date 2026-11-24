@@ -20,7 +20,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.2 Duplicate files finder (size, then partial hash, then full hash)
 - [ ] R1.3 Size on disk (compressed and sparse files) next to logical size
 - [x] R1.4 Count hard links once, so WinSxS shows its real size in the analyzer
-- [ ] R1.5 Leftover registry keys of uninstalled programs (report only, export before removing)
+- [x] R1.5 Leftover registry keys of uninstalled programs (report only, export before removing)
 - [x] R1.6 Scheduled tasks in the startup page (programs' own tasks; Windows' tasks are never listed)
 - [ ] R1.13 Third-party services in the startup page (set to manual start, never disabled)
 - [ ] R1.7 MCP server (`rewind-os-cli mcp`) with `--automation-read-root` / `--automation-write-root`

@@ -355,3 +355,95 @@ pub fn confidence(last_change: Option<SystemTime>, now: SystemTime) -> Confidenc
         Confidence::Low
     }
 }
+
+/// A registry key under `Software` that nothing installed refers to. Reported only: Rewind OS
+/// never removes registry keys.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RegistryLeftover {
+    /// Full path, as Registry Editor shows it (`HKEY_CURRENT_USER\Software\Vendor`).
+    pub key: String,
+    pub name: String,
+}
+
+/// Keys every Windows has, or that hold settings shared by many programs.
+const REGISTRY_SHARED: &[&str] = &[
+    "classes",
+    "clients",
+    "policies",
+    "registeredapplications",
+    "wow6432node",
+    "software",
+    "setup",
+    "oem",
+    "partner",
+    "odbc",
+    "khronos",
+    "defaultuserenvironment",
+    "systemfileassociations",
+    "applications",
+    "appdatalow",
+    "deviceinfo",
+    "gsettings",
+    "syncengines",
+    "javasoft",
+    "changetracker",
+    "inextuuid",
+    "edge",
+    "chromium",
+    "qtproject",
+    "valve",
+    "python",
+    "node.js",
+    "gitforwindows",
+];
+
+/// Whether a key name is machine-made (a GUID, a number): nothing to show a person.
+fn machine_made(name: &str) -> bool {
+    let core = name.trim_matches(|c| c == '{' || c == '}');
+    !core.is_empty() && core.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
+}
+
+/// The keys among `keys` (`(root, name)`, root like `HKEY_CURRENT_USER\Software`) that
+/// `signals` does not account for.
+pub fn registry_candidates(keys: &[(&str, String)], signals: &Signals) -> Vec<RegistryLeftover> {
+    let mut out: Vec<RegistryLeftover> = keys
+        .iter()
+        .filter(|(_, name)| {
+            let lower = name.to_lowercase();
+            !REGISTRY_SHARED.contains(&lower.as_str())
+                && !machine_made(name)
+                && !signals.accounts_for(name)
+        })
+        .map(|(root, name)| RegistryLeftover {
+            key: format!(r"{root}\{name}"),
+            name: name.clone(),
+        })
+        .collect();
+    out.sort_by_key(|l| l.name.to_lowercase());
+    out
+}
+
+/// Vendor keys under `Software` (current user and computer) that no installed program,
+/// service, running program or startup entry refers to.
+pub fn find_registry(task: &Task) -> Vec<RegistryLeftover> {
+    task.set_stage("Reading installed programs and services");
+    let signals = gather_signals();
+    task.set_stage("Checking registry keys");
+    let mut keys = Vec::new();
+    for (hive, path, root) in [
+        (Hive::CurrentUser, "Software", r"HKEY_CURRENT_USER\Software"),
+        (
+            Hive::LocalMachine,
+            "SOFTWARE",
+            r"HKEY_LOCAL_MACHINE\SOFTWARE",
+        ),
+        (
+            Hive::LocalMachine,
+            r"SOFTWARE\WOW6432Node",
+            r"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node",
+        ),
+    ] {
+        keys.extend(registry::subkeys(hive, path).into_iter().map(|k| (root, k)));
+    }
+    registry_candidates(&keys, &signals)
+}

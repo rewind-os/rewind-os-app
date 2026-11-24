@@ -4,7 +4,7 @@ use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::RichText;
 use rewind_os_engine::format::{bytes, count};
-use rewind_os_engine::leftovers::{Confidence, Leftover};
+use rewind_os_engine::leftovers::{Confidence, Leftover, RegistryLeftover};
 use rewind_os_engine::{Request, Response};
 use rewind_os_i18n::{tr, trf};
 use std::collections::HashSet;
@@ -13,8 +13,10 @@ use std::path::PathBuf;
 #[derive(Default)]
 pub struct State {
     find: Option<Job>,
+    registry_job: Option<Job>,
     trash: Option<Job>,
     found: Option<Vec<Leftover>>,
+    registry: Option<Vec<RegistryLeftover>>,
     selected: HashSet<PathBuf>,
     moved: HashSet<PathBuf>,
     min_confidence: Option<Confidence>,
@@ -31,7 +33,12 @@ fn confidence_label(c: Confidence) -> &'static str {
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.find.is_some() || self.trash.is_some()
+        self.find.is_some() || self.trash.is_some() || self.registry_job.is_some()
+    }
+
+    fn search(&mut self, ctx: &egui::Context, shared: &Shared) {
+        self.find = Some(Job::start(ctx, &shared.engine, Request::LeftoversFind));
+        self.registry_job = Some(Job::start(ctx, &shared.engine, Request::RegistryLeftovers));
     }
 
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
@@ -41,6 +48,12 @@ impl State {
                 self.moved.clear();
                 self.found = Some(found);
             }
+            Some(Ok(_)) => {}
+            Some(Err(err)) => shared.error(err),
+            None => {}
+        }
+        match jobs::finished(&mut self.registry_job, ctx) {
+            Some(Ok(Response::RegistryLeftovers(keys))) => self.registry = Some(keys),
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
             None => {}
@@ -84,7 +97,7 @@ impl State {
         let t = theme::current(&ctx);
         if std::mem::take(&mut shared.leftovers_request) && !self.busy() {
             self.min_confidence = Some(Confidence::High);
-            self.find = Some(Job::start(&ctx, &shared.engine, Request::LeftoversFind));
+            self.search(&ctx, shared);
         }
         self.poll(&ctx, shared);
         page_header(
@@ -125,7 +138,7 @@ impl State {
                 tr("Search")
             };
             if widgets::primary_button(ui, label, !busy).clicked() {
-                self.find = Some(Job::start(&ctx, &shared.engine, Request::LeftoversFind));
+                self.search(&ctx, shared);
             }
             egui::ComboBox::from_id_salt("leftover_filter")
                 .selected_text(match self.min_confidence {
@@ -164,6 +177,7 @@ impl State {
             });
             ui.add_space(t.gap);
         }
+        self.registry_section(ui);
         let Some(found) = &self.found else { return };
         if found.is_empty() {
             ui.label(tr("No leftover folders found."));
@@ -285,5 +299,55 @@ impl State {
                 }
             }
         }
+    }
+
+    /// Registry keys of removed programs: a report, never removed by the app.
+    fn registry_section(&self, ui: &mut egui::Ui) {
+        let Some(keys) = &self.registry else { return };
+        if keys.is_empty() {
+            return;
+        }
+        let t = theme::current(ui.ctx());
+        egui::CollapsingHeader::new(trf(
+            "Registry keys of removed programs ({n})",
+            &[("n", &keys.len().to_string())],
+        ))
+        .id_salt("registry_leftovers")
+        .show(ui, |ui| {
+            ui.label(
+                RichText::new(tr(
+                    "Report only: Rewind OS never removes registry keys. Export a key in Registry Editor before removing it by hand.",
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+            egui::ScrollArea::vertical()
+                .id_salt("registry_leftovers_list")
+                .max_height(180.0)
+                .show(ui, |ui| {
+                    for (index, key) in keys.iter().enumerate() {
+                        widgets::list_row(ui, index, 30.0, |ui| {
+                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                if widgets::row_button(ui, tr("Copy"), true)
+                                    .on_hover_text(tr("Copy the key's path"))
+                                    .clicked()
+                                {
+                                    ui.ctx().copy_text(key.key.clone());
+                                }
+                                ui.with_layout(
+                                    egui::Layout::left_to_right(egui::Align::Center),
+                                    |ui| {
+                                        ui.add(
+                                            egui::Label::new(RichText::new(&key.key).small())
+                                                .truncate(),
+                                        );
+                                    },
+                                );
+                            });
+                        });
+                    }
+                });
+        });
+        ui.add_space(t.gap);
     }
 }

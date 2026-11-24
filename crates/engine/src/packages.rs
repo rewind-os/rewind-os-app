@@ -341,3 +341,29 @@ pub fn uninstall(key: &str) -> crate::Result<()> {
         _ => Err(crate::EngineError::NotFound(key.to_owned())),
     }
 }
+
+/// The name of every installed package, libraries included, from every package manager
+/// present: evidence that a folder in `~/.config` still belongs to something.
+pub fn all_names() -> Vec<String> {
+    let mut names = Vec::new();
+    let lines = |out: Option<String>| -> Vec<String> {
+        out.map(|o| {
+            o.lines()
+                .map(|l| l.trim().to_owned())
+                .filter(|l| !l.is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
+    };
+    names.extend(lines(run("dpkg-query", &["-W", "-f=${Package}\\n"])));
+    names.extend(lines(run("rpm", &["-qa", "--qf", "%{NAME}\\n"])));
+    names.extend(lines(run("pacman", &["-Qq"])));
+    names.extend(lines(run("flatpak", &["list", "--columns=application"])));
+    names.extend(
+        lines(run("snap", &["list"]))
+            .into_iter()
+            .skip(1)
+            .filter_map(|l| l.split_whitespace().next().map(String::from)),
+    );
+    names
+}

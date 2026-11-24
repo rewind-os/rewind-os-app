@@ -94,3 +94,16 @@ mod registry_keys {
         assert!(found[0].key.starts_with(ROOT) && found[0].key.ends_with("Old Vendor"));
     }
 }
+
+#[test]
+fn a_folder_named_like_a_program_on_the_path_is_not_a_leftover() {
+    let mut s = Signals::default();
+    // What the Linux evidence adds: package names and the programs on the PATH.
+    s.add_name("google-chrome-stable");
+    s.add_name("k9s");
+    s.add_name("code");
+    assert!(s.accounts_for("google-chrome"));
+    assert!(s.accounts_for("k9s"));
+    assert!(s.accounts_for("Code"));
+    assert!(!s.accounts_for("netlify"));
+}

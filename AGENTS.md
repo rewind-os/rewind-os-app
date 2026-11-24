@@ -43,8 +43,8 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
    Fix what a lint reports; do not silence it with `allow` or a lint-config change.
 6. Dates use `chrono`. Locks use `parking_lot::Mutex`.
 7. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`. The look
-   is minimal and follows the spirit of Termius: deep navy surfaces (a light blue-grey theme
-   too), one accent colour, flat surfaces without borders, line icons drawn in
+   is minimal and follows the spirit of Termius in the warm, retro colours of the cassette icon:
+   espresso surfaces (cream in the light theme), one mustard accent, flat surfaces without borders, line icons drawn in
    `crates/ui/src/glyphs.rs`, tags as words on a faint tint, muted secondary text, generous
    spacing. Add no new colours, outlines or decorations without a reason.
 8. User-facing text goes through `tr()` with English as the key. Add the Spanish line to

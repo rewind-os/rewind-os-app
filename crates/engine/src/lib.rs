@@ -2,6 +2,7 @@
 //! [`TOOLS`]; the desktop app and the CLI both go through [`Engine::run`], so anything the GUI
 //! can do the CLI can do too.
 
+pub mod apps;
 pub mod cleanup;
 pub mod duplicates;
 pub mod format;
@@ -215,6 +216,17 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "apps.list",
+        "List preinstalled Store apps that can be removed",
+    )
+    .only(WINDOWS),
+    ToolSpec::new(
+        "apps.remove",
+        "Remove preinstalled Store apps for you (they can be installed again from the Store)",
+    )
+    .changes()
+    .only(WINDOWS),
+    ToolSpec::new(
         "maintenance.journal_usage",
         "Report how much space the system journal uses",
     )
@@ -243,6 +255,10 @@ pub enum Request {
     Recommendations,
     #[serde(rename = "tweaks.list")]
     TweaksList,
+    #[serde(rename = "apps.list")]
+    AppsList,
+    #[serde(rename = "apps.remove")]
+    AppsRemove { ids: Vec<String> },
     #[serde(rename = "tweaks.set")]
     TweakSet { id: String, applied: bool },
     #[serde(rename = "system.relaunch_elevated")]
@@ -297,6 +313,8 @@ pub enum Response {
     Overview(system::Overview),
     Recommendations(Vec<recommend::Recommendation>),
     Tweaks(Vec<tweaks::TweakStatus>),
+    Apps(Vec<apps::StoreApp>),
+    AppsRemoved(Vec<apps::Removal>),
     Scan(#[serde(serialize_with = "scan::serialize_summary")] Arc<scan::ScanTree>),
     Files(Vec<scan::FileEntry>),
     Duplicates(duplicates::DuplicateReport),
@@ -342,6 +360,8 @@ impl Engine {
             Request::SystemOverview => Ok(Response::Overview(system::overview())),
             Request::Recommendations => Ok(Response::Recommendations(recommend::recommend(task))),
             Request::TweaksList => Ok(Response::Tweaks(tweaks::list())),
+            Request::AppsList => Ok(Response::Apps(apps::list())),
+            Request::AppsRemove { ids } => apps::remove(&ids).map(Response::AppsRemoved),
             Request::TweakSet { id, applied } => {
                 tweaks::set(&id, applied)?;
                 Ok(Response::Done(if applied {
@@ -416,6 +436,8 @@ impl Request {
             Request::SystemOverview => "system.overview",
             Request::Recommendations => "system.recommendations",
             Request::TweaksList => "tweaks.list",
+            Request::AppsList => "apps.list",
+            Request::AppsRemove { .. } => "apps.remove",
             Request::TweakSet { .. } => "tweaks.set",
             Request::RelaunchElevated { .. } => "system.relaunch_elevated",
             Request::DiskScan { .. } => "disk.scan",

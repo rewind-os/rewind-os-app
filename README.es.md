@@ -38,7 +38,9 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   las tareas programadas y los servicios que añaden los programas (los del propio Windows nunca
   se muestran; los servicios pasan a arrancar cuando se necesitan, nunca se deshabilitan).
 - **Aligerar Windows**: desactiva anuncios, sugerencias, rastreo y extras que no usas. Una lista
-  cerrada de ajustes documentados; no se desinstala nada y cada uno se puede deshacer.
+  cerrada de ajustes documentados, cada uno se puede deshacer, y quitar de forma opcional apps
+  preinstaladas de la Store (Noticias, Consejos, Clipchamp…) de tu cuenta; la Store puede volver
+  a instalarlas.
 - **Mantenimiento**: las herramientas del propio sistema (almacén de componentes e hibernación en
   Windows, el journal en Linux).
 

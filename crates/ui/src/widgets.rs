@@ -10,13 +10,22 @@ use rewind_os_engine::format;
 use rewind_os_i18n::{tr, trf};
 
 pub fn page_header(ui: &mut Ui, title: &str, subtitle: &str) {
+    page_header_with(ui, title, subtitle, |_| {});
+}
+
+/// The page title and its one-line description, with `actions` laid out from the right edge.
+pub fn page_header_with(ui: &mut Ui, title: &str, subtitle: &str, actions: impl FnOnce(&mut Ui)) {
     let t = theme::current(ui.ctx());
-    ui.add_space(6.0);
-    ui.heading(title);
-    if !subtitle.is_empty() {
-        ui.add_space(2.0);
-        ui.label(RichText::new(subtitle).color(t.text_muted));
-    }
+    ui.add_space(4.0);
+    ui.horizontal(|ui| {
+        ui.vertical(|ui| {
+            ui.label(RichText::new(title).size(22.0).strong().color(t.text));
+            if !subtitle.is_empty() {
+                ui.label(RichText::new(subtitle).color(t.text_muted));
+            }
+        });
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), actions);
+    });
     ui.add_space(t.gap * 1.25);
 }
 
@@ -150,8 +159,9 @@ pub fn nav_item(
     };
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let hovered = enabled && (response.hovered() || response.has_focus());
+    // A faint accent tint marks the current page in both themes; hover uses the card surface.
     let fill = if selected {
-        Some(t.surface_raised)
+        Some(t.accent.gamma_multiply(0.16))
     } else if hovered {
         Some(t.surface)
     } else {
@@ -160,6 +170,15 @@ pub fn nav_item(
     if let Some(fill) = fill {
         ui.painter()
             .rect_filled(rect, CornerRadius::same(t.radius), fill);
+    }
+    if selected {
+        // A short accent bar marks the current page, as well as the fill and the bold label.
+        let bar = egui::Rect::from_center_size(
+            rect.left_center() + egui::vec2(1.5, 0.0),
+            egui::vec2(3.0, 16.0),
+        );
+        ui.painter()
+            .rect_filled(bar, CornerRadius::same(2), t.accent);
     }
     if response.has_focus() {
         ui.painter().rect_stroke(

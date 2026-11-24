@@ -421,3 +421,4 @@ Scan finished: {size} in {files} files.	Escaneo terminado: {size} en {files} arc
 Search finished: {n} sets of identical files, {size} can be freed.	Búsqueda terminada: {n} grupos de archivos idénticos, se pueden liberar {size}.
 Search finished: {n} leftover folders found.	Búsqueda terminada: {n} carpetas de restos encontradas.
 Analysis finished: {size} of junk found.	Análisis terminado: {size} de basura encontrada.
+Programs installed with the system's package managers, without libraries and the base system.	Programas instalados con los gestores de paquetes del sistema, sin bibliotecas ni el sistema base.

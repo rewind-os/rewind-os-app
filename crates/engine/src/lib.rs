@@ -8,6 +8,7 @@ pub mod format;
 pub mod icons;
 pub mod leftovers;
 pub mod maintenance;
+pub mod packages;
 pub mod programs;
 pub mod recommend;
 pub mod safety;
@@ -158,7 +159,7 @@ pub const TOOLS: &[ToolSpec] = &[
     ToolSpec::new("cleanup.run", "Delete the chosen junk categories")
         .admin(AdminNeed::Partly)
         .changes(),
-    ToolSpec::new("programs.list", "List installed programs").only(WINDOWS),
+    ToolSpec::new("programs.list", "List installed programs").only(WINDOWS_LINUX),
     ToolSpec::new("programs.uninstall", "Start a program's own uninstaller")
         .changes()
         .only(WINDOWS),

@@ -39,7 +39,12 @@ impl State {
             self.job = Some(Job::start(&ctx, &shared.engine, Request::ProgramsList));
         }
         match jobs::finished(&mut self.job, &ctx) {
-            Some(Ok(Response::Programs(list))) => self.programs = Some(list),
+            Some(Ok(Response::Programs(list))) => {
+                shared
+                    .icons
+                    .request(&ctx, list.iter().filter_map(|p| p.display_icon.clone()));
+                self.programs = Some(list);
+            }
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
             None => {}
@@ -103,6 +108,10 @@ impl State {
                 for (index, program) in shown.iter().enumerate().skip(range.start).take(range.len())
                 {
                     widgets::list_row(ui, index, row_height, |ui| {
+                        shared
+                            .icons
+                            .show(ui, program.display_icon.as_deref(), &program.name);
+                        ui.add_space(6.0);
                         ui.vertical(|ui| {
                             ui.label(RichText::new(&program.name).strong());
                             let mut details = Vec::new();

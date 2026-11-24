@@ -12,6 +12,7 @@ trash.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg.workspace = true
+winapi-util.workspace = true
 
 [lints]
 workspace = true

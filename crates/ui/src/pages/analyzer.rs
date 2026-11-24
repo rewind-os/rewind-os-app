@@ -224,6 +224,16 @@ impl State {
                 .color(t.warn),
             );
         }
+        if tree.hard_linked_bytes > 0 {
+            ui.label(
+                RichText::new(trf(
+                    "{size} of hard links (one file under several names) was counted once.",
+                    &[("size", &bytes(tree.hard_linked_bytes))],
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+        }
     }
 
     fn breadcrumb(&mut self, ui: &mut egui::Ui, tree: &ScanTree) {

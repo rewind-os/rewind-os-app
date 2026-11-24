@@ -460,6 +460,15 @@ fn print_human(response: &Response, top: usize) {
                     )
                 );
             }
+            if tree.hard_linked_bytes > 0 {
+                println!(
+                    "{}",
+                    trf(
+                        "{size} of hard links (one file under several names) was counted once.",
+                        &[("size", &bytes(tree.hard_linked_bytes))]
+                    )
+                );
+            }
             println!("\n{}", tr("Largest folders"));
             for (id, node) in tree
                 .children(rewind_os_engine::scan::ScanTree::ROOT)

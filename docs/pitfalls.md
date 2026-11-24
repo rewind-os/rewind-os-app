@@ -3,8 +3,11 @@
 Things that look wrong but are not, and mistakes worth not repeating.
 
 - **WinSxS looks huge.** Most files in `C:\Windows\WinSxS` are hard links shared with
-  `C:\Windows\System32`. The analyzer counts each link, so the folder looks several GB larger
-  than it is. Use Maintenance → "Measure real size" (`dism /AnalyzeComponentStore`). Never delete
+  `C:\Windows\System32`. The analyzer counts each hard-linked file once (inside the Windows
+  folder on Windows, where asking costs opening the file; everywhere on Linux and macOS), so the
+  total is right, but the folder found first gets the size: WinSxS or System32 can look larger
+  than the other depending on the scan order. The component store also shares files in other
+  ways (compression, deltas), so its real size still comes from DISM. Use Maintenance → "Measure real size" (`dism /AnalyzeComponentStore`). Never delete
   files from WinSxS by hand.
 - **Moving to the recycle bin frees nothing yet.** Space comes back when the bin is emptied.
   Every message that moves files says so.

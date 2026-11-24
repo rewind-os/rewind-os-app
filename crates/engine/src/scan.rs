@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use rayon::prelude::*;
 use serde::{Serialize, Serializer};
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -66,6 +66,9 @@ pub struct ScanTree {
     pub elapsed_ms: u64,
     /// The scan was stopped before the end; sizes are lower bounds.
     pub cancelled: bool,
+    /// Size of the extra names of hard-linked files, counted once. The folder that holds the
+    /// first name found gets the size.
+    pub hard_linked_bytes: u64,
 }
 
 impl ScanTree {
@@ -218,6 +221,9 @@ struct Context<'a> {
     top: TopFiles,
     extensions: Mutex<HashMap<String, (u64, u64)>>,
     unreadable: AtomicU64,
+    /// Hard-linked files already counted.
+    linked: Mutex<HashSet<(u64, u64)>>,
+    linked_bytes: AtomicU64,
 }
 
 /// Scans `root`. Stops early, keeping what it measured, when `task` is cancelled.
@@ -239,6 +245,8 @@ pub fn scan(root: &Path, task: &Task) -> Result<ScanTree> {
         },
         extensions: Mutex::new(HashMap::new()),
         unreadable: AtomicU64::new(0),
+        linked: Mutex::new(HashSet::new()),
+        linked_bytes: AtomicU64::new(0),
     };
     // Deep trees recurse once per level; give the workers room.
     let pool = rayon::ThreadPoolBuilder::new()
@@ -287,6 +295,7 @@ pub fn scan(root: &Path, task: &Task) -> Result<ScanTree> {
         unreadable_dirs: ctx.unreadable.into_inner(),
         elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
         cancelled: task.is_cancelled(),
+        hard_linked_bytes: ctx.linked_bytes.into_inner(),
     })
 }
 
@@ -313,6 +322,7 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
             return raw;
         }
     };
+    let check_links = rewind_os_platform::files::hard_links_expected(path);
     let mut subdirs: Vec<(PathBuf, Box<str>)> = Vec::new();
     let mut local_ext: HashMap<String, (u64, u64)> = HashMap::new();
     for entry in entries.flatten() {
@@ -325,6 +335,14 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
         } else if kind.is_file() {
             // On Windows this comes from the directory listing itself, without opening the file.
             let Ok(meta) = entry.metadata() else { continue };
+            // A second name of a file already counted adds nothing.
+            if check_links
+                && let Some(id) = rewind_os_platform::files::link_identity(&entry.path(), &meta)
+                && !ctx.linked.lock().insert(id)
+            {
+                ctx.linked_bytes.fetch_add(meta.len(), Ordering::Relaxed);
+                continue;
+            }
             let bytes = meta.len();
             let modified = meta.modified().ok();
             raw.own_bytes += bytes;

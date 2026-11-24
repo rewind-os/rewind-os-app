@@ -82,7 +82,7 @@ impl IconCache {
             Some(texture) => {
                 ui.add(
                     egui::Image::new((texture.id(), egui::vec2(SIZE, SIZE)))
-                        .corner_radius(CornerRadius::same(4)),
+                        .corner_radius(CornerRadius::same(7)),
                 );
             }
             None => initial(ui, name),
@@ -93,8 +93,16 @@ impl IconCache {
 fn initial(ui: &mut Ui, name: &str) {
     let t = theme::current(ui.ctx());
     let (rect, _) = ui.allocate_exact_size(egui::vec2(SIZE, SIZE), Sense::hover());
-    ui.painter()
-        .rect_filled(rect, CornerRadius::same(t.radius), t.surface_raised);
+    // The same name always gets the same colour.
+    let hash = name
+        .bytes()
+        .fold(0u32, |h, b| h.wrapping_mul(31).wrapping_add(u32::from(b)));
+    let fill = t
+        .tiles
+        .get(hash as usize % t.tiles.len())
+        .copied()
+        .unwrap_or(t.surface_raised);
+    ui.painter().rect_filled(rect, CornerRadius::same(7), fill);
     let letter: String = name
         .chars()
         .find(|c| c.is_alphanumeric())
@@ -104,7 +112,7 @@ fn initial(ui: &mut Ui, name: &str) {
         rect.center(),
         egui::Align2::CENTER_CENTER,
         letter,
-        egui::FontId::proportional(13.0),
-        t.text_muted,
+        egui::FontId::proportional(14.0),
+        egui::Color32::WHITE,
     );
 }

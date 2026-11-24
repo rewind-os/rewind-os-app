@@ -7,6 +7,8 @@ use egui::{Color32, CornerRadius, Stroke, Visuals};
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
     pub background: Color32,
+    /// The navigation column, a step darker than the page.
+    pub sidebar: Color32,
     pub surface: Color32,
     pub surface_raised: Color32,
     pub border: Color32,
@@ -24,73 +26,92 @@ pub struct Theme {
     pub control: Color32,
     /// Distinct fills for treemap tiles and charts.
     pub palette: [Color32; 8],
+    /// Fills for initial tiles (programs without an icon).
+    pub tiles: [Color32; 8],
     pub radius: u8,
     pub gap: f32,
     pub card_padding: i8,
 }
 
-// Minimal by design: one accent (the app's teal), near-flat surfaces without borders, muted
-// secondary text, generous spacing. Status colours are only used for text, next to a word.
+// Deep navy surfaces in the spirit of Termius, one accent (the app's teal), no borders, muted
+// secondary text, generous spacing. Status colours appear only as text or as a faint tint
+// behind a word. `tiles` colour the initial shown for a program without an icon.
 pub const DARK: Theme = Theme {
-    background: Color32::from_rgb(0x12, 0x13, 0x16),
-    surface: Color32::from_rgb(0x19, 0x1a, 0x1e),
-    surface_raised: Color32::from_rgb(0x22, 0x24, 0x28),
-    border: Color32::from_rgb(0x2a, 0x2c, 0x31),
-    text: Color32::from_rgb(0xec, 0xec, 0xee),
-    text_muted: Color32::from_rgb(0x9a, 0x9c, 0xa3),
-    accent: Color32::from_rgb(0x3c, 0xc2, 0xad),
-    on_accent: Color32::from_rgb(0x06, 0x1f, 0x1b),
-    ok: Color32::from_rgb(0x6f, 0xcf, 0x97),
-    warn: Color32::from_rgb(0xe2, 0xb7, 0x5a),
-    danger: Color32::from_rgb(0xf2, 0x8b, 0x82),
-    on_danger: Color32::from_rgb(0x2a, 0x0b, 0x09),
-    track: Color32::from_rgb(0x26, 0x28, 0x2d),
-    control: Color32::from_rgb(0x6e, 0x72, 0x79),
+    background: Color32::from_rgb(0x14, 0x17, 0x29),
+    sidebar: Color32::from_rgb(0x10, 0x12, 0x21),
+    surface: Color32::from_rgb(0x1d, 0x20, 0x33),
+    surface_raised: Color32::from_rgb(0x27, 0x2b, 0x42),
+    border: Color32::from_rgb(0x2c, 0x31, 0x4a),
+    text: Color32::from_rgb(0xf5, 0xf6, 0xff),
+    text_muted: Color32::from_rgb(0x8d, 0x91, 0xa5),
+    accent: Color32::from_rgb(0x2b, 0xc4, 0xc2),
+    on_accent: Color32::from_rgb(0x05, 0x1a, 0x1d),
+    ok: Color32::from_rgb(0x3d, 0xd0, 0x86),
+    warn: Color32::from_rgb(0xff, 0xb3, 0x47),
+    danger: Color32::from_rgb(0xff, 0x7a, 0x8a),
+    on_danger: Color32::from_rgb(0x2a, 0x08, 0x0e),
+    track: Color32::from_rgb(0x25, 0x29, 0x3f),
+    control: Color32::from_rgb(0x6b, 0x70, 0x8a),
     // Tones of the accent, darkest last, for treemap tiles.
     palette: [
-        Color32::from_rgb(0x3c, 0xc2, 0xad),
-        Color32::from_rgb(0x34, 0xa6, 0x95),
-        Color32::from_rgb(0x2d, 0x8c, 0x7e),
-        Color32::from_rgb(0x27, 0x74, 0x69),
-        Color32::from_rgb(0x22, 0x5f, 0x57),
-        Color32::from_rgb(0x1e, 0x4d, 0x47),
-        Color32::from_rgb(0x1b, 0x3e, 0x3a),
-        Color32::from_rgb(0x19, 0x33, 0x30),
+        Color32::from_rgb(0x2b, 0xc4, 0xc2),
+        Color32::from_rgb(0x26, 0xa9, 0xab),
+        Color32::from_rgb(0x22, 0x8f, 0x95),
+        Color32::from_rgb(0x1f, 0x77, 0x80),
+        Color32::from_rgb(0x1d, 0x62, 0x6e),
+        Color32::from_rgb(0x1c, 0x50, 0x5f),
+        Color32::from_rgb(0x1b, 0x41, 0x53),
+        Color32::from_rgb(0x1a, 0x35, 0x49),
     ],
-    radius: 8,
+    tiles: TILES,
+    radius: 10,
     gap: 16.0,
     card_padding: 18,
 };
 
 pub const LIGHT: Theme = Theme {
-    background: Color32::from_rgb(0xfb, 0xfb, 0xfa),
-    surface: Color32::from_rgb(0xf3, 0xf3, 0xf1),
-    surface_raised: Color32::from_rgb(0xea, 0xea, 0xe7),
-    border: Color32::from_rgb(0xe2, 0xe2, 0xde),
-    text: Color32::from_rgb(0x17, 0x18, 0x1a),
-    text_muted: Color32::from_rgb(0x5c, 0x5f, 0x66),
-    accent: Color32::from_rgb(0x0e, 0x7a, 0x6c),
+    background: Color32::from_rgb(0xf4, 0xf6, 0xf8),
+    sidebar: Color32::from_rgb(0xe8, 0xec, 0xf0),
+    surface: Color32::from_rgb(0xff, 0xff, 0xff),
+    surface_raised: Color32::from_rgb(0xe6, 0xea, 0xef),
+    border: Color32::from_rgb(0xdc, 0xe1, 0xe7),
+    text: Color32::from_rgb(0x14, 0x17, 0x29),
+    text_muted: Color32::from_rgb(0x55, 0x5a, 0x70),
+    accent: Color32::from_rgb(0x0b, 0x7c, 0x7f),
     on_accent: Color32::from_rgb(0xff, 0xff, 0xff),
-    ok: Color32::from_rgb(0x1d, 0x7a, 0x45),
-    warn: Color32::from_rgb(0x8a, 0x5a, 0x00),
-    danger: Color32::from_rgb(0xb4, 0x2b, 0x22),
+    ok: Color32::from_rgb(0x15, 0x7a, 0x47),
+    warn: Color32::from_rgb(0x8f, 0x55, 0x00),
+    danger: Color32::from_rgb(0xb8, 0x23, 0x3a),
     on_danger: Color32::from_rgb(0xff, 0xff, 0xff),
-    track: Color32::from_rgb(0xe6, 0xe6, 0xe3),
-    control: Color32::from_rgb(0x86, 0x89, 0x8f),
+    track: Color32::from_rgb(0xe3, 0xe7, 0xec),
+    control: Color32::from_rgb(0x84, 0x89, 0x9a),
     palette: [
-        Color32::from_rgb(0x0e, 0x7a, 0x6c),
-        Color32::from_rgb(0x2a, 0x8e, 0x81),
-        Color32::from_rgb(0x48, 0xa1, 0x95),
-        Color32::from_rgb(0x67, 0xb3, 0xa9),
-        Color32::from_rgb(0x86, 0xc4, 0xbc),
-        Color32::from_rgb(0xa3, 0xd3, 0xcd),
-        Color32::from_rgb(0xbe, 0xe0, 0xdb),
-        Color32::from_rgb(0xd5, 0xeb, 0xe8),
+        Color32::from_rgb(0x0b, 0x7c, 0x7f),
+        Color32::from_rgb(0x2a, 0x8f, 0x92),
+        Color32::from_rgb(0x48, 0xa2, 0xa4),
+        Color32::from_rgb(0x67, 0xb4, 0xb6),
+        Color32::from_rgb(0x86, 0xc5, 0xc7),
+        Color32::from_rgb(0xa3, 0xd4, 0xd5),
+        Color32::from_rgb(0xbe, 0xe1, 0xe2),
+        Color32::from_rgb(0xd5, 0xec, 0xec),
     ],
-    radius: 8,
+    tiles: TILES,
+    radius: 10,
     gap: 16.0,
     card_padding: 18,
 };
+
+/// Fills for the initial tile of a program without an icon; white text reads on each.
+const TILES: [Color32; 8] = [
+    Color32::from_rgb(0xd9, 0x4f, 0x1c),
+    Color32::from_rgb(0xb8, 0x10, 0x5a),
+    Color32::from_rgb(0x1f, 0x6f, 0xc2),
+    Color32::from_rgb(0x6e, 0x45, 0xc4),
+    Color32::from_rgb(0x15, 0x86, 0x5a),
+    Color32::from_rgb(0x0f, 0x7f, 0x8a),
+    Color32::from_rgb(0xb0, 0x6a, 0x00),
+    Color32::from_rgb(0x4a, 0x55, 0x7a),
+];
 
 /// The tokens for the theme egui is currently showing.
 pub fn current(ctx: &egui::Context) -> &'static Theme {

@@ -38,7 +38,7 @@ pub fn list_row<R>(ui: &mut Ui, index: usize, height: f32, add: impl FnOnce(&mut
     let width = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
     let fill = if ui.rect_contains_pointer(rect) {
-        Some(t.surface)
+        Some(t.surface_raised)
     } else if index % 2 == 1 {
         Some(stripe(t))
     } else {
@@ -123,12 +123,24 @@ pub fn fill_color(t: &Theme, fraction: f32) -> Color32 {
 /// A short status word in a status colour. The word carries the meaning; colour only
 /// reinforces it.
 pub fn badge(ui: &mut Ui, text: &str, color: Color32) -> Response {
-    ui.label(RichText::new(text).color(color).small())
+    egui::Frame::new()
+        .fill(color.gamma_multiply(0.14))
+        .corner_radius(CornerRadius::same(6))
+        .inner_margin(Margin::symmetric(7, 2))
+        .show(ui, |ui| ui.label(RichText::new(text).color(color).small()))
+        .inner
 }
 
-/// One entry of the navigation list: plain text, with an accent bar beside the current page.
-/// Works with the keyboard (Tab, Enter) and reports itself as a tab to assistive technology.
-pub fn nav_item(ui: &mut Ui, label: &str, selected: bool, enabled: bool) -> Response {
+/// One entry of the navigation list: an icon and a label; the current page sits on a filled
+/// pill. Works with the keyboard (Tab, Enter) and reports itself as a tab to assistive
+/// technology.
+pub fn nav_item(
+    ui: &mut Ui,
+    glyph: crate::glyphs::Glyph,
+    label: &str,
+    selected: bool,
+    enabled: bool,
+) -> Response {
     let t = theme::current(ui.ctx());
     let size = egui::vec2(ui.available_width(), 36.0);
     let sense = if enabled {
@@ -138,17 +150,16 @@ pub fn nav_item(ui: &mut Ui, label: &str, selected: bool, enabled: bool) -> Resp
     };
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let hovered = enabled && (response.hovered() || response.has_focus());
-    if hovered && !selected {
+    let fill = if selected {
+        Some(t.surface_raised)
+    } else if hovered {
+        Some(t.surface)
+    } else {
+        None
+    };
+    if let Some(fill) = fill {
         ui.painter()
-            .rect_filled(rect, CornerRadius::same(t.radius), t.surface);
-    }
-    if selected {
-        let bar = egui::Rect::from_min_size(
-            rect.left_top() + egui::vec2(0.0, 9.0),
-            egui::vec2(3.0, rect.height() - 18.0),
-        );
-        ui.painter()
-            .rect_filled(bar, CornerRadius::same(2), t.accent);
+            .rect_filled(rect, CornerRadius::same(t.radius), fill);
     }
     if response.has_focus() {
         ui.painter().rect_stroke(
@@ -159,17 +170,23 @@ pub fn nav_item(ui: &mut Ui, label: &str, selected: bool, enabled: bool) -> Resp
         );
     }
     let color = if !enabled {
-        t.text_muted.gamma_multiply(0.7)
+        t.text_muted.gamma_multiply(0.6)
     } else if selected {
         t.text
     } else {
         t.text_muted
     };
+    let icon_color = if selected && enabled { t.accent } else { color };
+    let icon = egui::Rect::from_center_size(
+        rect.left_center() + egui::vec2(22.0, 0.0),
+        egui::vec2(16.0, 16.0),
+    );
+    crate::glyphs::paint(ui.painter(), icon, glyph, icon_color);
     ui.painter().text(
-        rect.left_center() + egui::vec2(16.0, 0.0),
+        rect.left_center() + egui::vec2(42.0, 0.0),
         egui::Align2::LEFT_CENTER,
         label,
-        egui::FontId::proportional(14.5),
+        egui::FontId::proportional(14.0),
         color,
     );
     let label = label.to_owned();

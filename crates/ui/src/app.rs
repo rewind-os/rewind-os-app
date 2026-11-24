@@ -93,6 +93,21 @@ impl Page {
     }
 
     /// A one-line hint shown under the title in the sidebar tooltip.
+    fn glyph(self) -> crate::glyphs::Glyph {
+        use crate::glyphs::Glyph;
+        match self {
+            Page::Overview => Glyph::Home,
+            Page::Analyzer => Glyph::Analyzer,
+            Page::Duplicates => Glyph::Duplicates,
+            Page::Cleanup => Glyph::Cleanup,
+            Page::Leftovers => Glyph::Leftovers,
+            Page::Programs => Glyph::Programs,
+            Page::Startup => Glyph::Startup,
+            Page::Lighten => Glyph::Lighten,
+            Page::Maintenance => Glyph::Maintenance,
+        }
+    }
+
     pub fn hint(self) -> &'static str {
         match self {
             Page::Overview => "Recommendations and your drives",
@@ -293,8 +308,13 @@ impl App {
             }
             for &page in pages {
                 let available = page.available();
-                let response =
-                    widgets::nav_item(ui, tr(page.title()), self.page == page, available);
+                let response = widgets::nav_item(
+                    ui,
+                    page.glyph(),
+                    tr(page.title()),
+                    self.page == page,
+                    available,
+                );
                 let response = if available {
                     response.on_hover_text(tr(page.hint()))
                 } else {
@@ -388,7 +408,7 @@ impl eframe::App for App {
             .show_separator_line(false)
             .frame(
                 egui::Frame::new()
-                    .fill(t.background)
+                    .fill(t.sidebar)
                     .inner_margin(Margin::symmetric(12, 18)),
             )
             .show(ui, |ui| self.sidebar(ui));

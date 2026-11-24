@@ -137,10 +137,12 @@ pub struct Shared {
     pub status: Option<Status>,
     /// Set by a page to switch pages at the end of the frame.
     pub goto: Option<Page>,
-    /// Set by the overview to start a scan in the analyzer.
+    /// Set by the overview to start a scan in the analyzer, or a search on the duplicates page.
     pub scan_request: Option<PathBuf>,
     /// Set by a recommendation: the cleanup categories to select.
     pub cleanup_request: Option<Vec<String>>,
+    /// Search for program leftovers when the page opens.
+    pub leftovers_request: bool,
     pub relaunch: Option<Job>,
 }
 
@@ -227,6 +229,7 @@ impl App {
                 goto: None,
                 scan_request: crate::devtools::scan_path(),
                 cleanup_request: None,
+                leftovers_request: false,
                 relaunch: None,
             },
             page,

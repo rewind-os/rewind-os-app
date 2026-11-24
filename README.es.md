@@ -17,7 +17,8 @@ Elimina lo que no necesitas: archivos temporales, cachés, restos de programas q
 archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 
 - **Inicio**: recomendaciones para este equipo (una unidad casi llena, basura que conviene
-  limpiar, demasiados programas de inicio…), cada una con un botón que lo hace; unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
+  limpiar, demasiados programas de inicio, duplicados en Descargas, restos de programas
+  eliminados…), cada una con un botón que lo hace; unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
   (`hiberfil.sys`, `pagefile.sys`).
 - **Analizador de disco**: escanea una unidad o carpeta en paralelo; lista de carpetas, treemap,
   archivos más grandes y tamaño por tipo de archivo. Cualquier elemento se puede mostrar en el

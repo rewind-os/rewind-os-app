@@ -689,6 +689,10 @@ fn print_human(response: &Response, top: usize) {
                 );
             }
         }
+        Response::Elevated(value) => match serde_json::to_string_pretty(value) {
+            Ok(text) => println!("{text}"),
+            Err(err) => eprintln!("{err}"),
+        },
         Response::Apps(apps) => {
             if apps.is_empty() {
                 println!("{}", tr("No preinstalled apps to remove."));

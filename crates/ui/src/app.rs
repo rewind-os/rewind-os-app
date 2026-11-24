@@ -135,6 +135,15 @@ fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
 }
 
 /// Restarting elevated is a Windows feature; elsewhere the CLI runs under sudo instead.
+/// Linux and macOS ask for the password for one action instead of restarting the app.
+pub fn can_elevate_actions() -> bool {
+    static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *AVAILABLE.get_or_init(|| {
+        rewind_os_engine::tool("system.run_elevated").is_some_and(|t| t.available())
+            && rewind_os_engine::elevated::available()
+    })
+}
+
 fn can_relaunch() -> bool {
     rewind_os_engine::tool("system.relaunch_elevated").is_some_and(|t| t.available())
 }
@@ -164,6 +173,21 @@ pub struct Shared {
 }
 
 impl Shared {
+    /// `request` as it should run: with administrator rights through the system's password
+    /// prompt when the app is not elevated and the request may run that way.
+    pub fn with_rights(&self, request: Request) -> Request {
+        if !self.elevated
+            && can_elevate_actions()
+            && rewind_os_engine::elevated::ALLOWED.contains(&request.id())
+        {
+            Request::RunElevated {
+                request: Box::new(request),
+            }
+        } else {
+            request
+        }
+    }
+
     pub fn info(&mut self, text: impl Into<String>) {
         self.status = Some(Status {
             text: text.into(),
@@ -198,6 +222,13 @@ impl Shared {
                 if ui.button(tr("Restart as administrator")).clicked() {
                     self.relaunch_elevated(ui.ctx());
                 }
+            } else if can_elevate_actions() {
+                ui.label(
+                    RichText::new(tr(
+                        "The system asks for your password when you start one of these actions.",
+                    ))
+                    .color(t.text_muted),
+                );
             } else {
                 ui.label(
                     RichText::new(tr(

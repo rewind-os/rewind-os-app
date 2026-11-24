@@ -5,6 +5,7 @@
 pub mod apps;
 pub mod cleanup;
 pub mod duplicates;
+pub mod elevated;
 pub mod format;
 pub mod icons;
 pub mod leftovers;
@@ -86,6 +87,7 @@ const EVERYWHERE: &[Os] = &[Os::Windows, Os::Linux, Os::MacOs];
 const WINDOWS: &[Os] = &[Os::Windows];
 const LINUX: &[Os] = &[Os::Linux];
 const WINDOWS_LINUX: &[Os] = &[Os::Windows, Os::Linux];
+const LINUX_MAC: &[Os] = &[Os::Linux, Os::MacOs];
 
 impl ToolSpec {
     const fn new(id: &'static str, summary: &'static str) -> Self {
@@ -140,6 +142,13 @@ pub const TOOLS: &[ToolSpec] = &[
         "Restart the app with administrator rights",
     )
     .only(WINDOWS),
+    ToolSpec::new(
+        "system.run_elevated",
+        "Run one cleanup or maintenance request with administrator rights (asks for the password)",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(LINUX_MAC),
     ToolSpec::new(
         "disk.scan",
         "Measure every folder under a path and find the largest files",
@@ -265,6 +274,9 @@ pub enum Request {
     TweakSet { id: String, applied: bool },
     #[serde(rename = "system.relaunch_elevated")]
     RelaunchElevated { args: Vec<String> },
+    /// Runs `request` with administrator rights (Linux and macOS); see [`elevated::ALLOWED`].
+    #[serde(rename = "system.run_elevated")]
+    RunElevated { request: Box<Request> },
     #[serde(rename = "disk.scan")]
     DiskScan { root: PathBuf },
     #[serde(rename = "disk.list_files")]
@@ -314,6 +326,8 @@ pub enum Request {
 pub enum Response {
     Overview(system::Overview),
     Recommendations(Vec<recommend::Recommendation>),
+    /// What a request run with administrator rights answered, as `rewind-os-cli --json` prints.
+    Elevated(serde_json::Value),
     Tweaks(Vec<tweaks::TweakStatus>),
     Apps(Vec<apps::StoreApp>),
     AppsRemoved(Vec<apps::Removal>),
@@ -372,6 +386,7 @@ impl Engine {
                     "Setting undone"
                 }))
             }
+            Request::RunElevated { request } => elevated::run(&request).map(Response::Elevated),
             Request::RelaunchElevated { args } => {
                 rewind_os_platform::elevation::relaunch_elevated(&args)?;
                 Ok(Response::Done("An elevated copy was started"))
@@ -446,6 +461,7 @@ impl Request {
             Request::AppsRemove { .. } => "apps.remove",
             Request::TweakSet { .. } => "tweaks.set",
             Request::RelaunchElevated { .. } => "system.relaunch_elevated",
+            Request::RunElevated { .. } => "system.run_elevated",
             Request::DiskScan { .. } => "disk.scan",
             Request::ListFiles { .. } => "disk.list_files",
             Request::Duplicates { .. } => "disk.duplicates",

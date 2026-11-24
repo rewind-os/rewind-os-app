@@ -38,3 +38,11 @@ Things that look wrong but are not, and mistakes worth not repeating.
 - **Cloud placeholders.** OneDrive "files on demand" look like normal files, but reading one
   downloads it. Anything that reads contents (the duplicate finder) checks
   `platform::files::is_cloud_placeholder` first and reports what it skipped.
+
+## Windows: explorer.exe and installer icons
+
+- `explorer.exe /select,<path>` parses its own command line. Rust quotes an argument with spaces
+  as a whole (`"/select,C:\a b"`), which explorer does not understand, so it opens Documents.
+  Pass `/select,"C:\a b"` with `raw_arg` and drop the `\\?\` prefix.
+- Windows Installer saves an `<Icon>` under its `Id`: without an `.ico` extension the Start menu
+  shortcut and the Settings entry show a blank icon. Small icon sizes are bitmaps, not PNG.

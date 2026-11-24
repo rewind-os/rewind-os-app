@@ -5,18 +5,25 @@ use std::path::{Path, PathBuf};
 
 /// Opens the file manager with `path` selected (or opened, for a folder).
 pub fn reveal(path: &Path) -> Result<()> {
-    if cfg!(windows) {
-        let arg = format!("/select,{}", path.display());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // explorer.exe parses its own command line and wants `/select,"C:\a b\c"`. Rust's usual
+        // quoting wraps the whole argument (`"/select,C:\a b\c"`), which explorer does not
+        // understand: it opens Documents instead. Paths cannot contain `"` on Windows.
+        let arg = format!("/select,\"{}\"", explorer_path(path));
         // explorer.exe returns 1 even when it works, so only a failure to start counts.
         process::command("explorer.exe")
-            .arg(arg)
+            .raw_arg(arg)
             .spawn()
             .map(|_| ())
             .map_err(|source| PlatformError::Spawn {
                 program: "explorer.exe".into(),
                 source,
             })
-    } else if cfg!(target_os = "macos") {
+    }
+    #[cfg(not(windows))]
+    if cfg!(target_os = "macos") {
         process::command("open")
             .arg("-R")
             .arg(path)
@@ -40,6 +47,16 @@ pub fn reveal(path: &Path) -> Result<()> {
                 program: "xdg-open".into(),
                 source,
             })
+    }
+}
+
+/// The path as explorer.exe understands it: backslashes, without the `\\?\` prefix.
+#[cfg(any(windows, test))]
+fn explorer_path(path: &Path) -> String {
+    let text = path.display().to_string().replace('/', "\\");
+    match text.strip_prefix(r"\\?\UNC\") {
+        Some(rest) => format!(r"\\{rest}"),
+        None => text.strip_prefix(r"\\?\").unwrap_or(&text).to_owned(),
     }
 }
 
@@ -160,4 +177,26 @@ fn size_of(path: &Path) -> u64 {
     std::fs::read_dir(path)
         .map(|rd| rd.flatten().map(|e| size_of(&e.path())).sum())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::explorer_path;
+    use std::path::Path;
+
+    #[test]
+    fn explorer_gets_a_plain_path() {
+        assert_eq!(
+            explorer_path(Path::new(r"\\?\C:\Program Files\App")),
+            r"C:\Program Files\App"
+        );
+        assert_eq!(
+            explorer_path(Path::new(r"\\?\UNC\server\share\f")),
+            r"\\server\share\f"
+        );
+        assert_eq!(
+            explorer_path(Path::new("C:/Users/me/a b")),
+            r"C:\Users\me\a b"
+        );
+    }
 }

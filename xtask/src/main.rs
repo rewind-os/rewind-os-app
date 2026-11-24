@@ -48,6 +48,11 @@ fn load(svg: &str) -> Result<resvg::usvg::Tree> {
 
 /// Renders `tree` into a `size`×`size` PNG.
 fn render(tree: &resvg::usvg::Tree, size: u32) -> Result<Vec<u8>> {
+    pixmap(tree, size)?.encode_png().map_err(|e| e.to_string())
+}
+
+/// Renders `tree` into a `size`×`size` pixmap.
+fn pixmap(tree: &resvg::usvg::Tree, size: u32) -> Result<resvg::tiny_skia::Pixmap> {
     let mut pixmap =
         resvg::tiny_skia::Pixmap::new(size, size).ok_or_else(|| format!("bad size {size}"))?;
     let view = tree.size();
@@ -57,7 +62,7 @@ fn render(tree: &resvg::usvg::Tree, size: u32) -> Result<Vec<u8>> {
         resvg::tiny_skia::Transform::from_scale(scale, scale),
         &mut pixmap.as_mut(),
     );
-    pixmap.encode_png().map_err(|e| e.to_string())
+    Ok(pixmap)
 }
 
 fn write(path: &Path, bytes: &[u8]) -> Result<()> {
@@ -105,29 +110,61 @@ fn icons() -> Result<()> {
 
     let images: Vec<(u32, Vec<u8>)> = ICO
         .iter()
-        .map(|&s| render(&tile, s).map(|png| (s, png)))
+        .map(|&s| {
+            let image = if s >= 256 {
+                render(&tile, s)?
+            } else {
+                dib(&pixmap(&tile, s)?)
+            };
+            Ok((s, image))
+        })
         .collect::<Result<_>>()?;
     write(&dir.join("rewind-os.ico"), &ico(&images))?;
     println!("icons written to {}", dir.display());
     Ok(())
 }
 
-/// A Windows icon file whose images are PNG-compressed (supported since Windows Vista).
+/// A 32-bit bitmap icon image: header, bottom-up BGRA rows, then an empty AND mask (the alpha
+/// channel does the masking).
+fn dib(pixmap: &resvg::tiny_skia::Pixmap) -> Vec<u8> {
+    let (w, h) = (pixmap.width(), pixmap.height());
+    let mask_row = w.div_ceil(32) * 4;
+    let mut out = Vec::new();
+    out.extend_from_slice(&40u32.to_le_bytes());
+    out.extend_from_slice(&(w as i32).to_le_bytes());
+    out.extend_from_slice(&(2 * h as i32).to_le_bytes()); // colour image plus mask
+    out.extend_from_slice(&1u16.to_le_bytes());
+    out.extend_from_slice(&32u16.to_le_bytes());
+    out.extend_from_slice(&0u32.to_le_bytes()); // BI_RGB
+    out.extend_from_slice(&(w * h * 4 + mask_row * h).to_le_bytes());
+    out.extend_from_slice(&[0; 16]);
+    for row in pixmap.pixels().chunks(w as usize).rev() {
+        for p in row {
+            let c = p.demultiply();
+            out.extend_from_slice(&[c.blue(), c.green(), c.red(), c.alpha()]);
+        }
+    }
+    out.resize(out.len() + (mask_row * h) as usize, 0);
+    out
+}
+
+/// A Windows icon file: bitmap images for the small sizes, which every part of Windows reads
+/// (the resource compiler, Windows Installer, shortcuts), and a PNG-compressed 256 px image.
 fn ico(images: &[(u32, Vec<u8>)]) -> Vec<u8> {
     let mut out = vec![0, 0, 1, 0];
     out.extend_from_slice(&(images.len() as u16).to_le_bytes());
     let mut offset = 6 + 16 * images.len() as u32;
-    for (size, png) in images {
+    for (size, image) in images {
         let dim = if *size >= 256 { 0 } else { *size as u8 };
         out.extend_from_slice(&[dim, dim, 0, 0]);
         out.extend_from_slice(&1u16.to_le_bytes());
         out.extend_from_slice(&32u16.to_le_bytes());
-        out.extend_from_slice(&(png.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(image.len() as u32).to_le_bytes());
         out.extend_from_slice(&offset.to_le_bytes());
-        offset += png.len() as u32;
+        offset += image.len() as u32;
     }
-    for (_, png) in images {
-        out.extend_from_slice(png);
+    for (_, image) in images {
+        out.extend_from_slice(image);
     }
     out
 }

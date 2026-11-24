@@ -14,8 +14,10 @@
     <MajorUpgrade DowngradeErrorMessage="A newer version of Rewind OS is already installed." />
     <MediaTemplate EmbedCab="yes" />
 
-    <Icon Id="AppIcon" SourceFile="$(IconFile)" />
-    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <!-- Windows Installer saves the icon under its Id; without the .ico extension Explorer cannot
+         read it and the Start menu shortcut and the Settings entry show a blank icon. -->
+    <Icon Id="AppIcon.ico" SourceFile="$(IconFile)" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon.ico" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/rewind-os/rewind-os-app" />
     <Property Id="ARPNOMODIFY" Value="1" />
 
@@ -28,7 +30,7 @@
                       Name="Rewind OS"
                       Description="See what uses your disk and remove what you do not need"
                       WorkingDirectory="INSTALLFOLDER"
-                      Icon="AppIcon"
+                      Icon="AppIcon.ico"
                       Advertise="yes" />
           </File>
         </Component>

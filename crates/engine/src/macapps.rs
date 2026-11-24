@@ -145,6 +145,57 @@ pub fn uninstall(key: &str) -> Result<()> {
     }
 }
 
+/// Names and bundle ids of every app on the Mac, Apple's included (`/System/Applications`,
+/// CoreServices), read quickly: evidence that a folder in `~/Library` still belongs to
+/// something. Sizes are not measured.
+pub fn known_names() -> Vec<String> {
+    let mut bundles_found = Vec::new();
+    bundles(Path::new("/Applications"), 2, &mut bundles_found);
+    bundles(Path::new("/System/Applications"), 2, &mut bundles_found);
+    bundles(
+        Path::new("/System/Library/CoreServices"),
+        1,
+        &mut bundles_found,
+    );
+    if let Some(home) = Known::Home.path() {
+        bundles(&home.join("Applications"), 2, &mut bundles_found);
+    }
+    let mut names: Vec<String> = bundles_found
+        .par_iter()
+        .flat_map_iter(|bundle| {
+            let mut out = Vec::new();
+            if let Some(stem) = bundle.file_stem() {
+                out.push(stem.to_string_lossy().into_owned());
+            }
+            let plist = bundle.join("Contents/Info.plist");
+            if let Ok(done) = process::run(
+                "plutil",
+                &[
+                    "-extract",
+                    "CFBundleIdentifier",
+                    "raw",
+                    "-o",
+                    "-",
+                    &plist.to_string_lossy(),
+                ],
+            ) && done.success()
+            {
+                out.push(done.stdout.trim().to_owned());
+            }
+            out
+        })
+        .collect();
+    // Homebrew formulae and casks.
+    for args in [["list", "--formula"], ["list", "--cask"]] {
+        if let Ok(done) = process::run("brew", &args)
+            && done.success()
+        {
+            names.extend(done.stdout.split_whitespace().map(String::from));
+        }
+    }
+    names
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

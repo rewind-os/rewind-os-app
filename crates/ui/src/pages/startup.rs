@@ -1,11 +1,13 @@
 use crate::app::Shared;
+use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
 use crate::widgets::{self, card, page_header};
 use egui::RichText;
-use rewind_os_engine::startup::StartupEntry;
+use rewind_os_engine::format::count;
+use rewind_os_engine::startup::{Source, StartupEntry};
 use rewind_os_engine::{Request, Response, Task};
-use rewind_os_i18n::tr;
+use rewind_os_i18n::{tr, trf};
 
 #[derive(Default)]
 pub struct State {
@@ -62,6 +64,8 @@ impl State {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                summary(ui, entries);
+                ui.add_space(t.gap * 1.5);
                 card(ui, |ui| {
                     ui.set_width(ui.available_width());
                     for (index, entry) in entries.iter().enumerate() {
@@ -159,4 +163,107 @@ impl State {
             self.refresh(&ctx, shared);
         }
     }
+}
+
+/// The kinds of entries, as people know them.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Kind {
+    SignIn,
+    Task,
+    Service,
+}
+
+impl Kind {
+    const ALL: [Kind; 3] = [Kind::SignIn, Kind::Task, Kind::Service];
+
+    fn of(source: Source) -> Kind {
+        match source {
+            Source::ScheduledTask => Kind::Task,
+            Source::Service => Kind::Service,
+            _ => Kind::SignIn,
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Kind::SignIn => "Programs at sign-in",
+            Kind::Task => "Scheduled tasks",
+            Kind::Service => "Services",
+        }
+    }
+}
+
+/// Key figures and what starts, split by kind.
+fn summary(ui: &mut egui::Ui, entries: &[StartupEntry]) {
+    let t = theme::current(ui.ctx());
+    let on = entries.iter().filter(|e| e.enabled).count();
+    let essential = entries.iter().filter(|e| e.essential).count();
+    let share = on as f32 / entries.len().max(1) as f32;
+    charts::grid(ui, 3, 180.0, |ui, i| match i {
+        0 => charts::stat_tile(
+            ui,
+            tr("Start with the system"),
+            &count(on as u64),
+            &trf("of {n} entries", &[("n", &count(entries.len() as u64))]),
+            Some((share, t.accent)),
+        ),
+        1 => charts::stat_tile(
+            ui,
+            tr("Turned off"),
+            &count((entries.len() - on) as u64),
+            tr("You can turn them back on at any time"),
+            None,
+        ),
+        _ => charts::stat_tile(
+            ui,
+            tr("Needed by the system"),
+            &count(essential as u64),
+            tr("Can be turned on, never off"),
+            None,
+        ),
+    });
+    let kinds: Vec<(Kind, usize)> = Kind::ALL
+        .into_iter()
+        .map(|k| {
+            let n = entries
+                .iter()
+                .filter(|e| e.enabled && Kind::of(e.source) == k)
+                .count();
+            (k, n)
+        })
+        .filter(|(_, n)| *n > 0)
+        .collect();
+    if kinds.is_empty() {
+        return;
+    }
+    ui.add_space(t.gap * 0.75);
+    card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(RichText::new(tr("What starts with the system")).strong());
+        ui.add_space(8.0);
+        let sizes: Vec<u64> = kinds.iter().map(|(_, n)| *n as u64).collect();
+        let parts = charts::shares(t, &sizes, on as u64);
+        let text = kinds
+            .iter()
+            .map(|(k, n)| format!("{} {n}", tr(k.label())))
+            .collect::<Vec<_>>()
+            .join(", ");
+        charts::stacked_bar(ui, 12.0, &parts, &text);
+        ui.add_space(8.0);
+        ui.horizontal_wrapped(|ui| {
+            for ((kind, n), (fraction, color)) in kinds.iter().zip(&parts) {
+                ui.allocate_ui(egui::vec2(230.0, 20.0), |ui| {
+                    ui.set_width(230.0);
+                    charts::legend_row(
+                        ui,
+                        *color,
+                        tr(kind.label()),
+                        &count(*n as u64),
+                        Some(*fraction),
+                    );
+                });
+                ui.add_space(t.gap);
+            }
+        });
+    });
 }

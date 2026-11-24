@@ -24,7 +24,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.6 Scheduled tasks in the startup page (programs' own tasks; Windows' tasks are never listed)
 - [ ] R1.13 Third-party services in the startup page (set to manual start, never disabled)
 - [ ] R1.7 MCP server (`rewind-os-cli mcp`) with `--automation-read-root` / `--automation-write-root`
-- [ ] R1.8 Live-region announcements when a background job finishes
+- [x] R1.8 Live-region announcements when a background job finishes
 - [x] R1.9 GitHub Actions: CI on Linux and Windows, release workflow with portable zips (x64, arm64)
 - [ ] R1.11 MSI installer (WiX) next to the portable zip
 - [ ] R1.12 Code signing certificate (Azure Trusted Signing or a .pfx) so SmartScreen does not warn

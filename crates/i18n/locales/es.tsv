@@ -417,4 +417,8 @@ Scheduled task: at startup	Tarea programada: al arrancar
 Scheduled task: when idle	Tarea programada: en reposo
 Scheduled task: on an event	Tarea programada: ante un evento
 Scheduled task: on a schedule	Tarea programada: según un horario
+Scan finished: {size} in {files} files.	Escaneo terminado: {size} en {files} archivos.
+Search finished: {n} sets of identical files, {size} can be freed.	Búsqueda terminada: {n} grupos de archivos idénticos, se pueden liberar {size}.
+Search finished: {n} leftover folders found.	Búsqueda terminada: {n} carpetas de restos encontradas.
+Analysis finished: {size} of junk found.	Análisis terminado: {size} de basura encontrada.
 Programs installed with the system's package managers, without libraries and the base system.	Programas instalados con los gestores de paquetes del sistema, sin bibliotecas ni el sistema base.

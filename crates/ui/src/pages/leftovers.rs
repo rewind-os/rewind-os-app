@@ -37,6 +37,10 @@ impl State {
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         match jobs::finished(&mut self.find, ctx) {
             Some(Ok(Response::Leftovers(found))) => {
+                shared.info(trf(
+                    "Search finished: {n} leftover folders found.",
+                    &[("n", &count(found.len() as u64))],
+                ));
                 self.selected.clear();
                 self.moved.clear();
                 self.found = Some(found);

@@ -56,6 +56,12 @@ impl State {
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         match jobs::finished(&mut self.scan, ctx) {
             Some(Ok(Response::Scan(tree))) => {
+                if let Some(root) = tree.root_node() {
+                    shared.info(trf(
+                        "Scan finished: {size} in {files} files.",
+                        &[("size", &bytes(root.bytes)), ("files", &count(root.files))],
+                    ));
+                }
                 self.tree = Some(tree);
                 self.current = ScanTree::ROOT;
             }

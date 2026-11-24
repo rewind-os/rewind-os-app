@@ -33,6 +33,11 @@ impl State {
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         match jobs::finished(&mut self.analyze, ctx) {
             Some(Ok(Response::CleanupAnalysis(reports))) => {
+                let total: u64 = reports.iter().filter(|r| !r.blocked).map(|r| r.bytes).sum();
+                shared.info(rewind_os_i18n::trf(
+                    "Analysis finished: {size} of junk found.",
+                    &[("size", &rewind_os_engine::format::bytes(total))],
+                ));
                 if let Some(wanted) = shared.cleanup_request.take() {
                     // A recommendation chose these categories.
                     self.selected = reports

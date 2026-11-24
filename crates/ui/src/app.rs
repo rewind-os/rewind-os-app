@@ -359,16 +359,22 @@ impl App {
         let t = theme::current(ui.ctx());
         if let Some(status) = &self.shared.status {
             let color = if status.error { t.danger } else { t.text_muted };
-            let prefix = if status.error {
-                tr("Error")
+            // Messages say what finished; only errors need a word in front.
+            let text = if status.error {
+                format!("{}: {}", tr("Error"), status.text)
             } else {
-                tr("Done")
+                status.text.clone()
             };
-            ui.label(
-                RichText::new(format!("{prefix}: {}", status.text))
-                    .small()
-                    .color(color),
-            );
+            let response = ui.label(RichText::new(text).small().color(color));
+            // A live region: screen readers announce each new message without moving focus,
+            // so the end of a background job is heard, not only seen.
+            let live = if status.error {
+                egui::accesskit::Live::Assertive
+            } else {
+                egui::accesskit::Live::Polite
+            };
+            ui.ctx()
+                .accesskit_node_builder(response.id, |node| node.set_live(live));
         }
     }
 

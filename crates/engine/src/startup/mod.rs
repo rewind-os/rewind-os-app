@@ -2,6 +2,7 @@
 //! autostart entries on Linux. Turning one off never deletes it; it can be turned back on here
 //! or from the system's own settings.
 
+pub mod services;
 pub mod tasks;
 mod windows;
 pub mod xdg;
@@ -26,6 +27,8 @@ pub enum Source {
     SystemAutostart,
     /// Windows: a scheduled task a program added (never one of Windows' own).
     ScheduledTask,
+    /// Windows: a service a program installed (never one of Windows' own or a driver).
+    Service,
 }
 
 impl Source {
@@ -39,6 +42,7 @@ impl Source {
             Source::CommonStartupFolder => "common_folder",
             Source::UserAutostart | Source::SystemAutostart => "xdg",
             Source::ScheduledTask => "task",
+            Source::Service => "service",
         }
     }
 
@@ -53,6 +57,7 @@ impl Source {
             Source::UserAutostart => "Autostart (you)",
             Source::SystemAutostart => "Autostart (all users)",
             Source::ScheduledTask => "Scheduled task",
+            Source::Service => "Service",
         }
     }
 }
@@ -72,6 +77,13 @@ pub struct StartupEntry {
     /// When it runs, if not simply at sign-in (English; translate with `rewind_os_i18n::tr`).
     pub when: Option<&'static str>,
 }
+
+/// English reason for a service that is not a program's.
+pub const SYSTEM_SERVICE: &str = "This service is part of Windows or a driver. Rewind OS only changes services that programs installed.";
+
+/// English reason for setting back a service the app did not change.
+pub const NOT_CHANGED_BY_APP: &str =
+    "Rewind OS did not change this service, so it leaves how it starts as it is.";
 
 /// English reason shown when an essential entry is not turned off.
 pub const ESSENTIAL: &str =
@@ -117,6 +129,7 @@ pub fn list() -> Vec<StartupEntry> {
         Os::Windows => {
             let mut entries = windows::list();
             entries.extend(tasks::list());
+            entries.extend(services::list());
             entries
         }
         Os::Linux => xdg::Dirs::current().map(|d| d.list()).unwrap_or_default(),
@@ -126,10 +139,15 @@ pub fn list() -> Vec<StartupEntry> {
 
 pub fn set_enabled(id: &str, enabled: bool) -> Result<()> {
     match Os::current() {
-        Os::Windows => match id.strip_prefix("task|") {
-            Some(path) => tasks::set_enabled(path, enabled),
-            None => windows::set_enabled(id, enabled),
-        },
+        Os::Windows => {
+            if let Some(path) = id.strip_prefix("task|") {
+                tasks::set_enabled(path, enabled)
+            } else if let Some(name) = id.strip_prefix("service|") {
+                services::set_enabled(name, enabled)
+            } else {
+                windows::set_enabled(id, enabled)
+            }
+        }
         Os::Linux => xdg::Dirs::current()
             .ok_or_else(|| EngineError::NotFound("autostart folder".to_owned()))?
             .set_enabled(id, enabled),

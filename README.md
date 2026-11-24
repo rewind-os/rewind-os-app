@@ -33,7 +33,8 @@ large forgotten files and programs that start with the system for no reason.
   Registry keys of removed programs are reported too, never removed.
 - **Installed programs** with their icons, search and their own uninstaller.
 - **Startup programs** on and off, using the system's own records, including the scheduled tasks
-  programs add for themselves (Windows' own tasks are never shown).
+  programs add for themselves and the services they install (Windows' own are never shown;
+  services are set to start when needed, never disabled).
 - **Make Windows lighter**: turn off ads, suggestions, tracking and extras you do not use. A
   closed list of documented settings; nothing is uninstalled and every one can be undone.
 - **Maintenance**: the system's own tools (component store and hibernation on Windows, the

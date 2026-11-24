@@ -52,7 +52,13 @@ impl State {
         page_header(
             ui,
             tr("Installed programs"),
-            tr("Uninstall what you no longer use, then look for its leftovers."),
+            if Page::Leftovers.available() {
+                tr("Uninstall what you no longer use, then look for its leftovers.")
+            } else {
+                tr(
+                    "Programs installed with the system's package managers, without libraries and the base system.",
+                )
+            },
         );
         ui.horizontal(|ui| {
             ui.add(
@@ -70,7 +76,7 @@ impl State {
             {
                 self.job = Some(Job::start(&ctx, &shared.engine, Request::ProgramsList));
             }
-            if ui.button(tr("Find program leftovers")).clicked() {
+            if Page::Leftovers.available() && ui.button(tr("Find program leftovers")).clicked() {
                 shared.goto = Some(Page::Leftovers);
             }
         });
@@ -124,6 +130,9 @@ impl State {
                             if let Some(d) = program.installed_on {
                                 details.push(d.format("%Y-%m-%d").to_string());
                             }
+                            if let Some(manager) = program.manager {
+                                details.push(manager.to_owned());
+                            }
                             if program.scope == Scope::User {
                                 details.push(tr("only for you").to_owned());
                             }
@@ -134,7 +143,9 @@ impl State {
                             );
                         });
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button(tr("Uninstall…")).clicked() {
+                            let can_uninstall = rewind_os_engine::tool("programs.uninstall")
+                                .is_some_and(|t| t.available());
+                            if can_uninstall && ui.button(tr("Uninstall…")).clicked() {
                                 self.uninstall = Some((*program).clone());
                             }
                             if let Some(location) = &program.install_location

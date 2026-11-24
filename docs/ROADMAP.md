@@ -53,4 +53,4 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.3 Recommendations on Home, each leading to the action
 - [x] R3.4 Make Windows lighter: reversible settings for ads, suggestions, privacy, extras, effects
 - [ ] R3.5 Optional removal of preinstalled Store apps (reinstallable from the Store)
-- [ ] R3.6 Recommendations from leftovers and duplicate files
+- [x] R3.6 Recommendations from leftovers and duplicate files (duplicates in Downloads only, to stay quick)

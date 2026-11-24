@@ -82,6 +82,10 @@ impl State {
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
         let ctx = ui.ctx().clone();
         let t = theme::current(&ctx);
+        if std::mem::take(&mut shared.leftovers_request) && !self.busy() {
+            self.min_confidence = Some(Confidence::High);
+            self.find = Some(Job::start(&ctx, &shared.engine, Request::LeftoversFind));
+        }
         self.poll(&ctx, shared);
         page_header(
             ui,

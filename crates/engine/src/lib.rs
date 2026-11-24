@@ -5,6 +5,7 @@
 pub mod cleanup;
 pub mod duplicates;
 pub mod format;
+pub mod icons;
 pub mod leftovers;
 pub mod maintenance;
 pub mod programs;

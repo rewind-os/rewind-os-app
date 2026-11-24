@@ -4,7 +4,7 @@
 //! [`recommend`] gathers the facts.
 
 use crate::cleanup::CategoryReport;
-use crate::{Task, cleanup, startup, system, tweaks, walk};
+use crate::{Task, cleanup, duplicates, leftovers, startup, system, tweaks, walk};
 use rewind_os_platform::Os;
 use rewind_os_platform::paths::Known;
 use serde::Serialize;
@@ -36,6 +36,12 @@ pub enum Action {
     Analyze {
         path: PathBuf,
     },
+    /// Look for duplicate files in this folder.
+    Duplicates {
+        path: PathBuf,
+    },
+    /// Open program leftovers and search.
+    Leftovers,
     ReviewStartup,
     Lighten,
     Hibernation,
@@ -73,6 +79,10 @@ pub struct Facts {
     /// Recommended "lighter Windows" settings not applied yet, on Windows.
     pub tweaks_pending: Option<usize>,
     pub downloads: Option<(PathBuf, u64)>,
+    /// Space that keeping one copy of each duplicate in Downloads would free.
+    pub download_duplicates: Option<(PathBuf, u64)>,
+    /// Folders of uninstalled programs nothing has changed in months: how many, and their size.
+    pub leftovers: Option<(usize, u64)>,
     pub hibernation_file: Option<u64>,
 }
 
@@ -194,6 +204,35 @@ pub fn rules(facts: &Facts) -> Vec<Recommendation> {
         });
     }
 
+    if let Some((path, bytes)) = &facts.download_duplicates
+        && *bytes >= 500 * MB
+    {
+        out.push(Recommendation {
+            id: "duplicates",
+            level: Level::Suggested,
+            title: "Duplicate files in Downloads use {size}",
+            detail: "The same file downloaded more than once. Keep one copy of each.",
+            args: vec![("size", size(*bytes))],
+            saving: Some(*bytes),
+            action: Action::Duplicates { path: path.clone() },
+        });
+    }
+
+    if let Some((n, bytes)) = facts.leftovers
+        && n > 0
+        && bytes >= 500 * MB
+    {
+        out.push(Recommendation {
+            id: "leftovers",
+            level: Level::Tip,
+            title: "{n} folders of removed programs use {size}",
+            detail: "Nothing installed refers to them and nothing in them changed for months. Check each before moving it to the recycle bin.",
+            args: vec![("n", n.to_string()), ("size", size(bytes))],
+            saving: Some(bytes),
+            action: Action::Leftovers,
+        });
+    }
+
     if let Some(n) = facts.startup_enabled
         && n > 8
     {
@@ -246,6 +285,7 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
     task.set_stage("Looking for recommendations");
     let overview = system::overview();
     let tool_available = |id: &str| crate::tool(id).is_some_and(|t| t.available());
+    let downloads = Known::Downloads.path();
     let facts = Facts {
         drives: overview
             .drives
@@ -266,9 +306,21 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
                 .filter(|s| s.tweak.recommended && s.state != tweaks::State::Applied)
                 .count()
         }),
-        downloads: Known::Downloads.path().map(|p| {
+        downloads: downloads.clone().map(|p| {
             let bytes = walk::measure(&p, &walk::Filter::default(), task).bytes;
             (p, bytes)
+        }),
+        download_duplicates: downloads.and_then(|p| {
+            duplicates::find(&p, duplicates::DEFAULT_MIN_BYTES, task)
+                .ok()
+                .map(|r| (p, r.reclaimable()))
+        }),
+        leftovers: tool_available("leftovers.find").then(|| {
+            let likely: Vec<_> = leftovers::find(task)
+                .into_iter()
+                .filter(|l| l.confidence == leftovers::Confidence::High)
+                .collect();
+            (likely.len(), likely.iter().map(|l| l.bytes).sum())
         }),
         hibernation_file: overview
             .system_files

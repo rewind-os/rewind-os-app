@@ -101,3 +101,28 @@ fn small_empty_volumes_are_not_full() {
     };
     assert!(rules(&facts).iter().all(|r| r.id != "drive_full"));
 }
+
+#[test]
+fn duplicates_and_leftovers_are_advised_only_when_they_free_real_space() {
+    let downloads = PathBuf::from("/home/me/Downloads");
+    let small = Facts {
+        drives: vec![drive(500, 300)],
+        download_duplicates: Some((downloads.clone(), 20 * 1024 * 1024)),
+        leftovers: Some((3, 40 * 1024 * 1024)),
+        ..Facts::default()
+    };
+    assert!(rules(&small).is_empty());
+
+    let large = Facts {
+        download_duplicates: Some((downloads.clone(), 3 * GB)),
+        leftovers: Some((4, 2 * GB)),
+        ..small
+    };
+    let advice = rules(&large);
+    assert!(
+        advice
+            .iter()
+            .any(|r| matches!(&r.action, Action::Duplicates { path } if *path == downloads))
+    );
+    assert!(advice.iter().any(|r| r.action == Action::Leftovers));
+}

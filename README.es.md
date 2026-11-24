@@ -17,7 +17,8 @@ Elimina lo que no necesitas: archivos temporales, cachés, restos de programas q
 archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 
 - **Inicio**: recomendaciones para este equipo (una unidad casi llena, basura que conviene
-  limpiar, demasiados programas de inicio…), cada una con un botón que lo hace; unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
+  limpiar, demasiados programas de inicio, duplicados en Descargas, restos de programas
+  eliminados…), cada una con un botón que lo hace; unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
   (`hiberfil.sys`, `pagefile.sys`).
 - **Analizador de disco**: escanea una unidad o carpeta en paralelo; lista de carpetas, treemap,
   archivos más grandes y tamaño por tipo de archivo. Cualquier elemento se puede mostrar en el
@@ -32,7 +33,7 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 - **Restos de programas**: carpetas en Program Files, ProgramData y AppData a las que no hace
   referencia ningún programa instalado, servicio, programa en ejecución ni entrada de inicio. Van
   a la papelera.
-- **Programas instalados**, con búsqueda y su propio desinstalador.
+- **Programas instalados**, con sus iconos, búsqueda y su propio desinstalador.
 - **Programas de inicio**: activar y desactivar, con los registros del propio sistema.
 - **Aligerar Windows**: desactiva anuncios, sugerencias, rastreo y extras que no usas. Una lista
   cerrada de ajustes documentados; no se desinstala nada y cada uno se puede deshacer.

@@ -31,7 +31,14 @@ impl State {
             self.refresh(&ctx, shared);
         }
         match jobs::finished(&mut self.job, &ctx) {
-            Some(Ok(Response::Startup(list))) => self.entries = Some(list),
+            Some(Ok(Response::Startup(list))) => {
+                shared.icons.request(
+                    &ctx,
+                    list.iter()
+                        .filter_map(|e| rewind_os_engine::icons::program_of_command(&e.command)),
+                );
+                self.entries = Some(list);
+            }
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
             None => {}
@@ -62,6 +69,10 @@ impl State {
                         // Essential entries can be turned on but never off.
                         let essential = entry.essential && entry.enabled;
                         widgets::list_row(ui, index, 62.0, |ui| {
+                            let program =
+                                rewind_os_engine::icons::program_of_command(&entry.command);
+                            shared.icons.show(ui, program.as_deref(), &entry.name);
+                            ui.add_space(6.0);
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {

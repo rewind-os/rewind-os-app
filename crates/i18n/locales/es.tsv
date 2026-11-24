@@ -407,3 +407,7 @@ Keep at least one copy.	Conserva al menos una copia.
 {n} copies ({size}) will be moved to the recycle bin. One copy of each file stays where it is.	Se moverán {n} copias ({size}) a la papelera. Una copia de cada archivo se queda donde está.
 {n} sets of identical files; keeping one copy of each frees {size}.	{n} grupos de archivos idénticos; conservar una copia de cada uno libera {size}.
 {size} of hard links (one file under several names) was counted once.	{size} de enlaces duros (un mismo archivo con varios nombres) se han contado una sola vez.
+Duplicate files in Downloads use {size}	Los archivos duplicados en Descargas ocupan {size}
+The same file downloaded more than once. Keep one copy of each.	El mismo archivo descargado más de una vez. Conserva una copia de cada uno.
+{n} folders of removed programs use {size}	{n} carpetas de programas eliminados ocupan {size}
+Nothing installed refers to them and nothing in them changed for months. Check each before moving it to the recycle bin.	Ningún programa instalado las usa y no han cambiado en meses. Revisa cada una antes de moverla a la papelera.

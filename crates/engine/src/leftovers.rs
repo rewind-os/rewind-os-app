@@ -26,6 +26,10 @@ pub enum Location {
     RoamingAppData,
     LocalAppData,
     UserPrograms,
+    /// Linux: `~/.config`.
+    UserConfig,
+    /// Linux: `~/.local/share`.
+    UserData,
 }
 
 impl Location {
@@ -38,6 +42,8 @@ impl Location {
             Location::RoamingAppData => "AppData\\Roaming",
             Location::LocalAppData => "AppData\\Local",
             Location::UserPrograms => "AppData\\Local\\Programs",
+            Location::UserConfig => "~/.config",
+            Location::UserData => "~/.local/share",
         }
     }
 
@@ -49,6 +55,8 @@ impl Location {
             Location::RoamingAppData => Known::RoamingAppData.path(),
             Location::LocalAppData => Known::LocalAppData.path(),
             Location::UserPrograms => Known::LocalAppData.path().map(|p| p.join("Programs")),
+            Location::UserConfig => Known::Config.path(),
+            Location::UserData => Known::Data.path(),
         }
     }
 }
@@ -284,20 +292,170 @@ fn gather_signals() -> Signals {
     signals
 }
 
+/// Folders in `~/.config` and `~/.local/share` that belong to the desktop or are shared by
+/// many programs. Lowercase.
+const LINUX_SHARED: &[&str] = &[
+    "autostart",
+    "dconf",
+    "gtk-2.0",
+    "gtk-3.0",
+    "gtk-4.0",
+    "fontconfig",
+    "fonts",
+    "pulse",
+    "systemd",
+    "environment.d",
+    "menus",
+    "ibus",
+    "mime",
+    "applications",
+    "icons",
+    "themes",
+    "keyrings",
+    "trash",
+    "user-dirs.dirs",
+    "user-dirs.locale",
+    "xdg-desktop-portal",
+    "flatpak",
+    "snap",
+    "pki",
+    "gnupg",
+    "recently-used.xbel",
+    "sounds",
+    "desktop-directories",
+    "evolution",
+    "gnome-shell",
+    "gnome-session",
+    "nautilus",
+    "tracker",
+    "tracker3",
+    "kdeglobals",
+    "kde",
+    "kded5",
+    "kded6",
+    "plasma-workspace",
+    "kwin",
+    "akonadi",
+    "baloo",
+    "xfce4",
+    "lxsession",
+    "cinnamon",
+    "mate",
+    "qt5ct",
+    "qt6ct",
+    "kvantum",
+    "session",
+    "zeitgeist",
+    "gvfs-metadata",
+    "nano",
+    "vim",
+    "nvim",
+    "containers",
+    "docker",
+    "git",
+    "htop",
+    "procps",
+    "wireplumber",
+    "pipewire",
+    "speech-dispatcher",
+    "ubuntu-advantage",
+    "go",
+    "pip",
+    "pnpm",
+    "npm",
+    "yarn",
+    "cargo",
+    "rustup",
+    "virtualenv",
+    "jupyter",
+];
+
+/// Evidence on Linux: every installed package and app, the programs on the `PATH`, the
+/// programs desktop entries start, and the running programs.
+fn gather_linux_signals() -> Signals {
+    let mut signals = Signals::default();
+    for name in crate::packages::all_names() {
+        signals.add_name(&name);
+    }
+    // WSL adds the Windows folders (`/mnt/c/...`) to the PATH: slow to list, and Windows
+    // programs say nothing about Linux folders.
+    let mut bin_dirs: Vec<PathBuf> = std::env::var_os("PATH")
+        .map(|p| std::env::split_paths(&p).collect())
+        .unwrap_or_default();
+    bin_dirs.retain(|d| !d.starts_with("/mnt"));
+    if let Some(home) = Known::Home.path() {
+        bin_dirs.push(home.join(".local/bin"));
+    }
+    for dir in bin_dirs {
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            signals.add_name(&entry.file_name().to_string_lossy());
+        }
+    }
+    let mut desktop_dirs = vec![
+        PathBuf::from("/usr/share/applications"),
+        PathBuf::from("/usr/local/share/applications"),
+        PathBuf::from("/var/lib/flatpak/exports/share/applications"),
+        PathBuf::from("/var/lib/snapd/desktop/applications"),
+    ];
+    if let Some(data) = Known::Data.path() {
+        desktop_dirs.push(data.join("applications"));
+        desktop_dirs.push(data.join("flatpak/exports/share/applications"));
+    }
+    for dir in desktop_dirs {
+        for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+            let path = entry.path();
+            if let Some(stem) = path.file_stem() {
+                signals.add_name(&stem.to_string_lossy());
+            }
+            if let Ok(text) = std::fs::read_to_string(&path) {
+                for exec in text.lines().filter_map(|l| l.strip_prefix("Exec=")) {
+                    if let Some(program) = exec.split_whitespace().next() {
+                        signals.add_path(program);
+                        if let Some(base) = Path::new(program).file_name() {
+                            signals.add_name(&base.to_string_lossy());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if let Ok(mut sys) = System::new() {
+        sys.refresh_processes_specifics(
+            ProcessesToUpdate::All,
+            true,
+            ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet),
+        );
+        for process in sys.processes().values() {
+            signals.add_name(&process.name().to_string_lossy());
+        }
+    }
+    signals
+}
+
 /// Lists candidate leftover folders, most likely first, then largest.
 pub fn find(task: &Task) -> Vec<Leftover> {
     task.set_stage("Reading installed programs and services");
-    let signals = gather_signals();
+    let linux = rewind_os_platform::Os::current() == rewind_os_platform::Os::Linux;
+    let signals = if linux {
+        gather_linux_signals()
+    } else {
+        gather_signals()
+    };
     task.set_stage("Checking folders");
     let mut candidates: Vec<(PathBuf, Location)> = Vec::new();
-    for location in [
-        Location::ProgramFiles,
-        Location::ProgramFilesX86,
-        Location::ProgramData,
-        Location::RoamingAppData,
-        Location::LocalAppData,
-        Location::UserPrograms,
-    ] {
+    let locations: &[Location] = if linux {
+        &[Location::UserConfig, Location::UserData]
+    } else {
+        &[
+            Location::ProgramFiles,
+            Location::ProgramFilesX86,
+            Location::ProgramData,
+            Location::RoamingAppData,
+            Location::LocalAppData,
+            Location::UserPrograms,
+        ]
+    };
+    for &location in locations {
         let Some(root) = location.path() else {
             continue;
         };
@@ -310,7 +468,8 @@ pub fn find(task: &Task) -> Vec<Leftover> {
                 continue;
             }
             let name = entry.file_name().to_string_lossy().into_owned();
-            if !signals.accounts_for(&name) {
+            let shared_here = linux && LINUX_SHARED.contains(&name.to_lowercase().as_str());
+            if !shared_here && !signals.accounts_for(&name) {
                 candidates.push((entry.path(), location));
             }
         }

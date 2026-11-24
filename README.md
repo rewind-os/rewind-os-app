@@ -54,7 +54,8 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Startup programs | ✓ | ✓ (XDG autostart) | — |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, pacman, Flatpak, Snap; RPM listed only) | — |
-| Program leftovers, make Windows lighter | ✓ | — | — |
+| Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | — |
+| Make Windows lighter | ✓ | — | — |
 | Maintenance | component store, hibernation | journal | — |
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.

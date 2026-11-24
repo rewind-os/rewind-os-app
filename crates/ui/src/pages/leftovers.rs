@@ -38,7 +38,9 @@ impl State {
 
     fn search(&mut self, ctx: &egui::Context, shared: &Shared) {
         self.find = Some(Job::start(ctx, &shared.engine, Request::LeftoversFind));
-        self.registry_job = Some(Job::start(ctx, &shared.engine, Request::RegistryLeftovers));
+        if rewind_os_engine::tool("leftovers.registry").is_some_and(|t| t.available()) {
+            self.registry_job = Some(Job::start(ctx, &shared.engine, Request::RegistryLeftovers));
+        }
     }
 
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
@@ -107,16 +109,28 @@ impl State {
         page_header(
             ui,
             tr("Program leftovers"),
-            tr(
-                "Folders in Program Files, ProgramData and AppData that no installed program, service, running program or startup entry refers to.",
-            ),
+            if rewind_os_engine::Os::current() == rewind_os_engine::Os::Windows {
+                tr(
+                    "Folders in Program Files, ProgramData and AppData that no installed program, service, running program or startup entry refers to.",
+                )
+            } else {
+                tr(
+                    "Folders in ~/.config and ~/.local/share that no installed package, app, program on your PATH or running program refers to.",
+                )
+            },
         );
         card(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.label(
-                RichText::new(tr(
-                    "This is an estimate. Portable programs and games installed outside Windows' list can show up here. Check each folder before moving it; everything goes to the recycle bin so you can restore it.",
-                ))
+                RichText::new(if rewind_os_engine::Os::current() == rewind_os_engine::Os::Windows {
+                    tr(
+                        "This is an estimate. Portable programs and games installed outside Windows' list can show up here. Check each folder before moving it; everything goes to the recycle bin so you can restore it.",
+                    )
+                } else {
+                    tr(
+                        "This is an estimate. Tools you run without installing them (npx, AppImages, scripts) can show up here. Check each folder before moving it; everything goes to the trash so you can restore it.",
+                    )
+                })
                 .color(t.warn),
             );
         });

@@ -490,6 +490,13 @@ Folders in ~/.config and ~/.local/share that no installed package, app, program 
 This is an estimate. Tools you run without installing them (npx, AppImages, scripts) can show up here. Check each folder before moving it; everything goes to the trash so you can restore it.	Es una estimación. Aquí pueden aparecer herramientas que usas sin instalarlas (npx, AppImages, scripts). Revisa cada carpeta antes de moverla; todo va a la papelera para que puedas restaurarlo.
 ~/.config	~/.config
 ~/.local/share	~/.local/share
+Run one cleanup or maintenance request with administrator rights (asks for the password)	Ejecuta una limpieza o tarea de mantenimiento con permisos de administrador (pide la contraseña)
+This action cannot be run with administrator rights from here.	Esta acción no se puede ejecutar con permisos de administrador desde aquí.
+The command-line tool (rewind-os-cli) was not found next to the app.	No se ha encontrado la herramienta de línea de comandos (rewind-os-cli) junto a la app.
+The system asks for your password when you start one of these actions.	El sistema te pedirá la contraseña cuando inicies una de estas acciones.
+Clean {n} system categories (asks for your password)…	Limpiar {n} categorías del sistema (pide tu contraseña)…
+These system categories are deleted permanently. The system asks for your password for this one action; the app itself keeps running without administrator rights.	Estas categorías del sistema se borran para siempre. El sistema te pide la contraseña solo para esta acción; la app sigue funcionando sin permisos de administrador.
+Clean the system categories?	¿Limpiar las categorías del sistema?
 Folders in ~/Library/Application Support and ~/Library/Containers that no app, Homebrew package or running program refers to.	Carpetas en ~/Library/Application Support y ~/Library/Containers a las que no hace referencia ninguna app, paquete de Homebrew ni programa en ejecución.
 ~/Library/Application Support	~/Library/Application Support
 ~/Library/Containers	~/Library/Containers

@@ -49,7 +49,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [ ] R2.11 macOS: login items and LaunchAgents
 - [ ] R2.12 macOS release: `.app` bundle, `.icns`, signing and notarization, `.dmg`
 - [ ] R2.13 Linux: `.deb`, `.rpm` and Flatpak packages next to the tar.gz
-- [ ] R2.14 Linux and macOS: restart the GUI with administrator rights (polkit / authorization prompt)
+- [x] R2.14 Linux and macOS: administrator rights for one action at a time (pkexec / authorization dialog), never a root window
 
 ## R3 — Easier and lighter
 

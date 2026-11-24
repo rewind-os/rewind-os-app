@@ -17,6 +17,8 @@ pub struct State {
     selected: HashSet<&'static str>,
     results: Option<Vec<CategoryResult>>,
     confirming: bool,
+    /// Asking before cleaning the categories that need administrator rights.
+    confirming_system: bool,
     started: bool,
 }
 
@@ -71,10 +73,34 @@ impl State {
                 self.results = Some(results);
                 self.start_analyze(ctx, shared);
             }
+            // The categories cleaned with administrator rights answer as JSON.
+            Some(Ok(Response::Elevated(value))) => {
+                let results = value["data"].as_array().cloned().unwrap_or_default();
+                let sum =
+                    |key: &str| -> u64 { results.iter().filter_map(|r| r[key].as_u64()).sum() };
+                let mut text = trf("Freed {size}.", &[("size", &bytes(sum("bytes")))]);
+                let kept = sum("failed");
+                if kept > 0 {
+                    text.push(' ');
+                    text.push_str(&trf("{n} files in use were kept", &[("n", &count(kept))]));
+                }
+                shared.info(text);
+                self.start_analyze(ctx, shared);
+            }
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
             None => {}
         }
+    }
+
+    /// Safe categories that need administrator rights to read and clean.
+    fn system_categories(&self) -> Vec<&'static str> {
+        self.reports
+            .iter()
+            .flatten()
+            .filter(|r| r.blocked && r.present && r.category.selected_by_default)
+            .map(|r| r.category.id)
+            .collect()
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
@@ -131,6 +157,20 @@ impl State {
                     if ui.add(restart).clicked() {
                         shared.relaunch_elevated(&ctx);
                     }
+                } else if crate::app::can_elevate_actions() {
+                    let system = self.system_categories();
+                    let label = trf(
+                        "Clean {n} system categories (asks for your password)…",
+                        &[("n", &system.len().to_string())],
+                    );
+                    let button = egui::Button::new(RichText::new(label).small().color(t.accent))
+                        .frame(false);
+                    if ui
+                        .add_enabled(!busy && !system.is_empty(), button)
+                        .clicked()
+                    {
+                        self.confirming_system = true;
+                    }
                 } else {
                     ui.label(
                         RichText::new("sudo rewind-os-cli clean run --defaults --yes")
@@ -186,6 +226,39 @@ impl State {
                 }
             });
 
+        if self.confirming_system {
+            let system = self.system_categories();
+            let names: Vec<&str> = self
+                .reports
+                .iter()
+                .flatten()
+                .filter(|r| system.contains(&r.category.id))
+                .map(|r| tr(r.category.name))
+                .collect();
+            let body = format!(
+                "{}\n\n• {}",
+                tr(
+                    "These system categories are deleted permanently. The system asks for your password for this one action; the app itself keeps running without administrator rights."
+                ),
+                names.join("\n• ")
+            );
+            match widgets::confirm(
+                &ctx,
+                "confirm_system_cleanup",
+                tr("Clean the system categories?"),
+                &body,
+                tr("Clean"),
+            ) {
+                Choice::Open => {}
+                Choice::Cancelled => self.confirming_system = false,
+                Choice::Confirmed => {
+                    self.confirming_system = false;
+                    let categories = system.iter().map(|s| (*s).to_owned()).collect();
+                    let request = shared.with_rights(Request::CleanupRun { categories });
+                    self.run = Some(Job::start(&ctx, &shared.engine, request));
+                }
+            }
+        }
         if self.confirming {
             let chosen: Vec<&CategoryReport> = reports
                 .iter()

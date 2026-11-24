@@ -36,6 +36,18 @@ impl State {
         let t = theme::current(&ctx);
         match jobs::finished(&mut self.job, &ctx) {
             Some(Ok(Response::ToolOutput(text))) => self.output = Some(text),
+            // Run with administrator rights: the same answer, as JSON.
+            Some(Ok(Response::Elevated(value))) => match value["kind"].as_str() {
+                Some("tool_output") => {
+                    self.output = value["data"].as_str().map(str::to_owned);
+                }
+                Some("done") => {
+                    if let Some(message) = value["data"].as_str() {
+                        shared.info(rewind_os_i18n::tr_text(message));
+                    }
+                }
+                _ => {}
+            },
             Some(Ok(Response::Done(message))) => {
                 shared.info(tr(message));
                 if let Some(o) = shared.overview.as_mut() {
@@ -58,6 +70,9 @@ impl State {
             ui.add_space(t.gap);
         }
         let ready = shared.elevated && self.job.is_none();
+        // The journal can ask for the password for one action instead.
+        let journal_ready =
+            self.job.is_none() && (shared.elevated || crate::app::can_elevate_actions());
         let windows = available("maintenance.component_cleanup");
         let journal = available("maintenance.journal_vacuum");
         egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
@@ -68,9 +83,10 @@ impl State {
                     ui.label(RichText::new(tr("systemd keeps a log of everything the system does. Old entries are rarely needed and can take gigabytes.")).color(t.text_muted));
                     ui.horizontal(|ui| {
                         if ui.add_enabled(self.job.is_none(), egui::Button::new(tr("Measure"))).clicked() {
-                            self.job = Some(Job::start(&ctx, &shared.engine, Request::JournalUsage));
+                            let request = shared.with_rights(Request::JournalUsage);
+                            self.job = Some(Job::start(&ctx, &shared.engine, request));
                         }
-                        if widgets::primary_button(ui, tr("Keep only the last two weeks"), ready).clicked() {
+                        if widgets::primary_button(ui, tr("Keep only the last two weeks"), journal_ready).clicked() {
                             self.confirm = Some(Action::JournalVacuum);
                         }
                     });
@@ -160,6 +176,7 @@ impl State {
                 Choice::Confirmed => {
                     self.confirm = None;
                     self.output = None;
+                    let request = shared.with_rights(request);
                     self.job = Some(Job::start(&ctx, &shared.engine, request));
                 }
             }

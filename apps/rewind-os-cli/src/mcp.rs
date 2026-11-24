@@ -23,7 +23,7 @@ pub struct Policy {
 }
 
 /// Tools never offered, whatever the flags.
-const NEVER: &[&str] = &["system.relaunch_elevated"];
+const NEVER: &[&str] = &["system.relaunch_elevated", "system.run_elevated"];
 /// Tools whose arguments name paths to read.
 const READS_PATHS: &[&str] = &[
     "disk.scan",

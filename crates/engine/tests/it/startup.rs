@@ -176,3 +176,100 @@ mod scheduled_task_names {
         assert_eq!(parse(json, "me").len(), 1);
     }
 }
+
+mod services {
+    use rewind_os_engine::startup::services::{RawService, entries, is_program_service};
+    use std::collections::BTreeSet;
+
+    const WINDOWS: &str = r"C:\WINDOWS";
+
+    fn service(name: &str, kind: u64, start: u64, image: &str) -> RawService {
+        RawService {
+            name: name.to_owned(),
+            display_name: Some(name.to_owned()),
+            image_path: Some(image.to_owned()),
+            start: Some(start),
+            kind: Some(kind),
+        }
+    }
+
+    #[test]
+    fn only_services_of_programs_are_listed() {
+        let program = service(
+            "Updater",
+            0x10,
+            2,
+            r#""C:\Program Files\Vendor\updater.exe" /svc"#,
+        );
+        assert!(is_program_service(&program, WINDOWS));
+        for not_a_program in [
+            service(
+                "Dhcp",
+                0x20,
+                2,
+                r"%SystemRoot%\system32\svchost.exe -k LocalService",
+            ),
+            service("Spooler", 0x10, 2, r"C:\WINDOWS\System32\spoolsv.exe"),
+            service(
+                "nvlddmkm",
+                0x1,
+                3,
+                r"\SystemRoot\System32\DriverStore\nvlddmkm.sys",
+            ),
+            service(
+                "WinDefend",
+                0x10,
+                2,
+                r#""C:\ProgramData\Microsoft\Windows Defender\Platform\4.18\MsMpEng.exe""#,
+            ),
+        ] {
+            assert!(
+                !is_program_service(&not_a_program, WINDOWS),
+                "{} must never be listed",
+                not_a_program.name
+            );
+        }
+    }
+
+    #[test]
+    fn automatic_services_show_and_manual_ones_only_when_the_app_changed_them() {
+        let raw = vec![
+            service("Updater", 0x10, 2, r"C:\Program Files\Vendor\updater.exe"),
+            service("Helper", 0x10, 3, r"C:\Program Files\Vendor\helper.exe"),
+            service("Other", 0x10, 3, r"C:\Program Files\Other\other.exe"),
+        ];
+        let changed: BTreeSet<String> = ["Helper".to_owned()].into();
+        let list = entries(&raw, WINDOWS, &changed);
+        let names: Vec<&str> = list.iter().map(|e| e.name.as_str()).collect();
+        assert_eq!(names, vec!["Updater", "Helper"]);
+        assert!(list[0].enabled && !list[1].enabled);
+        assert!(list.iter().all(|e| e.needs_admin));
+    }
+
+    #[test]
+    fn security_vpn_and_sound_services_are_essential() {
+        let raw = vec![
+            service(
+                "Tailscale",
+                0x10,
+                2,
+                r"C:\Program Files\Tailscale\tailscaled.exe",
+            ),
+            service(
+                "RtkAudioUniversalService",
+                0x10,
+                2,
+                r"C:\Program Files\Realtek\Audio\RtkAudUService64.exe",
+            ),
+            service(
+                "GoogleUpdater",
+                0x10,
+                2,
+                r"C:\Program Files (x86)\Google\updater.exe",
+            ),
+        ];
+        let list = entries(&raw, WINDOWS, &BTreeSet::new());
+        let essential: Vec<bool> = list.iter().map(|e| e.essential).collect();
+        assert_eq!(essential, vec![true, true, false]);
+    }
+}

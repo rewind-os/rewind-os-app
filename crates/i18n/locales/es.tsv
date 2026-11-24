@@ -429,3 +429,8 @@ Report only: Rewind OS never removes registry keys. Export a key in Registry Edi
 Registry keys of removed programs ({n})	Claves de registro de programas eliminados ({n})
 Copy	Copiar
 Copy the key's path	Copiar la ruta de la clave
+Service	Servicio
+Service: starts with the system	Servicio: arranca con el sistema
+Service: starts when needed	Servicio: arranca cuando se necesita
+This service is part of Windows or a driver. Rewind OS only changes services that programs installed.	Este servicio forma parte de Windows o de un controlador. Rewind OS solo cambia servicios que instalaron programas.
+Rewind OS did not change this service, so it leaves how it starts as it is.	Rewind OS no cambió este servicio, así que deja su forma de arrancar como está.

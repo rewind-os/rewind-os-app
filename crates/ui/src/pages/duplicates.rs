@@ -71,6 +71,13 @@ impl State {
     fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         match jobs::finished(&mut self.find, ctx) {
             Some(Ok(Response::Duplicates(report))) => {
+                shared.info(trf(
+                    "Search finished: {n} sets of identical files, {size} can be freed.",
+                    &[
+                        ("n", &count(report.sets.len() as u64)),
+                        ("size", &bytes(report.reclaimable())),
+                    ],
+                ));
                 self.selected.clear();
                 self.moved.clear();
                 self.report = Some(report);

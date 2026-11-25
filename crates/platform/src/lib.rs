@@ -9,6 +9,7 @@ pub mod process;
 pub mod registry;
 pub mod shell;
 pub mod volume;
+pub mod web;
 
 use std::path::PathBuf;
 

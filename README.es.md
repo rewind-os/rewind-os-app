@@ -91,6 +91,13 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
   acceso al sistema de archivos para ver el disco y ejecuta las herramientas del sistema fuera del
   sandbox).
 
+### Versiones nuevas
+
+Una vez al día la app pregunta a GitHub si hay una versión nueva y, si la hay, lo dice al pie de
+la navegación. La petición solo lleva el nombre y la versión de la app. Se desactiva desde el
+número de versión, junto al nombre de la app, o con `rewind-os-cli update off`;
+`rewind-os-cli update check` lo comprueba al momento.
+
 ## Compilar
 
 Con [Rust](https://rustup.rs) (en Windows, también las Build Tools de C++ de Visual Studio):

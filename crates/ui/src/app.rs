@@ -282,12 +282,14 @@ pub struct App {
     maintenance: pages::maintenance::State,
     devtools: crate::devtools::Devtools,
     logo: Option<egui::TextureHandle>,
+    update: crate::update::Notice,
 }
 
 impl App {
     pub fn new(ctx: &egui::Context) -> Self {
         let engine = Arc::new(Engine::new());
         let overview = pages::overview::State::new(ctx, &engine);
+        let update = crate::update::Notice::new(ctx, &engine);
         let page = crate::devtools::start_page()
             .and_then(|name| {
                 Page::ALL
@@ -321,6 +323,7 @@ impl App {
             maintenance: Default::default(),
             devtools: crate::devtools::Devtools::from_env(),
             logo: load_logo(ctx),
+            update,
         }
     }
 
@@ -340,6 +343,7 @@ impl App {
     /// The left column: the app's name, the pages, and the rights the app runs with.
     fn sidebar(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
+        self.update.poll(ui.ctx(), &mut self.shared);
         ui.add_space(6.0);
         ui.horizontal(|ui| {
             ui.add_space(10.0);
@@ -356,6 +360,9 @@ impl App {
                     .strong()
                     .family(crate::theme::bold()),
             );
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                self.update.version_menu(ui, &mut self.shared);
+            });
         });
         ui.add_space(22.0);
         for (heading, pages) in SECTIONS {
@@ -413,6 +420,7 @@ impl App {
                     ui.label(RichText::new(tr("Standard user")).small().color(t.text_muted));
                 }
             });
+            self.update.notice(ui, &mut self.shared);
         });
     }
 

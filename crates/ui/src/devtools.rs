@@ -8,6 +8,7 @@
 //!   folders pages).
 //! - `REWIND_OS_VIEW=<folders|files|types|changes>` opens that view of the analyzer after a scan.
 //! - `REWIND_OS_SELECT=<n>` selects the n-th item (from 0) on the programs and startup pages.
+//! - `REWIND_OS_NEWER=<version>` shows the notice of a newer version without asking GitHub.
 //! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
 //!   settled (or after 20 seconds) and closes the app.
 
@@ -41,6 +42,11 @@ pub fn scan_path() -> Option<PathBuf> {
 /// shows its detail panel.
 pub fn selected_item() -> Option<usize> {
     std::env::var("REWIND_OS_SELECT").ok()?.parse().ok()
+}
+
+/// A version to announce as newer, instead of asking GitHub.
+pub fn newer_version() -> Option<String> {
+    std::env::var("REWIND_OS_NEWER").ok()
 }
 
 /// The analyzer view asked for, as the variable spells it.

@@ -12,3 +12,4 @@ mod safety;
 mod scan;
 mod startup;
 mod tweaks;
+mod update;

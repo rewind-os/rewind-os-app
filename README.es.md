@@ -21,7 +21,8 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   eliminados…), cada una con un botón que lo hace; unidades (SSD/HDD), memoria y los archivos grandes del propio Windows
   (`hiberfil.sys`, `pagefile.sys`).
 - **Analizador de disco**: escanea una unidad o carpeta en paralelo; lista de carpetas, treemap,
-  archivos más grandes y tamaño por tipo de archivo. Cualquier elemento se puede mostrar en el
+  archivos más grandes y tamaño por tipo de archivo. Como administrador en Windows, lee de una
+  vez la tabla maestra de archivos de una unidad NTFS, en segundos. Cualquier elemento se puede mostrar en el
   gestor de archivos o mover a la papelera.
 - **Archivos duplicados**: archivos con exactamente el mismo contenido (tamaño, después el primer
   bloque y después un hash BLAKE3 completo). Los enlaces duros no cuentan como copias y los

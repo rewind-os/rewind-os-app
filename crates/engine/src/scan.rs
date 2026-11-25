@@ -3,7 +3,7 @@
 //! To stay small in memory the tree keeps folders only, plus the largest files overall and a
 //! size per extension. The files of one folder are listed on demand with [`list_files`].
 
-use crate::{EngineError, Result, Task};
+use crate::{EngineError, Result, Task, mft};
 use chrono::{DateTime, Utc};
 use parking_lot::Mutex;
 use rayon::prelude::*;
@@ -11,12 +11,15 @@ use serde::{Serialize, Serializer};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 use std::fs;
+use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime};
 
 /// How many of the largest files a scan keeps.
 pub const TOP_FILES: usize = 500;
+/// How deep below a drive's root a scan still reads the master file table.
+const FILE_TABLE_DEPTH: usize = 1;
 /// How many extensions a scan reports.
 const TOP_EXTENSIONS: usize = 40;
 
@@ -74,6 +77,9 @@ pub struct ScanTree {
     /// Size of the extra names of hard-linked files, counted once. The folder that holds the
     /// first name found gets the size.
     pub hard_linked_bytes: u64,
+    /// Measured from the volume's master file table (NTFS, with administrator rights) instead
+    /// of folder by folder.
+    pub from_file_table: bool,
 }
 
 impl ScanTree {
@@ -232,6 +238,13 @@ impl TopFiles {
     }
 }
 
+/// One file's figures.
+struct Sizes {
+    bytes: u64,
+    disk: u64,
+    modified: Option<SystemTime>,
+}
+
 struct Context<'a> {
     task: &'a Task,
     top: TopFiles,
@@ -242,7 +255,155 @@ struct Context<'a> {
     linked_bytes: AtomicU64,
 }
 
+impl<'a> Context<'a> {
+    fn new(task: &'a Task) -> Self {
+        Context {
+            task,
+            top: TopFiles {
+                heap: Mutex::new(BinaryHeap::new()),
+                floor: AtomicU64::new(0),
+            },
+            extensions: Mutex::new(HashMap::new()),
+            unreadable: AtomicU64::new(0),
+            linked: Mutex::new(HashSet::new()),
+            linked_bytes: AtomicU64::new(0),
+        }
+    }
+
+    /// Adds the file `name` to `raw`, its folder.
+    fn count_file(
+        &self,
+        raw: &mut RawDir,
+        local_ext: &mut HashMap<String, (u64, u64)>,
+        name: &std::ffi::OsStr,
+        file: Sizes,
+        path: impl FnOnce() -> PathBuf,
+    ) {
+        let Sizes {
+            bytes,
+            disk,
+            modified,
+        } = file;
+        raw.disk_bytes += disk;
+        raw.own_bytes += bytes;
+        raw.own_files += 1;
+        raw.modified = raw.modified.max(modified);
+        let ext = Path::new(name)
+            .extension()
+            .map(|e| e.to_string_lossy().to_ascii_lowercase())
+            .filter(|e| e.len() <= 12)
+            .unwrap_or_default();
+        let slot = local_ext.entry(ext).or_default();
+        slot.0 += 1;
+        slot.1 += bytes;
+        self.top.offer(bytes, path, modified, disk);
+    }
+
+    /// Reports the files of one folder, once its listing is done.
+    fn folder_done(&self, raw: &RawDir, local_ext: HashMap<String, (u64, u64)>) {
+        self.task.add(raw.own_files, raw.own_bytes);
+        if !local_ext.is_empty() {
+            let mut global = self.extensions.lock();
+            for (ext, (files, bytes)) in local_ext {
+                let slot = global.entry(ext).or_default();
+                slot.0 += files;
+                slot.1 += bytes;
+            }
+        }
+    }
+
+    fn finish(self, raw: RawDir, root: &Path, started: Instant, from_file_table: bool) -> ScanTree {
+        self.task.set_stage("Sorting results");
+        let nodes = flatten(raw);
+        let mut top_files: Vec<FileEntry> = self
+            .top
+            .heap
+            .into_inner()
+            .into_iter()
+            .map(|Reverse((bytes, path, modified, disk_bytes))| FileEntry {
+                path,
+                bytes,
+                disk_bytes,
+                modified: modified.map(DateTime::<Utc>::from),
+            })
+            .collect();
+        top_files.sort_by_key(|e| Reverse(e.bytes));
+
+        let mut extensions: Vec<ExtensionStat> = self
+            .extensions
+            .into_inner()
+            .into_iter()
+            .map(|(extension, (files, bytes))| ExtensionStat {
+                extension,
+                files,
+                bytes,
+            })
+            .collect();
+        extensions.sort_by_key(|e| Reverse(e.bytes));
+        extensions.truncate(TOP_EXTENSIONS);
+
+        ScanTree {
+            root: root.to_path_buf(),
+            nodes,
+            top_files,
+            extensions,
+            unreadable_dirs: self.unreadable.into_inner(),
+            elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
+            cancelled: self.task.is_cancelled(),
+            hard_linked_bytes: self.linked_bytes.into_inner(),
+            from_file_table,
+        }
+    }
+}
+
+impl RawDir {
+    fn new(name: Box<str>) -> Self {
+        RawDir {
+            name,
+            bytes: 0,
+            disk_bytes: 0,
+            files: 0,
+            own_bytes: 0,
+            own_files: 0,
+            modified: None,
+            incomplete: false,
+            children: Vec::new(),
+        }
+    }
+
+    /// Adds the children's totals to this folder's own.
+    fn total(&mut self) {
+        self.bytes = self.own_bytes;
+        self.files = self.own_files;
+        for child in &self.children {
+            self.bytes += child.bytes;
+            self.disk_bytes += child.disk_bytes;
+            self.files += child.files;
+            self.incomplete |= child.incomplete;
+            self.modified = self.modified.max(child.modified);
+        }
+    }
+}
+
+/// Runs `job` on a pool whose threads have room for deep trees (one call per level).
+fn with_deep_stacks<T: Send>(job: impl FnOnce() -> T + Send) -> T {
+    let pool = rayon::ThreadPoolBuilder::new()
+        .stack_size(16 * 1024 * 1024)
+        .thread_name(|i| format!("scan-{i}"))
+        .build()
+        .ok();
+    match &pool {
+        Some(pool) => pool.install(job),
+        None => job(),
+    }
+}
+
 /// Scans `root`. Stops early, keeping what it measured, when `task` is cancelled.
+///
+/// On Windows, with administrator rights, a local NTFS drive (or a folder right below its root)
+/// is measured from the volume's master file table instead, which is much faster; anything that keeps that from
+/// working (another file system, a `subst` drive, a damaged table) falls back to walking the
+/// folders.
 pub fn scan(root: &Path, task: &Task) -> Result<ScanTree> {
     let meta = fs::metadata(root).map_err(|source| EngineError::Io {
         path: root.into(),
@@ -251,83 +412,228 @@ pub fn scan(root: &Path, task: &Task) -> Result<ScanTree> {
     if !meta.is_dir() {
         return Err(EngineError::NotFound(root.display().to_string()));
     }
+    if rewind_os_platform::elevation::is_elevated()
+        && let Some(mut volume) = rewind_os_platform::volume::open_raw(root)
+        // The whole table is read every time: worth it for a drive or a large folder near its
+        // root, not for a small folder deep down.
+        && volume.inside.len() <= FILE_TABLE_DEPTH
+        && let Ok(tree) = from_volume(&mut volume.file, root, &volume.inside, task, true)
+    {
+        return Ok(tree);
+    }
     task.set_stage("Scanning");
     let started = Instant::now();
-    let ctx = Context {
-        task,
-        top: TopFiles {
-            heap: Mutex::new(BinaryHeap::new()),
-            floor: AtomicU64::new(0),
-        },
-        extensions: Mutex::new(HashMap::new()),
-        unreadable: AtomicU64::new(0),
-        linked: Mutex::new(HashSet::new()),
-        linked_bytes: AtomicU64::new(0),
-    };
-    // Deep trees recurse once per level; give the workers room.
-    let pool = rayon::ThreadPoolBuilder::new()
-        .stack_size(16 * 1024 * 1024)
-        .thread_name(|i| format!("scan-{i}"))
-        .build()
-        .ok();
-    let raw = match &pool {
-        Some(pool) => pool.install(|| scan_dir(root, root.display().to_string().into(), &ctx)),
-        None => scan_dir(root, root.display().to_string().into(), &ctx),
-    };
-    task.set_stage("Sorting results");
-    let nodes = flatten(raw);
+    let ctx = Context::new(task);
+    let raw = with_deep_stacks(|| scan_dir(root, root.display().to_string().into(), &ctx));
+    Ok(ctx.finish(raw, root, started, false))
+}
 
-    let mut top_files: Vec<FileEntry> = ctx
-        .top
-        .heap
-        .into_inner()
+/// Measures `root` from the master file table of the NTFS volume that `volume` covers.
+/// `inside` names the folders from the volume's root down to `root`; empty for the root.
+pub fn scan_file_table<R: Read + Seek>(
+    volume: &mut R,
+    root: &Path,
+    inside: &[String],
+    task: &Task,
+) -> Result<ScanTree> {
+    from_volume(volume, root, inside, task, false)
+}
+
+/// Files and folders by parent folder: (record, which of its names).
+type Children = HashMap<u64, Vec<(u64, usize)>>;
+
+fn from_volume<R: Read + Seek>(
+    volume: &mut R,
+    root: &Path,
+    inside: &[String],
+    task: &Task,
+    check_listing: bool,
+) -> Result<ScanTree> {
+    let started = Instant::now();
+    task.set_stage("Reading the master file table");
+    let table = mft::read(volume, task).map_err(|source| EngineError::Io {
+        path: root.into(),
+        source,
+    })?;
+    from_table(&table, root, inside, task, check_listing, started)
+}
+
+fn from_table(
+    table: &mft::FileTable,
+    root: &Path,
+    inside: &[String],
+    task: &Task,
+    check_listing: bool,
+    started: Instant,
+) -> Result<ScanTree> {
+    task.set_stage("Scanning");
+    let entries = &table.entries;
+    if !entries.contains_key(&mft::ROOT) {
+        return Err(EngineError::NotFound(root.display().to_string()));
+    }
+
+    let mut children: Children = HashMap::new();
+    // Folders that hold something but whose own record could not be read.
+    let mut lost: HashSet<u64> = HashSet::new();
+    for (&number, entry) in entries {
+        if number < mft::FIRST_USER_RECORD {
+            continue;
+        }
+        for (i, (parent, _)) in entry.names.iter().enumerate() {
+            let in_metadata = *parent < mft::FIRST_USER_RECORD && *parent != mft::ROOT;
+            if *parent == number || in_metadata {
+                continue;
+            }
+            if entries.get(parent).is_some_and(|p| p.dir) {
+                children.entry(*parent).or_default().push((number, i));
+            } else {
+                lost.insert(*parent);
+            }
+        }
+    }
+    let name_of = |(number, i): &(u64, usize)| {
+        entries
+            .get(number)
+            .and_then(|e| e.names.get(*i))
+            .map(|(_, name)| &**name)
+    };
+    let is_dir = |number: &u64| entries.get(number).is_some_and(|e| e.dir);
+
+    let mut start = mft::ROOT;
+    for name in inside {
+        let wanted = name.to_lowercase();
+        start = children
+            .get(&start)
+            .and_then(|kids| {
+                kids.iter().find(|kid| {
+                    is_dir(&kid.0) && name_of(kid).is_some_and(|n| n.to_lowercase() == wanted)
+                })
+            })
+            .map(|kid| kid.0)
+            .ok_or_else(|| EngineError::NotFound(root.display().to_string()))?;
+    }
+    if check_listing && !listing_matches(root, children.get(&start), name_of) {
+        return Err(EngineError::NotFound(root.display().to_string()));
+    }
+
+    let ctx = Context::new(task);
+    ctx.unreadable.store(lost.len() as u64, Ordering::Relaxed);
+    let tables = Tables {
+        entries,
+        children: &children,
+    };
+    let mut raw = with_deep_stacks(|| {
+        let mut seen = HashSet::from([start]);
+        build(
+            &tables,
+            start,
+            root.display().to_string().into(),
+            root,
+            &ctx,
+            &mut seen,
+        )
+    });
+    raw.incomplete |= !lost.is_empty() || table.damaged > 0;
+    Ok(ctx.finish(raw, root, started, true))
+}
+
+/// Whether the files and folders directly in `root` are the ones the table puts there. A
+/// `subst` drive opens the volume of the folder it stands for; this keeps its table from being
+/// shown under the wrong names.
+fn listing_matches<'t>(
+    root: &Path,
+    kids: Option<&Vec<(u64, usize)>>,
+    name_of: impl Fn(&(u64, usize)) -> Option<&'t str>,
+) -> bool {
+    let Ok(listing) = fs::read_dir(root) else {
+        return false;
+    };
+    let mut on_disk: Vec<String> = listing
+        .flatten()
+        .filter(|e| e.file_type().is_ok_and(|t| t.is_dir() || t.is_file()))
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .collect();
+    let mut in_table: Vec<String> = kids
         .into_iter()
-        .map(|Reverse((bytes, path, modified, disk_bytes))| FileEntry {
-            path,
-            bytes,
-            disk_bytes,
-            modified: modified.map(DateTime::<Utc>::from),
+        .flatten()
+        .filter_map(|kid| name_of(kid).map(str::to_owned))
+        .collect();
+    on_disk.sort();
+    in_table.sort();
+    on_disk == in_table
+}
+
+struct Tables<'a> {
+    entries: &'a HashMap<u64, mft::Entry>,
+    children: &'a Children,
+}
+
+fn build(
+    tables: &Tables<'_>,
+    number: u64,
+    name: Box<str>,
+    path: &Path,
+    ctx: &Context<'_>,
+    seen: &mut HashSet<u64>,
+) -> RawDir {
+    let mut raw = RawDir::new(name);
+    if ctx.task.is_cancelled() {
+        raw.incomplete = true;
+        return raw;
+    }
+    let mut local_ext: HashMap<String, (u64, u64)> = HashMap::new();
+    let mut subdirs: Vec<(u64, &str)> = Vec::new();
+    for &(kid, i) in tables.children.get(&number).into_iter().flatten() {
+        let Some(entry) = tables.entries.get(&kid) else {
+            continue;
+        };
+        let Some((_, kid_name)) = entry.names.get(i) else {
+            continue;
+        };
+        if entry.dir {
+            // A folder reached twice would be a damaged table; count it once.
+            if seen.insert(kid) {
+                subdirs.push((kid, kid_name));
+            }
+            continue;
+        }
+        // A second name of a file already counted adds nothing.
+        if entry.names.len() > 1 && !ctx.linked.lock().insert((u64::MAX, kid)) {
+            ctx.linked_bytes.fetch_add(entry.bytes, Ordering::Relaxed);
+            continue;
+        }
+        ctx.count_file(
+            &mut raw,
+            &mut local_ext,
+            std::ffi::OsStr::new(&**kid_name),
+            Sizes {
+                bytes: entry.bytes,
+                disk: entry.disk_bytes,
+                modified: entry.modified,
+            },
+            || path.join(&**kid_name),
+        );
+    }
+    ctx.folder_done(&raw, local_ext);
+    raw.children = subdirs
+        .into_iter()
+        .map(|(kid, kid_name)| {
+            build(
+                tables,
+                kid,
+                kid_name.into(),
+                &path.join(kid_name),
+                ctx,
+                seen,
+            )
         })
         .collect();
-    top_files.sort_by_key(|e| Reverse(e.bytes));
-
-    let mut extensions: Vec<ExtensionStat> = ctx
-        .extensions
-        .into_inner()
-        .into_iter()
-        .map(|(extension, (files, bytes))| ExtensionStat {
-            extension,
-            files,
-            bytes,
-        })
-        .collect();
-    extensions.sort_by_key(|e| Reverse(e.bytes));
-    extensions.truncate(TOP_EXTENSIONS);
-
-    Ok(ScanTree {
-        root: root.to_path_buf(),
-        nodes,
-        top_files,
-        extensions,
-        unreadable_dirs: ctx.unreadable.into_inner(),
-        elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
-        cancelled: task.is_cancelled(),
-        hard_linked_bytes: ctx.linked_bytes.into_inner(),
-    })
+    raw.total();
+    raw
 }
 
 fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
-    let mut raw = RawDir {
-        name,
-        bytes: 0,
-        disk_bytes: 0,
-        files: 0,
-        own_bytes: 0,
-        own_files: 0,
-        modified: None,
-        incomplete: false,
-        children: Vec::new(),
-    };
+    let mut raw = RawDir::new(name);
     if ctx.task.is_cancelled() {
         raw.incomplete = true;
         return raw;
@@ -361,48 +667,27 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
                 ctx.linked_bytes.fetch_add(meta.len(), Ordering::Relaxed);
                 continue;
             }
-            let bytes = meta.len();
             let path = entry.path();
             let disk = rewind_os_platform::files::size_on_disk(&path, &meta);
-            let modified = meta.modified().ok();
-            raw.disk_bytes += disk;
-            raw.own_bytes += bytes;
-            raw.own_files += 1;
-            raw.modified = raw.modified.max(modified);
-            let file_name = entry.file_name();
-            let ext = Path::new(&file_name)
-                .extension()
-                .map(|e| e.to_string_lossy().to_ascii_lowercase())
-                .filter(|e| e.len() <= 12)
-                .unwrap_or_default();
-            let slot = local_ext.entry(ext).or_default();
-            slot.0 += 1;
-            slot.1 += bytes;
-            ctx.top.offer(bytes, || path, modified, disk);
+            ctx.count_file(
+                &mut raw,
+                &mut local_ext,
+                &entry.file_name(),
+                Sizes {
+                    bytes: meta.len(),
+                    disk,
+                    modified: meta.modified().ok(),
+                },
+                || path,
+            );
         }
     }
-    ctx.task.add(raw.own_files, raw.own_bytes);
-    if !local_ext.is_empty() {
-        let mut global = ctx.extensions.lock();
-        for (ext, (files, bytes)) in local_ext {
-            let slot = global.entry(ext).or_default();
-            slot.0 += files;
-            slot.1 += bytes;
-        }
-    }
+    ctx.folder_done(&raw, local_ext);
     raw.children = subdirs
         .into_par_iter()
         .map(|(child, name)| scan_dir(&child, name, ctx))
         .collect();
-    raw.bytes = raw.own_bytes;
-    raw.files = raw.own_files;
-    for child in &raw.children {
-        raw.bytes += child.bytes;
-        raw.disk_bytes += child.disk_bytes;
-        raw.files += child.files;
-        raw.incomplete |= child.incomplete;
-        raw.modified = raw.modified.max(child.modified);
-    }
+    raw.total();
     raw
 }
 
@@ -465,4 +750,92 @@ pub fn list_files(dir: &Path) -> Result<Vec<FileEntry>> {
         .collect();
     files.sort_by_key(|e| Reverse(e.bytes));
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::mft::{Entry, FileTable, ROOT};
+
+    fn folder(parent: u64, name: &str) -> Entry {
+        Entry {
+            names: vec![(parent, name.into())],
+            dir: true,
+            ..Entry::default()
+        }
+    }
+
+    fn file(names: &[(u64, &str)], bytes: u64) -> Entry {
+        Entry {
+            names: names.iter().map(|(p, n)| (*p, (*n).into())).collect(),
+            dir: false,
+            bytes,
+            disk_bytes: bytes,
+            modified: None,
+        }
+    }
+
+    fn tree(entries: Vec<(u64, Entry)>) -> ScanTree {
+        let mut all: HashMap<u64, Entry> = entries.into_iter().collect();
+        all.insert(ROOT, folder(ROOT, "."));
+        let table = FileTable {
+            entries: all,
+            damaged: 0,
+        };
+        from_table(
+            &table,
+            Path::new("X:\\"),
+            &[],
+            &Task::new(),
+            false,
+            Instant::now(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn a_hard_linked_file_counts_once() {
+        let tree = tree(vec![
+            (30, folder(ROOT, "a")),
+            (31, folder(ROOT, "b")),
+            (40, file(&[(30, "x.bin"), (31, "y.bin")], 1_000)),
+            (41, file(&[(31, "z.bin")], 10)),
+        ]);
+        let root = tree.root_node().unwrap();
+        assert_eq!(root.bytes, 1_010);
+        assert_eq!(tree.hard_linked_bytes, 1_000);
+    }
+
+    #[test]
+    fn a_damaged_table_never_loops_and_says_what_it_lost() {
+        let tree = tree(vec![
+            // Two folders that name each other as parent, cut off from the root.
+            (30, folder(31, "loop")),
+            (31, folder(30, "back")),
+            (32, folder(ROOT, "kept")),
+            (40, file(&[(32, "a.txt")], 5)),
+            // A file whose folder's record is gone.
+            (41, file(&[(99, "orphan.txt")], 7)),
+        ]);
+        let root = tree.root_node().unwrap();
+        assert_eq!(root.bytes, 5);
+        assert!(root.incomplete);
+        assert!(tree.unreadable_dirs > 0);
+    }
+
+    #[test]
+    fn ntfs_metadata_is_never_shown() {
+        let tree = tree(vec![
+            (0, file(&[(ROOT, "$MFT")], 1 << 30)),
+            (11, folder(ROOT, "$Extend")),
+            (30, file(&[(11, "$UsnJrnl")], 1 << 30)),
+            (40, file(&[(ROOT, "pagefile.sys")], 100)),
+        ]);
+        assert_eq!(tree.root_node().unwrap().bytes, 100);
+        assert!(
+            tree.top_files
+                .iter()
+                .all(|f| !f.path.to_string_lossy().contains('$'))
+        );
+    }
 }

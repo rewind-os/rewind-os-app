@@ -28,7 +28,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.9 GitHub Actions: CI on Linux and Windows, release workflow with portable zips (x64, arm64)
 - [x] R1.11 MSI installer (WiX) next to the portable zip
 - [ ] R1.12 Code signing certificate (Azure Trusted Signing or a .pfx) so SmartScreen does not warn
-- [ ] R1.10 Faster scans via the NTFS master file table when elevated
+- [x] R1.10 Faster scans via the NTFS master file table when elevated (drives and the folders right below them; anything else walks the folders)
 
 ## R2 — Rewind OS on every system
 

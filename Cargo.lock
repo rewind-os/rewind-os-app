@@ -2867,6 +2867,7 @@ version = "0.8.0"
 dependencies = [
  "blake3",
  "chrono",
+ "flate2",
  "glob",
  "ico",
  "parking_lot 0.13.0",

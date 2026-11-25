@@ -518,6 +518,9 @@ fn print_human(response: &Response, top: usize) {
                     tree.elapsed_ms
                 );
             }
+            if tree.from_file_table {
+                println!("{}", tr("Read from the master file table"));
+            }
             if tree.cancelled {
                 println!("{}", tr("The scan was stopped; sizes are incomplete."));
             }

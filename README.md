@@ -21,7 +21,8 @@ large forgotten files and programs that start with the system for no reason.
   button that does it; drives (SSD/HDD), memory, and Windows' own large files (`hiberfil.sys`,
   `pagefile.sys`).
 - **Disk analyzer**: scans a drive or folder in parallel; folder list, treemap, largest files and
-  size per file type. Anything can be shown in the file manager or moved to the recycle bin.
+  size per file type. Run as administrator on Windows, it reads an NTFS drive's master file table
+  in one pass, in seconds. Anything can be shown in the file manager or moved to the recycle bin.
 - **Duplicate files**: files with exactly the same contents (size, then first block, then a full
   BLAKE3 hash). Hard links are not counted as copies and cloud-only files are not downloaded. One
   copy of each file always stays; the others go to the recycle bin.

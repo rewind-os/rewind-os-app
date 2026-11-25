@@ -39,6 +39,22 @@ Things that look wrong but are not, and mistakes worth not repeating.
   downloads it. Anything that reads contents (the duplicate finder) checks
   `platform::files::is_cloud_placeholder` first and reports what it skipped.
 
+## Reading the master file table
+
+- `\\.\C:` opened for reading needs administrator rights, and Windows refuses reads that do
+  not start and end on a sector: `mft::read` reads whole clusters only. The table is parsed by
+  our own code, with every offset checked, because a parser that panics on a damaged record
+  would abort the app (release builds abort on panic).
+- A `subst` drive opens the volume of the folder it stands for. The scan checks that the files
+  and folders at the top of the scanned folder are the ones the table names, and walks the
+  folders otherwise.
+- The table also measures what nobody may list (`System Volume Information`, other people's
+  profiles), so a drive can look larger than a folder-by-folder scan of it. NTFS's own files
+  (`$MFT`, `$LogFile`, `$Extend`) are left out. Symbolic links and junctions are left out too,
+  as everywhere; cloud files are kept, with the space they really take.
+- What Windows has not written to disk yet is not in the table: a file saved a moment ago can
+  be missing until the next scan.
+
 ## Windows: explorer.exe and installer icons
 
 - `explorer.exe /select,<path>` parses its own command line. Rust quotes an argument with spaces

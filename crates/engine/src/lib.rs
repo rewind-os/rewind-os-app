@@ -11,6 +11,7 @@ pub mod icons;
 pub mod leftovers;
 pub mod macapps;
 pub mod maintenance;
+pub mod mft;
 pub mod packages;
 pub mod programs;
 pub mod recommend;

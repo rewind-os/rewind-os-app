@@ -224,7 +224,11 @@ impl State {
                 ui,
                 tr("Scan time"),
                 &format!("{:.1} s", tree.elapsed_ms as f64 / 1000.0),
-                "",
+                if tree.from_file_table {
+                    tr("Read from the master file table")
+                } else {
+                    ""
+                },
                 None,
             ),
         });

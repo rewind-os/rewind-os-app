@@ -93,6 +93,29 @@ fn open_folder(dir: &Path) -> Result<()> {
     }
 }
 
+/// Opens `url` in the default web browser. Only `https` addresses are opened.
+pub fn open_web(url: &str) -> Result<()> {
+    if !url.starts_with("https://") {
+        return Err(PlatformError::Unsupported("web addresses other than https"));
+    }
+    #[cfg(windows)]
+    {
+        spawned(
+            "explorer.exe",
+            process::command("explorer.exe").arg(url).spawn(),
+        )
+    }
+    #[cfg(not(windows))]
+    {
+        let program = if cfg!(target_os = "macos") {
+            "open"
+        } else {
+            "xdg-open"
+        };
+        spawned(program, process::command(program).arg(url).spawn())
+    }
+}
+
 /// The path as explorer.exe understands it: backslashes, without the `\\?\` prefix.
 #[cfg(any(windows, test))]
 fn explorer_path(path: &Path) -> String {

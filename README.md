@@ -86,6 +86,13 @@ Ready-made builds are on the [releases page](../../releases); check them against
   Or install the Flatpak bundle: `flatpak install --user ./rewind-os-<version>-linux-<arch>.flatpak`
   (it needs the host filesystem to see the disk, and runs the system's own tools on the host).
 
+### New versions
+
+Once a day the app asks GitHub whether a newer version is out and, if so, says so at the foot of
+the navigation. The request carries only the app's name and version. Turn it off from the
+version number next to the app's name, or with `rewind-os-cli update off`;
+`rewind-os-cli update check` asks at once.
+
 ## Build
 
 With [Rust](https://rustup.rs) (on Windows, also the Visual Studio C++ Build Tools):

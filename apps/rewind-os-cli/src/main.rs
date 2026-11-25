@@ -108,6 +108,9 @@ enum Command {
     /// Windows maintenance tools (need administrator rights).
     #[command(subcommand)]
     Maintenance(Maintenance),
+    /// New versions of Rewind OS.
+    #[command(subcommand)]
+    Update(Update),
     /// Run a raw request, for example '{"tool":"cleanup.analyze"}'. Always prints JSON.
     Run { request: String },
 }
@@ -127,6 +130,16 @@ enum Dev {
         #[arg(long)]
         yes: bool,
     },
+}
+
+#[derive(Subcommand)]
+enum Update {
+    /// Ask GitHub now whether a newer version is out.
+    Check,
+    /// Let the desktop app check once a day by itself (the default).
+    On,
+    /// Stop the desktop app from checking by itself.
+    Off,
 }
 
 #[derive(Subcommand)]
@@ -359,6 +372,9 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             }
             Request::DevClean { paths }
         }
+        Command::Update(Update::Check) => Request::UpdateCheck { now: true },
+        Command::Update(Update::On) => Request::UpdateAuto { enabled: true },
+        Command::Update(Update::Off) => Request::UpdateAuto { enabled: false },
         Command::Clean(Clean::Analyze) => Request::CleanupAnalyze,
         Command::Clean(Clean::Run {
             mut categories,
@@ -875,6 +891,35 @@ fn print_human(response: &Response, top: usize) {
                     ),
                     None => println!("{:>10}  {}", bytes(r.bytes), r.path.display()),
                 }
+            }
+        }
+        Response::Update(status) => {
+            match (&status.latest, status.newer) {
+                (Some(latest), true) => println!(
+                    "{}",
+                    trf(
+                        "Rewind OS {latest} is out (this is {current}): {url}",
+                        &[
+                            ("latest", &latest.version),
+                            ("current", status.current),
+                            ("url", &latest.url),
+                        ],
+                    )
+                ),
+                (Some(_), false) => println!(
+                    "{}",
+                    trf(
+                        "Rewind OS {current} is the newest version.",
+                        &[("current", status.current)]
+                    )
+                ),
+                (None, _) => println!("{}", tr("Rewind OS has not checked for new versions yet.")),
+            }
+            if !status.auto {
+                println!(
+                    "{}",
+                    tr("The daily check is off; turn it on with: rewind-os-cli update on")
+                );
             }
         }
         Response::Startup(entries) => {

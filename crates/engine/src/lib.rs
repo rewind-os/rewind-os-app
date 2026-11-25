@@ -23,6 +23,7 @@ pub mod startup;
 pub mod system;
 pub mod task;
 pub mod tweaks;
+pub mod update;
 mod walk;
 
 use serde::{Deserialize, Serialize};
@@ -178,6 +179,18 @@ pub const TOOLS: &[ToolSpec] = &[
     )
     .changes(),
     ToolSpec::new(
+        "update.check",
+        "Check whether a newer version of Rewind OS is out (asks GitHub at most once a day unless told to check now; nothing about this computer is sent)",
+    ),
+    ToolSpec::new(
+        "update.auto",
+        "Turn the daily check for a newer version on or off",
+    ),
+    ToolSpec::new(
+        "update.notes",
+        "Open the page of the newer version, with its notes and downloads, in the web browser",
+    ),
+    ToolSpec::new(
         "cleanup.analyze",
         "Measure temporary files, caches and other junk by category",
     )
@@ -310,6 +323,16 @@ pub enum Request {
     },
     #[serde(rename = "dev.clean")]
     DevClean { paths: Vec<PathBuf> },
+    /// `now` asks GitHub even when the daily check is off or not due.
+    #[serde(rename = "update.check")]
+    UpdateCheck {
+        #[serde(default)]
+        now: bool,
+    },
+    #[serde(rename = "update.auto")]
+    UpdateAuto { enabled: bool },
+    #[serde(rename = "update.notes")]
+    UpdateNotes,
     #[serde(rename = "cleanup.analyze")]
     CleanupAnalyze,
     #[serde(rename = "cleanup.run")]
@@ -358,6 +381,7 @@ pub enum Response {
     Duplicates(duplicates::DuplicateReport),
     BuildFolders(projects::Report),
     BuildFoldersCleaned(Vec<projects::Cleaned>),
+    Update(update::Status),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
     CleanupDone(Vec<cleanup::CategoryResult>),
     Programs(Vec<programs::InstalledProgram>),
@@ -458,6 +482,19 @@ impl Engine {
                 &projects::Places::current(),
                 task,
             ))),
+            Request::UpdateCheck { now } => update::check(now).map(Response::Update),
+            Request::UpdateAuto { enabled } => {
+                update::set_auto(enabled)?;
+                Ok(Response::Done(if enabled {
+                    "Rewind OS will check for a new version once a day"
+                } else {
+                    "Rewind OS will not check for new versions by itself"
+                }))
+            }
+            Request::UpdateNotes => {
+                update::open_notes()?;
+                Ok(Response::Done("Opened in the web browser"))
+            }
             Request::FilesReveal { path } => {
                 use rewind_os_platform::shell::{Revealed, reveal};
                 Ok(Response::Done(match reveal(&path)? {
@@ -516,6 +553,9 @@ impl Request {
             Request::FilesTrash { .. } => "files.trash",
             Request::DevFind { .. } => "dev.find",
             Request::DevClean { .. } => "dev.clean",
+            Request::UpdateCheck { .. } => "update.check",
+            Request::UpdateAuto { .. } => "update.auto",
+            Request::UpdateNotes => "update.notes",
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",
             Request::StartupSet { .. } => "startup.set",

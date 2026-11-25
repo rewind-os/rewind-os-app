@@ -9,6 +9,7 @@ mod jobs;
 mod pages;
 mod theme;
 mod treemap;
+mod update;
 mod widgets;
 
 /// Reverse-DNS id: the Wayland app id, the Linux `.desktop` file and the icon name.

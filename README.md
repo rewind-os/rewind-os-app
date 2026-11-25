@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/app-icon/hicolor/256x256/apps/io.github.rewind_os.rewind_os_app.png" width="128" height="128" alt="Rewind OS icon: a blue disk gauge around a rewind symbol on a dark tile">
+  <img src="assets/app-icon/hicolor/256x256/apps/io.github.rewind_os.rewind_os_app.png" width="128" height="128" alt="Rewind OS icon: a rewound cassette tape, its left reel full of blue tape, on a navy tile">
 </p>
 
 <h1 align="center">Rewind OS</h1>

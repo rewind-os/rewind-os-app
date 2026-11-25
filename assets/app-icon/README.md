@@ -1,18 +1,19 @@
 # Rewind OS app icon
 
-A **disk gauge around a rewind symbol**: the ring is a drive's usage chart, the two triangles
-pointing left say "rewind". Flat shapes on a graphite full-bleed tile, in the app's own colours
-(the blue accent of the interface). The ring and the triangles are thick, so the icon still reads
-at 16 px.
+A **rewound cassette tape**: a cassette drawn in thick white lines, whose left reel holds all the
+tape (a large blue disc) while the right one is nearly empty, the way a tape looks once it is
+rewound to the start. Flat shapes on a navy full-bleed tile, in the app's own colours (the
+navigation's navy, the action blue, the white of its line icons). The lines are thick, so the
+icon still reads at 16 px.
 
 ## Palette
 
 | Colour | Hex | Used for |
 |---|---|---|
-| Tile | `#1c2433` to `#0c1018` | the tile, a vertical gradient |
-| Track | `#2a3446` | the empty part of the ring |
-| Arc | `#3b82f6` to `#7cb4ff` | the filled part of the ring, a gradient |
-| Mark | `#f4f7fb` | the rewind triangles |
+| Tile | `#2b2f45` to `#1a1d2e` | the tile, a vertical gradient |
+| Tape | `#5fb0ff` to `#1774d6` | the tape on the reels, a diagonal gradient; the empty reel at 55 % opacity |
+| Lines | `#f2f3f7` | the cassette, the tape path at its foot, the reel hubs |
+| Hole | `#1d2033` | the hole in each hub |
 
 ## Geometry
 

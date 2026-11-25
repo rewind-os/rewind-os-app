@@ -78,3 +78,5 @@ Windows error code (1223 declined, 2 missing).
   the program still runs, but the loader warns). Releases are built on Ubuntu 22.04 (glibc 2.35)
   and `packaging/linux/package.sh` stops when the binaries need more than `REWIND_OS_MAX_GLIBC`.
   Do not move the Linux release jobs to a newer runner without raising that floor on purpose.
+  The release caches are keyed by runner: moving to 22.04 first failed because the arm64 job
+  restored a 24.04 cache whose proc macros (`zvariant_derive`) needed glibc 2.39 to load.

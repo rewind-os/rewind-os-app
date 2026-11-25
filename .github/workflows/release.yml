@@ -76,7 +76,9 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          key: release-windows-${{ matrix.arch }}
+          # The runner image is part of the key: a cache built on another image (another glibc,
+          # another compiler) can hold build scripts and proc macros that no longer load.
+          key: release-windows-${{ matrix.arch }}-${{ matrix.runner }}
       - name: Build, sign, package
         shell: pwsh
         env:
@@ -125,7 +127,9 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          key: release-linux-${{ matrix.arch }}
+          # The runner image is part of the key: a cache built on another image (another glibc,
+          # another compiler) can hold build scripts and proc macros that no longer load.
+          key: release-linux-${{ matrix.arch }}-${{ matrix.runner }}
       - name: Build and package
         run: ./packaging/linux/package.sh
       - name: Install flatpak-builder

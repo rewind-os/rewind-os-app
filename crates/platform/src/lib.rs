@@ -4,6 +4,7 @@
 
 pub mod elevation;
 pub mod files;
+pub mod installer;
 pub mod paths;
 pub mod process;
 pub mod registry;

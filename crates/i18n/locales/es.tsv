@@ -647,8 +647,35 @@ Rewind OS has not checked for new versions yet.	Rewind OS aún no ha comprobado 
 The daily check is off; turn it on with: rewind-os-cli update on	La comprobación diaria está desactivada; actívala con: rewind-os-cli update on
 Could not check for a new version: {error}	No se pudo comprobar si hay una versión nueva: {error}
 Version {version} is out	Ya está la versión {version}
-You have {current}. Opens the new version's page, with its notes and downloads.	Tienes la {current}. Abre la página de la versión nueva, con sus novedades y descargas.
 Rewind OS {version}	Rewind OS {version}
 Check for a new version once a day	Comprobar una vez al día si hay una versión nueva
 Check now	Comprobar ahora
 Version and new versions	Versión y versiones nuevas
+Download the newer version, check that the Rewind OS project signed it, and install it (the MSI or a portable copy)	Descargar la versión nueva, comprobar que la firmó el proyecto Rewind OS e instalarla (el MSI o una copia portable)
+This copy was installed with the system's package manager; update it from there.	Esta copia se instaló con el gestor de paquetes del sistema; actualízala desde ahí.
+This copy is a Flatpak; update it with Flatpak.	Esta copia es un Flatpak; actualízala con Flatpak.
+Updating from the app is not available on macOS yet; download the new version from its page.	Actualizar desde la app aún no está disponible en macOS; descarga la versión nueva desde su página.
+Rewind OS cannot tell how this copy was installed; download the new version from its page.	Rewind OS no sabe cómo se instaló esta copia; descarga la versión nueva desde su página.
+There is no package of the new version for this system; download it from its page.	No hay paquete de la versión nueva para este sistema; descárgala desde su página.
+The new version's checksums are not signed by the Rewind OS project; nothing was installed.	Las sumas de comprobación de la versión nueva no están firmadas por el proyecto Rewind OS; no se ha instalado nada.
+The signed checksums belong to another version; nothing was installed.	Las sumas firmadas son de otra versión; no se ha instalado nada.
+The package is not in the signed checksums; nothing was installed.	El paquete no está en las sumas firmadas; no se ha instalado nada.
+The download does not match the signed checksums; nothing was installed.	La descarga no coincide con las sumas firmadas; no se ha instalado nada.
+The package does not contain the Rewind OS programs; nothing was replaced.	El paquete no contiene los programas de Rewind OS; no se ha sustituido nada.
+Checking for a new version	Comprobando si hay una versión nueva
+Checking the signature	Comprobando la firma
+Downloading the new version	Descargando la versión nueva
+Checking the download	Comprobando la descarga
+Installing the new version	Instalando la versión nueva
+Updating	Actualizando
+Rewind OS {version} is installed in {folder}.	Rewind OS {version} está instalado en {folder}.
+The installer of Rewind OS {version} was started; follow its steps.	Se ha abierto el instalador de Rewind OS {version}; sigue sus pasos.
+The update was not installed: {error}	No se ha instalado la actualización: {error}
+Update to {version}	Actualizar a la {version}
+You have {current}. Downloads the new version, checks its signature and installs it.	Tienes la {current}. Descarga la versión nueva, comprueba su firma y la instala.
+You have {current}.	Tienes la {current}.
+Rewind OS downloads version {version} from GitHub, checks that the Rewind OS project signed it, and starts its installer. Windows asks for permission; Rewind OS closes now and opens again when the installer finishes.	Rewind OS descarga la versión {version} de GitHub, comprueba que la firmó el proyecto Rewind OS y abre su instalador. Windows pedirá permiso; Rewind OS se cierra ahora y vuelve a abrirse cuando termine el instalador.
+Rewind OS downloads version {version} from GitHub, checks that the Rewind OS project signed it, replaces its programs in {folder} and opens again. If anything fails, this version stays.	Rewind OS descarga la versión {version} de GitHub, comprueba que la firmó el proyecto Rewind OS, sustituye sus programas en {folder} y vuelve a abrirse. Si algo falla, se queda esta versión.
+Update Rewind OS?	¿Actualizar Rewind OS?
+Update and restart	Actualizar y reiniciar
+What's new in {version}	Novedades de la {version}

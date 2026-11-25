@@ -98,6 +98,11 @@ la navegación. La petición solo lleva el nombre y la versión de la app. Se de
 número de versión, junto al nombre de la app, o con `rewind-os-cli update off`;
 `rewind-os-cli update check` lo comprueba al momento.
 
+El MSI y las versiones portables se actualizan con un clic («Actualizar a …», o
+`rewind-os-cli update install --yes`): la app descarga la versión nueva, solo la instala si su
+suma está en el `SHA256SUMS.txt` firmado de la release, y vuelve a abrirse. Los .deb, .rpm y el
+Flatpak los actualiza el gestor de paquetes del sistema o Flatpak.
+
 ## Compilar
 
 Con [Rust](https://rustup.rs) (en Windows, también las Build Tools de C++ de Visual Studio):

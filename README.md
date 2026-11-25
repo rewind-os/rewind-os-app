@@ -93,6 +93,11 @@ the navigation. The request carries only the app's name and version. Turn it off
 version number next to the app's name, or with `rewind-os-cli update off`;
 `rewind-os-cli update check` asks at once.
 
+The MSI and the portable builds update themselves with one click ("Update to …", or
+`rewind-os-cli update install --yes`): the app downloads the new version, installs it only when
+its checksum is in the release's signed `SHA256SUMS.txt`, and opens again. The .deb, .rpm and
+Flatpak are updated by the system's package manager or Flatpak.
+
 ## Build
 
 With [Rust](https://rustup.rs) (on Windows, also the Visual Studio C++ Build Tools):

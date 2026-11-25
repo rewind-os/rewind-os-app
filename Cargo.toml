@@ -43,6 +43,8 @@ pelite = { version = "0.10", default-features = false, features = ["std", "deriv
 ico = "0.5"
 blake3 = { version = "1", features = ["pure"] }
 same-file = "1"
+sha2 = "0.10"
+minisign-verify = "0.2"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.ico binary
 *.png binary
+# Signed fixtures: their bytes must never change.
+crates/engine/tests/fixtures/update/** -text

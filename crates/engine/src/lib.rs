@@ -3,6 +3,7 @@
 //! can do the CLI can do too.
 
 pub mod apps;
+pub mod boot;
 pub mod cleanup;
 pub mod duplicates;
 pub mod elevated;
@@ -225,6 +226,11 @@ pub const TOOLS: &[ToolSpec] = &[
         .changes(),
     ToolSpec::new("files.reveal", "Show a file or folder in the file manager"),
     ToolSpec::new("startup.list", "List programs that start with the system"),
+    ToolSpec::new(
+        "boot.report",
+        "How long the computer takes to start, and what slowed it down (on Windows it needs administrator rights)",
+    )
+    .only(WINDOWS_LINUX),
     ToolSpec::new("startup.set", "Enable or disable a startup program")
         .admin(AdminNeed::Partly)
         .changes(),
@@ -362,6 +368,8 @@ pub enum Request {
     FilesTrash { paths: Vec<PathBuf> },
     #[serde(rename = "files.reveal")]
     FilesReveal { path: PathBuf },
+    #[serde(rename = "boot.report")]
+    BootReport,
     #[serde(rename = "startup.list")]
     StartupList,
     #[serde(rename = "startup.set")]
@@ -403,6 +411,7 @@ pub enum Response {
     RegistryLeftovers(Vec<leftovers::RegistryLeftover>),
     Trashed(Vec<TrashResult>),
     Startup(Vec<startup::StartupEntry>),
+    Boot(boot::Report),
     /// Output of an external Windows tool, shown as is.
     ToolOutput(String),
     /// Finished; the message (English key) says what happened.
@@ -520,6 +529,7 @@ impl Engine {
                 }))
             }
             Request::StartupList => Ok(Response::Startup(startup::list())),
+            Request::BootReport => boot::report().map(Response::Boot),
             Request::StartupSet { id, enabled } => {
                 startup::set_enabled(&id, enabled)?;
                 Ok(Response::Done(if enabled {
@@ -576,6 +586,7 @@ impl Request {
             Request::UpdateNotes => "update.notes",
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",
+            Request::BootReport => "boot.report",
             Request::StartupSet { .. } => "startup.set",
             Request::AnalyzeComponentStore => "maintenance.analyze_component_store",
             Request::ComponentCleanup => "maintenance.component_cleanup",

@@ -6,7 +6,8 @@
 //! - `REWIND_OS_THEME=<light|dark>` shows that theme instead of following the system.
 //! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a search on the duplicates and build
 //!   folders pages).
-//! - `REWIND_OS_VIEW=<folders|files|types|changes>` opens that view of the analyzer after a scan.
+//! - `REWIND_OS_VIEW=<folders|files|types|changes>` opens that view of the analyzer after a scan;
+//!   `REWIND_OS_VIEW=speed` opens the startup page's startup speed.
 //! - `REWIND_OS_SELECT=<n>` selects the n-th item (from 0) on the programs and startup pages.
 //! - `REWIND_OS_NEWER=<version>` shows the notice of a newer version without asking GitHub.
 //! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
@@ -49,7 +50,8 @@ pub fn newer_version() -> Option<String> {
     std::env::var("REWIND_OS_NEWER").ok()
 }
 
-/// The analyzer view asked for, as the variable spells it.
+/// The view asked for (of the analyzer, or `speed` on the startup page), as the variable spells
+/// it.
 pub fn analyzer_view() -> Option<String> {
     std::env::var("REWIND_OS_VIEW").ok()
 }

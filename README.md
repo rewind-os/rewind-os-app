@@ -43,6 +43,9 @@ large forgotten files and programs that start with the system for no reason.
 - **Startup programs** on and off, using the system's own records, including the scheduled tasks
   programs add for themselves and the services they install (Windows' own are never shown;
   services are set to start when needed, never disabled).
+- **Startup speed**: how long the computer takes to start, its last starts, and what slowed them
+  down (Windows' own performance log, as administrator; `systemd-analyze` on Linux), with a
+  switch for the startup program behind a delay.
 - **Make Windows lighter**: turn off ads, suggestions, tracking and extras you do not use. A
   closed list of documented settings, each of which can be undone, and optional removal of
   preinstalled Store apps (News, Tips, Clipchamp…) for your account; the Store can install
@@ -60,6 +63,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Overview, disk analyzer, duplicate files, build folders | ✓ | ✓ | ✓ |
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
+| Startup speed | ✓ (as administrator) | ✓ (systemd, last start) | — |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |

@@ -679,3 +679,28 @@ Rewind OS downloads version {version} from GitHub, checks that the Rewind OS pro
 Update Rewind OS?	¿Actualizar Rewind OS?
 Update and restart	Actualizar y reiniciar
 What's new in {version}	Novedades de la {version}
++{time}	+{time}
+Average start	Arranque medio
+Device	Dispositivo
+Driver	Controlador
+How long the computer takes to start, and what slowed it down (on Windows it needs administrator rights)	Cuánto tarda en arrancar el equipo y qué lo ralentizó (en Windows necesita permisos de administrador)
+It stops starting with the system; you can turn it back on in the list of startup programs.	Deja de iniciarse con el sistema; puedes volver a activarlo en la lista de programas de inicio.
+Last start	Último arranque
+Last start: {time}	Último arranque: {time}
+Recent starts	Últimos arranques
+Slowest step	Paso más lento
+Start on {date}: {time}	Arranque del {date}: {time}
+Startup speed	Velocidad de arranque
+System step	Paso del sistema
+The rest happens while you can already work	El resto ocurre mientras ya puedes trabajar
+The system has no record of its starts yet.	El sistema aún no tiene registro de sus arranques.
+This system does not start with systemd, so Rewind OS cannot measure its start.	Este sistema no arranca con systemd, así que Rewind OS no puede medir su arranque.
+Turn off at startup	Desactivar al iniciar
+Until the desktop was ready	Hasta tener el escritorio listo
+What made starts slower than usual	Qué hizo los arranques más lentos de lo normal
+What took longest to start since the last start	Lo que más tardó en iniciarse desde el último arranque
+Windows records how long each start took and what slowed it down, but only administrators can read that record.	Windows registra cuánto tardó cada arranque y qué lo ralentizó, pero solo los administradores pueden leer ese registro.
+desktop ready after {time}	escritorio listo tras {time}
+of the last {n} starts	de los últimos {n} arranques
+slowed {n} starts	ralentizó {n} arranques
+{n} starts	{n} arranques

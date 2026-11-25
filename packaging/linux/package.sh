@@ -54,6 +54,19 @@ done
 "$STAGE/bin/rewind-os-cli" --version
 "$STAGE/bin/rewind-os-cli" --json overview >/dev/null
 
+# The newest glibc the binaries ask for, weak symbols included (a newer one only warns at start,
+# but warns). Releases are built on an older system so they run on Debian 12 and Ubuntu 22.04;
+# REWIND_OS_MAX_GLIBC (set by the release workflow) stops a build that would need more.
+GLIBC_NEEDED="$(objdump -T "$STAGE/bin/rewind-os" "$STAGE/bin/rewind-os-cli" |
+  grep -o 'GLIBC_[0-9][0-9.]*' | sed 's/^GLIBC_//' | sort -uV | tail -n 1)"
+[ -n "$GLIBC_NEEDED" ] || { echo "error: could not read the glibc version the binaries need" >&2; exit 1; }
+echo "The binaries need glibc $GLIBC_NEEDED or newer."
+if [ -n "${REWIND_OS_MAX_GLIBC:-}" ] &&
+  [ "$(printf '%s\n%s\n' "$GLIBC_NEEDED" "$REWIND_OS_MAX_GLIBC" | sort -V | tail -n 1)" != "$REWIND_OS_MAX_GLIBC" ]; then
+  echo "error: the binaries need glibc $GLIBC_NEEDED, newer than $REWIND_OS_MAX_GLIBC: build them on an older system" >&2
+  exit 1
+fi
+
 tar -C "$(dirname "$STAGE")" -czf "$DIST/$NAME.tar.gz" "$NAME"
 (cd "$DIST" && sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256")
 ls -l "$DIST/$NAME.tar.gz"
@@ -77,7 +90,7 @@ files, caches, leftovers of uninstalled programs, duplicate and large forgotten 
 unneeded startup programs. Every removal goes through a safety guard."
 HOMEPAGE="https://github.com/rewind-os/rewind-os-app"
 # The GUI loads OpenGL, xkbcommon and the display libraries at run time.
-DEB_DEPENDS="libc6, libgl1, libxkbcommon0, libwayland-client0 | libx11-6"
+DEB_DEPENDS="libc6 (>= $GLIBC_NEEDED), libgl1, libxkbcommon0, libwayland-client0 | libx11-6"
 
 case "$ARCH" in
   x64) DEB_ARCH=amd64; RPM_ARCH=x86_64 ;;

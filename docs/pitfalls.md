@@ -73,3 +73,8 @@ more than two, and an uninstaller that needs administrator rights fails inside c
 740 while `spawn()` still reports success. `programs::launch` splits the line itself and starts
 it with `Start-Process` (ShellExecute), which shows the administrator prompt and returns the
 Windows error code (1223 declined, 2 missing).
+- **A Linux release that warns about `GLIBC_2.39` on Debian 12.** Rust's standard library asks
+  for the newest glibc functions of the system it is built on (`pidfd_spawnp`, as weak symbols:
+  the program still runs, but the loader warns). Releases are built on Ubuntu 22.04 (glibc 2.35)
+  and `packaging/linux/package.sh` stops when the binaries need more than `REWIND_OS_MAX_GLIBC`.
+  Do not move the Linux release jobs to a newer runner without raising that floor on purpose.

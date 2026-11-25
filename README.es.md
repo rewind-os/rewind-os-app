@@ -82,7 +82,8 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
 - **Windows** x64 y ARM64: ejecuta `rewind-os-<versión>-windows-<arq>.msi` para instalarlo (menú
   Inicio, se desinstala desde Configuración), o descomprime
   `rewind-os-<versión>-windows-<arq>-portable.zip` y ejecuta `rewind-os.exe` sin instalar nada.
-- **Linux** x64 y ARM64: descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta
+- **Linux** x64 y ARM64 (glibc 2.35 o posterior: Debian 12, Ubuntu 22.04, Fedora 36 y
+  posteriores): descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta
   `bin/rewind-os`. Copia su carpeta `share/` en `~/.local/share` para tener el lanzador y el icono.
   O instala el paquete: `sudo apt install ./rewind-os_<versión>_amd64.deb` (Debian, Ubuntu) o
   `sudo dnf install ./rewind-os-<versión>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` y `aarch64`

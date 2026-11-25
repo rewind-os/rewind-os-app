@@ -78,7 +78,8 @@ Ready-made builds are on the [releases page](../../releases); check them against
 - **Windows** x64 and ARM64: run `rewind-os-<version>-windows-<arch>.msi` to install it (Start
   menu, uninstall from Settings), or unzip `rewind-os-<version>-windows-<arch>-portable.zip` and
   run `rewind-os.exe` without installing.
-- **Linux** x64 and ARM64: unpack `rewind-os-<version>-linux-<arch>.tar.gz` and run
+- **Linux** x64 and ARM64 (glibc 2.35 or newer: Debian 12, Ubuntu 22.04, Fedora 36 and later):
+  unpack `rewind-os-<version>-linux-<arch>.tar.gz` and run
   `bin/rewind-os`. Copy its `share/` folder into `~/.local/share` for the launcher entry and icon.
   Or install the package: `sudo apt install ./rewind-os_<version>_amd64.deb` (Debian, Ubuntu)
   or `sudo dnf install ./rewind-os-<version>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` and

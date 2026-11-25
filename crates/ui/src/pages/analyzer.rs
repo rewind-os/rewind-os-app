@@ -203,10 +203,15 @@ impl State {
     fn summary(&self, ui: &mut egui::Ui, tree: &ScanTree) {
         let t = theme::current(ui.ctx());
         let Some(root) = tree.root_node() else { return };
-        let folder = tree.path(ScanTree::ROOT).display().to_string();
         let types = tree.extensions.len() as u64;
         charts::grid(ui, 4, 160.0, |ui, i| match i {
-            0 => charts::stat_tile(ui, tr("Total size"), &bytes(root.bytes), &folder, None),
+            0 => charts::stat_tile(
+                ui,
+                tr("Total size"),
+                &bytes(root.bytes),
+                &trf("{size} on disk", &[("size", &bytes(root.disk_bytes))]),
+                None,
+            ),
             1 => charts::stat_tile(ui, tr("Files"), &count(root.files), "", None),
             2 => charts::stat_tile(
                 ui,
@@ -316,9 +321,18 @@ impl State {
         let t = theme::current(ui.ctx());
         let node = tree.node(self.current)?.clone();
         let parent_bytes = node.bytes.max(1);
-        let rows: Vec<(NodeId, String, u64, u64, bool)> = tree
+        let rows: Vec<(NodeId, String, u64, u64, bool, u64)> = tree
             .children(self.current)
-            .map(|(id, n)| (id, n.name.to_string(), n.bytes, n.files, n.incomplete))
+            .map(|(id, n)| {
+                (
+                    id,
+                    n.name.to_string(),
+                    n.bytes,
+                    n.files,
+                    n.incomplete,
+                    n.disk_bytes,
+                )
+            })
             .collect();
         let mut navigate = None;
         let row_height = 38.0;
@@ -328,7 +342,7 @@ impl State {
             .auto_shrink([false, true])
             .show_rows(ui, row_height, rows.len() + 1, |ui, range| {
                 for index in range {
-                    let Some((id, name, size, files, incomplete)) = rows.get(index) else {
+                    let Some((id, name, size, files, incomplete, disk)) = rows.get(index) else {
                         // The files that sit directly in this folder, as one row.
                         widgets::list_row(ui, index, row_height, |ui| {
                             let label =
@@ -362,10 +376,7 @@ impl State {
                                 &format!("{name} {:.0}%", fraction * 100.0),
                             );
                         });
-                        ui.add_sized(
-                            [76.0, row_height],
-                            egui::Label::new(RichText::new(bytes(*size)).strong()),
-                        );
+                        size_label(ui, row_height, *size, *disk);
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let (show, trash) = widgets::file_actions(ui, &path, gone);
                             if show {
@@ -481,6 +492,15 @@ impl State {
     }
 }
 
+/// A size in a list, with the space it takes on the disk on hover.
+fn size_label(ui: &mut egui::Ui, row_height: f32, size: u64, disk: u64) {
+    ui.add_sized(
+        [76.0, row_height],
+        egui::Label::new(RichText::new(bytes(size)).strong()),
+    )
+    .on_hover_text(trf("{size} on disk", &[("size", &bytes(disk))]));
+}
+
 fn reveal(shared: &mut Shared, path: PathBuf) {
     shared.reveal(path);
 }
@@ -501,10 +521,7 @@ fn file_rows(
             for (index, file) in files.iter().enumerate().skip(range.start).take(range.len()) {
                 let gone = trashed.contains(&file.path);
                 widgets::list_row(ui, index, row_height, |ui| {
-                    ui.add_sized(
-                        [76.0, row_height],
-                        egui::Label::new(RichText::new(bytes(file.bytes)).strong()),
-                    );
+                    size_label(ui, row_height, file.bytes, file.disk_bytes);
                     ui.add_sized(
                         [86.0, row_height],
                         egui::Label::new(

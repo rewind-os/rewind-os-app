@@ -27,6 +27,9 @@ pub struct DirNode {
     pub name: Box<str>,
     /// Total size of everything below, in bytes (logical size, not size on disk).
     pub bytes: u64,
+    /// Space everything below takes on the disk: less than `bytes` for compressed, sparse and
+    /// cloud-only files, a little more where files fill whole blocks.
+    pub disk_bytes: u64,
     /// Files below, at any depth.
     pub files: u64,
     /// Size of the files directly inside this folder.
@@ -44,6 +47,8 @@ pub struct DirNode {
 pub struct FileEntry {
     pub path: PathBuf,
     pub bytes: u64,
+    /// Space the file takes on the disk.
+    pub disk_bytes: u64,
     pub modified: Option<DateTime<Utc>>,
 }
 
@@ -136,6 +141,7 @@ pub fn serialize_summary<S: Serializer>(
     struct Child {
         path: PathBuf,
         bytes: u64,
+        disk_bytes: u64,
         files: u64,
         modified: Option<DateTime<Utc>>,
         incomplete: bool,
@@ -144,6 +150,7 @@ pub fn serialize_summary<S: Serializer>(
     struct Summary<'a> {
         root: &'a Path,
         bytes: u64,
+        disk_bytes: u64,
         files: u64,
         dirs: usize,
         unreadable_dirs: u64,
@@ -157,6 +164,7 @@ pub fn serialize_summary<S: Serializer>(
     let summary = Summary {
         root: &tree.root,
         bytes: root.map(|r| r.bytes).unwrap_or(0),
+        disk_bytes: root.map(|r| r.disk_bytes).unwrap_or(0),
         files: root.map(|r| r.files).unwrap_or(0),
         dirs: tree.dir_count(),
         unreadable_dirs: tree.unreadable_dirs,
@@ -168,6 +176,7 @@ pub fn serialize_summary<S: Serializer>(
             .map(|(id, n)| Child {
                 path: tree.path(id),
                 bytes: n.bytes,
+                disk_bytes: n.disk_bytes,
                 files: n.files,
                 modified: n.modified,
                 incomplete: n.incomplete,
@@ -182,6 +191,7 @@ pub fn serialize_summary<S: Serializer>(
 struct RawDir {
     name: Box<str>,
     bytes: u64,
+    disk_bytes: u64,
     files: u64,
     own_bytes: u64,
     own_files: u64,
@@ -191,7 +201,7 @@ struct RawDir {
 }
 
 /// Keeps the `TOP_FILES` largest files. `floor` lets threads skip the lock for small files.
-type Ranked = Reverse<(u64, PathBuf, Option<SystemTime>)>;
+type Ranked = Reverse<(u64, PathBuf, Option<SystemTime>, u64)>;
 
 struct TopFiles {
     heap: Mutex<BinaryHeap<Ranked>>,
@@ -199,17 +209,23 @@ struct TopFiles {
 }
 
 impl TopFiles {
-    fn offer(&self, bytes: u64, path: impl FnOnce() -> PathBuf, modified: Option<SystemTime>) {
+    fn offer(
+        &self,
+        bytes: u64,
+        path: impl FnOnce() -> PathBuf,
+        modified: Option<SystemTime>,
+        disk_bytes: u64,
+    ) {
         if bytes <= self.floor.load(Ordering::Relaxed) {
             return;
         }
         let mut heap = self.heap.lock();
-        heap.push(Reverse((bytes, path(), modified)));
+        heap.push(Reverse((bytes, path(), modified, disk_bytes)));
         if heap.len() > TOP_FILES {
             heap.pop();
         }
         if heap.len() == TOP_FILES
-            && let Some(Reverse((smallest, _, _))) = heap.peek()
+            && let Some(Reverse((smallest, _, _, _))) = heap.peek()
         {
             self.floor.store(*smallest, Ordering::Relaxed);
         }
@@ -266,9 +282,10 @@ pub fn scan(root: &Path, task: &Task) -> Result<ScanTree> {
         .heap
         .into_inner()
         .into_iter()
-        .map(|Reverse((bytes, path, modified))| FileEntry {
+        .map(|Reverse((bytes, path, modified, disk_bytes))| FileEntry {
             path,
             bytes,
+            disk_bytes,
             modified: modified.map(DateTime::<Utc>::from),
         })
         .collect();
@@ -303,6 +320,7 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
     let mut raw = RawDir {
         name,
         bytes: 0,
+        disk_bytes: 0,
         files: 0,
         own_bytes: 0,
         own_files: 0,
@@ -344,7 +362,10 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
                 continue;
             }
             let bytes = meta.len();
+            let path = entry.path();
+            let disk = rewind_os_platform::files::size_on_disk(&path, &meta);
             let modified = meta.modified().ok();
+            raw.disk_bytes += disk;
             raw.own_bytes += bytes;
             raw.own_files += 1;
             raw.modified = raw.modified.max(modified);
@@ -357,7 +378,7 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
             let slot = local_ext.entry(ext).or_default();
             slot.0 += 1;
             slot.1 += bytes;
-            ctx.top.offer(bytes, || entry.path(), modified);
+            ctx.top.offer(bytes, || path, modified, disk);
         }
     }
     ctx.task.add(raw.own_files, raw.own_bytes);
@@ -377,6 +398,7 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
     raw.files = raw.own_files;
     for child in &raw.children {
         raw.bytes += child.bytes;
+        raw.disk_bytes += child.disk_bytes;
         raw.files += child.files;
         raw.incomplete |= child.incomplete;
         raw.modified = raw.modified.max(child.modified);
@@ -390,6 +412,7 @@ fn flatten(root: RawDir) -> Vec<DirNode> {
         DirNode {
             name: raw.name.clone(),
             bytes: raw.bytes,
+            disk_bytes: raw.disk_bytes,
             files: raw.files,
             own_bytes: raw.own_bytes,
             own_files: raw.own_files,
@@ -431,8 +454,10 @@ pub fn list_files(dir: &Path) -> Result<Vec<FileEntry>> {
         .filter(|e| e.file_type().map(|k| k.is_file()).unwrap_or(false))
         .filter_map(|e| {
             let meta = e.metadata().ok()?;
+            let path = e.path();
             Some(FileEntry {
-                path: e.path(),
+                disk_bytes: rewind_os_platform::files::size_on_disk(&path, &meta),
+                path,
                 bytes: meta.len(),
                 modified: meta.modified().ok().map(DateTime::<Utc>::from),
             })

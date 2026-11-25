@@ -559,3 +559,4 @@ The uninstaller this program registered is no longer on this computer. Open its 
 This holds your keys and saved passwords. Removing it could lock you out of your accounts and encrypted files.	Aquí están tus claves y contraseñas guardadas. Quitarlo podría dejarte sin acceso a tus cuentas y archivos cifrados.
 Duplicates are not searched inside program folders: each program needs its own copy of its files.	No se buscan duplicados dentro de carpetas de programas: cada programa necesita su propia copia de sus archivos.
 {n} program folders were not searched: each program needs its own copy of its files.	No se buscó en {n} carpetas de programas: cada programa necesita su propia copia de sus archivos.
+{size} on disk	{size} en disco

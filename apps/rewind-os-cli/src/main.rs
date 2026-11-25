@@ -510,9 +510,10 @@ fn print_human(response: &Response, top: usize) {
         Response::Scan(tree) => {
             if let Some(root) = tree.root_node() {
                 println!(
-                    "{}: {} · {} · {} ms",
+                    "{}: {} ({}) · {} · {} ms",
                     tree.root.display(),
                     bytes(root.bytes),
+                    trf("{size} on disk", &[("size", &bytes(root.disk_bytes))]),
                     trf("{n} files", &[("n", &count(root.files))]),
                     tree.elapsed_ms
                 );

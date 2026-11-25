@@ -119,3 +119,44 @@ fn a_hard_linked_file_is_counted_once() {
         .count();
     assert_eq!(listed, 1, "the same file must not be listed twice");
 }
+
+/// A sparse file (length set, nothing written) takes far less on the disk than its length; a
+/// written file takes at least its length. Both totals reach the folder and the file list.
+#[cfg(unix)]
+#[test]
+fn size_on_disk_tells_sparse_files_from_written_ones() -> std::io::Result<()> {
+    let dir = tempfile::tempdir()?;
+    fs::create_dir_all(dir.path().join("sparse"))?;
+    let sparse = fs::File::create(dir.path().join("sparse/disk.img"))?;
+    sparse.set_len(64 * 1024 * 1024)?;
+    write(&dir.path().join("written/data.bin"), 200_000)?;
+
+    let tree = scan::scan(dir.path(), &Task::new()).map_err(std::io::Error::other)?;
+    let folder = |name: &str| {
+        tree.children(ScanTree::ROOT)
+            .find(|(_, n)| &*n.name == name)
+            .map(|(_, n)| n.clone())
+            .ok_or_else(|| std::io::Error::other(format!("{name} missing")))
+    };
+    let sparse = folder("sparse")?;
+    let written = folder("written")?;
+    assert!(
+        sparse.disk_bytes < sparse.bytes / 10,
+        "a sparse file counted its length on disk"
+    );
+    assert!(
+        written.disk_bytes >= written.bytes,
+        "a written file took less than its length"
+    );
+    let root = tree
+        .root_node()
+        .ok_or_else(|| std::io::Error::other("no root"))?;
+    assert!(root.disk_bytes < root.bytes);
+    let big = tree
+        .top_files
+        .iter()
+        .find(|f| f.path.ends_with("disk.img"))
+        .ok_or_else(|| std::io::Error::other("sparse file not listed"))?;
+    assert!(big.disk_bytes < big.bytes / 10);
+    Ok(())
+}

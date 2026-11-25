@@ -18,7 +18,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 
 - [ ] R1.1 Verify every feature on a real Windows 11 machine (only cross-checked so far)
 - [x] R1.2 Duplicate files finder (size, then partial hash, then full hash)
-- [ ] R1.3 Size on disk (compressed and sparse files) next to logical size
+- [x] R1.3 Size on disk (compressed and sparse files) next to logical size
 - [x] R1.4 Count hard links once, so WinSxS shows its real size in the analyzer
 - [x] R1.5 Leftover registry keys of uninstalled programs (report only, export before removing)
 - [x] R1.6 Scheduled tasks in the startup page (programs' own tasks; Windows' tasks are never listed)

@@ -19,6 +19,38 @@ pub fn is_cloud_placeholder(_meta: &Metadata) -> bool {
     false
 }
 
+/// The space `meta`'s file takes on the disk. On Linux and macOS: the blocks allocated to it.
+/// On Windows: the allocated size of compressed, sparse and cloud files (which can be far less
+/// than their length, or nothing), asked only for those so a scan stays as fast; other files
+/// count their length.
+#[cfg(unix)]
+pub fn size_on_disk(_path: &std::path::Path, meta: &Metadata) -> u64 {
+    use std::os::unix::fs::MetadataExt;
+    meta.blocks().saturating_mul(512)
+}
+
+/// The space `meta`'s file takes on the disk. On Linux and macOS: the blocks allocated to it.
+/// On Windows: the allocated size of compressed, sparse and cloud files (which can be far less
+/// than their length, or nothing), asked only for those so a scan stays as fast; other files
+/// count their length.
+#[cfg(windows)]
+pub fn size_on_disk(path: &std::path::Path, meta: &Metadata) -> u64 {
+    use std::os::windows::fs::MetadataExt;
+    const SPARSE: u32 = 0x0000_0200;
+    const COMPRESSED: u32 = 0x0000_0800;
+    if meta.file_attributes() & (SPARSE | COMPRESSED) != 0 || is_cloud_placeholder(meta) {
+        filesize::file_real_size(path).unwrap_or(meta.len())
+    } else {
+        meta.len()
+    }
+}
+
+/// The space `meta`'s file takes on the disk: its length, where the system cannot tell more.
+#[cfg(not(any(unix, windows)))]
+pub fn size_on_disk(_path: &std::path::Path, meta: &Metadata) -> u64 {
+    meta.len()
+}
+
 /// Identifies a file with more than one name (hard links): the volume and the file's number on
 /// it. `None` for a file with a single name, or when the system cannot tell.
 ///

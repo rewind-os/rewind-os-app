@@ -26,6 +26,53 @@ pub const SYSTEM: &str =
 pub const CONTAINS: &str =
     "This folder holds your user folders or programs. Remove what is inside it instead.";
 pub const PERSONAL: &str = "Cleanup never touches your personal folders.";
+pub const KEYS: &str = "This holds your keys and saved passwords. Removing it could lock you out of your accounts and encrypted files.";
+
+/// Folder names that hold a program's or a project's own files wherever they are. A copy of a
+/// file in one of them is part of that program or project, not a duplicate to clean.
+const PROGRAM_PARTS: &[&str] = &[
+    ".git",
+    ".hg",
+    ".svn",
+    "node_modules",
+    "site-packages",
+    "dist-packages",
+    ".venv",
+    "venv",
+    "steamapps",
+    ".cargo",
+    ".rustup",
+    ".gradle",
+    ".m2",
+    ".nuget",
+    ".npm",
+];
+
+/// Folder name endings of macOS bundles, whose insides belong together.
+const BUNDLES: &[&str] = &[
+    ".app",
+    ".framework",
+    ".bundle",
+    ".plugin",
+    ".photoslibrary",
+    ".musiclibrary",
+];
+
+/// Names that are part of Windows at the root of any drive, not only the system drive, so a
+/// second Windows on another drive is protected too.
+const WINDOWS_ROOT_NAMES: &[&str] = &[
+    "windows",
+    "boot",
+    "efi",
+    "recovery",
+    "system volume information",
+    "$recycle.bin",
+    "bootmgr",
+    "bootnxt",
+    "pagefile.sys",
+    "hiberfil.sys",
+    "swapfile.sys",
+];
 
 #[derive(Debug, Clone, Default)]
 pub struct Guard {
@@ -37,6 +84,12 @@ pub struct Guard {
     personal: Vec<PathBuf>,
     /// Single files that must never go (`C:\pagefile.sys`, `C:\bootmgr`).
     files: Vec<PathBuf>,
+    /// Places inside every user profile, relative to it, with the reason they are kept. `true`
+    /// when cleanup may not touch them either.
+    profile_parts: Vec<(PathBuf, &'static str, bool)>,
+    /// Folders whose files belong to installed programs or their settings.
+    programs: Vec<PathBuf>,
+    windows: bool,
     case_insensitive: bool,
 }
 
@@ -58,8 +111,14 @@ impl Guard {
         let home = get(Known::Home);
         let mut g = Guard {
             case_insensitive: os != Os::Linux,
+            windows: os == Os::Windows,
             ..Guard::default()
         };
+        g.programs.extend(
+            [Known::Cache, Known::Config, Known::Data]
+                .into_iter()
+                .filter_map(get),
+        );
         let personal_names = [
             "Documents",
             "Desktop",
@@ -138,9 +197,65 @@ impl Guard {
                     g.core.push(base.join("Common Files"));
                     g.core.push(base.join("Windows Defender"));
                 }
+                for base in [get(Known::ProgramFiles), get(Known::ProgramFilesX86)]
+                    .into_iter()
+                    .flatten()
+                {
+                    // Parts of Windows that live in Program Files.
+                    for name in [
+                        "Windows NT",
+                        "WindowsPowerShell",
+                        "Internet Explorer",
+                        "Windows Mail",
+                        "Windows Media Player",
+                        "Windows Multimedia Platform",
+                        "Windows Photo Viewer",
+                        "Windows Portable Devices",
+                        "Windows Security",
+                        "Windows Sidebar",
+                        "Windows Defender Advanced Threat Protection",
+                        "ModifiableWindowsApps",
+                        "Microsoft Update Health Tools",
+                        "Reference Assemblies",
+                        "dotnet",
+                        "MSBuild",
+                    ] {
+                        g.system.push(base.join(name));
+                    }
+                    g.programs.push(base);
+                }
                 if let Some(data) = get(Known::ProgramData) {
                     g.core.push(data.join("Microsoft\\Windows Defender"));
                     g.core.push(data.join("Microsoft\\Crypto"));
+                    // Windows' own data, and the installers programs need to repair or
+                    // uninstall themselves.
+                    g.system.push(data.join("Microsoft"));
+                    g.system.push(data.join("Package Cache"));
+                    g.programs.push(data);
+                }
+                g.programs.extend(
+                    [Known::LocalAppData, Known::RoamingAppData]
+                        .into_iter()
+                        .filter_map(get),
+                );
+                for part in [
+                    r"AppData\Roaming\Microsoft\Protect",
+                    r"AppData\Roaming\Microsoft\Crypto",
+                    r"AppData\Roaming\Microsoft\SystemCertificates",
+                    r"AppData\Roaming\Microsoft\Credentials",
+                    r"AppData\Roaming\Microsoft\Vault",
+                    r"AppData\Local\Microsoft\Credentials",
+                    r"AppData\Local\Microsoft\Vault",
+                ] {
+                    g.profile_parts.push((PathBuf::from(part), KEYS, true));
+                }
+                for part in [
+                    r"AppData\Local\Packages",
+                    r"AppData\Local\Microsoft\Windows",
+                    r"AppData\Local\Microsoft\WindowsApps",
+                    r"AppData\Roaming\Microsoft\Windows",
+                ] {
+                    g.profile_parts.push((PathBuf::from(part), SYSTEM, false));
                 }
             }
             Os::Linux | Os::MacOs => {
@@ -172,6 +287,9 @@ impl Guard {
                     "/private/etc",
                     "/private/var/db",
                     "/cores",
+                    "/efi",
+                    "/nix",
+                    "/gnu",
                 ];
                 g.core.extend(unix_core.iter().map(PathBuf::from));
                 g.system.extend(g.core.clone());
@@ -193,6 +311,22 @@ impl Guard {
                 g.profile_parents.push(PathBuf::from("/Users"));
                 if let Some(home) = &home {
                     g.anchors.push(home.join("Library"));
+                    g.programs.push(home.join("Library"));
+                    g.programs.push(home.join("Applications"));
+                    g.programs.push(home.join(".var"));
+                    g.programs.push(home.join(".local/lib"));
+                }
+                g.programs
+                    .extend(["/opt", "/Applications"].iter().map(PathBuf::from));
+                for part in [
+                    ".ssh",
+                    ".gnupg",
+                    ".pki",
+                    ".password-store",
+                    ".local/share/keyrings",
+                    "Library/Keychains",
+                ] {
+                    g.profile_parts.push((PathBuf::from(part), KEYS, true));
                 }
             }
         }
@@ -212,6 +346,7 @@ impl Guard {
     pub fn removal_refusal(&self, path: &Path) -> Option<&'static str> {
         let p = self.norm(path);
         self.shared_refusal(&p)
+            .or_else(|| self.profile_refusal(&p, false))
             .or_else(|| self.inside_any(&p, &self.system).then_some(SYSTEM))
     }
 
@@ -219,12 +354,62 @@ impl Guard {
     pub fn cleanup_refusal(&self, path: &Path) -> Option<&'static str> {
         let p = self.norm(path);
         self.shared_refusal(&p)
+            .or_else(|| self.profile_refusal(&p, true))
             .or_else(|| self.inside_any(&p, &self.core).then_some(SYSTEM))
             .or_else(|| self.inside_any(&p, &self.personal).then_some(PERSONAL))
     }
 
+    /// True when `path` holds an installed program's files or settings, or a project's own
+    /// tools (`.git`, `node_modules`, an `.app` bundle). Identical files there are each needed
+    /// where they are, so they are never offered as duplicates.
+    pub fn is_program_folder(&self, path: &Path) -> bool {
+        let p = self.norm(path);
+        if self.inside_any(&p, &self.programs) {
+            return true;
+        }
+        p.components().any(|c| {
+            let name = c.as_os_str().to_string_lossy().to_lowercase();
+            PROGRAM_PARTS.contains(&name.as_str())
+                || BUNDLES
+                    .iter()
+                    .any(|b| name.len() > b.len() && name.ends_with(b))
+        })
+    }
+
+    /// The keys, the registry hive and Windows' own folders inside any user's profile.
+    fn profile_refusal(&self, p: &Path, cleanup: bool) -> Option<&'static str> {
+        let rel = self.profile_parents.iter().find_map(|u| {
+            let rest = p.strip_prefix(self.norm(u)).ok()?;
+            let mut parts = rest.components();
+            parts.next()?;
+            Some(parts.as_path().to_path_buf())
+        })?;
+        if self.windows
+            && let Some(name) = p.file_name()
+        {
+            // The user's registry: NTUSER.DAT and its logs, UsrClass.dat.
+            let name = name.to_string_lossy().to_lowercase();
+            if name.starts_with("ntuser.") || name.starts_with("usrclass.dat") {
+                return Some(SYSTEM);
+            }
+        }
+        self.profile_parts
+            .iter()
+            .filter(|(_, _, core)| *core || !cleanup)
+            .find(|(part, _, _)| rel.starts_with(normalize_text(part, self.case_insensitive)))
+            .map(|(_, why, _)| *why)
+    }
+
     fn shared_refusal(&self, p: &Path) -> Option<&'static str> {
         if p.parent().is_none() || self.files.iter().any(|f| self.norm(f) == p) {
+            return Some(SYSTEM);
+        }
+        // Windows' boot and system folders at the root of any drive.
+        if self.windows
+            && p.parent().is_some_and(|d| d.parent().is_none())
+            && let Some(name) = p.file_name()
+            && WINDOWS_ROOT_NAMES.contains(&name.to_string_lossy().to_lowercase().as_str())
+        {
             return Some(SYSTEM);
         }
         // An anchor itself, or anything containing one.
@@ -271,6 +456,17 @@ fn xdg_user_dirs(home: &Path) -> Vec<PathBuf> {
         .map(PathBuf::from)
         .filter(|p| p.is_absolute() && p.as_path() != home)
         .collect()
+}
+
+/// `.` and `..` worked out and lowercased where the system ignores case, without touching the
+/// file system: for paths relative to a profile.
+fn normalize_text(path: &Path, case_insensitive: bool) -> PathBuf {
+    let out = lexical(path);
+    if case_insensitive {
+        PathBuf::from(out.to_string_lossy().to_lowercase())
+    } else {
+        out
+    }
 }
 
 /// Resolves links in the longest part of `path` that exists and appends the rest, so a path

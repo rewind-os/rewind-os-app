@@ -119,3 +119,33 @@ fn choosing_all_but_the_oldest_keeps_one_copy_of_each() -> Outcome {
 fn system_folders_are_refused() {
     assert!(duplicates::find(Path::new("/usr"), 1, &Task::new()).is_err());
 }
+
+#[test]
+fn copies_inside_programs_and_projects_are_not_offered() -> Outcome {
+    let dir = tempdir()?;
+    let root = dir.path();
+    write(&root.join("photos/a.jpg"), &big(3, 1))?;
+    write(&root.join("backup/a.jpg"), &big(3, 1))?;
+    // Two clones of one repository and two projects sharing a package: removing one copy
+    // would break the other.
+    write(&root.join("one/.git/objects/pack/p.pack"), &big(4, 2))?;
+    write(&root.join("two/.git/objects/pack/p.pack"), &big(4, 2))?;
+    write(&root.join("site/node_modules/lib/x.js"), &big(5, 3))?;
+    write(&root.join("app/node_modules/lib/x.js"), &big(5, 3))?;
+
+    let report = duplicates::find(root, 1, &Task::new())?;
+    let offered: Vec<PathBuf> = paths_of(&report).into_iter().flatten().collect();
+    assert!(offered.contains(&root.join("backup/a.jpg")));
+    assert!(
+        offered.iter().all(|p| !p
+            .components()
+            .any(|c| c.as_os_str() == ".git" || c.as_os_str() == "node_modules")),
+        "a program's or project's file was offered: {offered:?}"
+    );
+    assert!(
+        report.program_folders_skipped >= 4,
+        "the skipped folders are reported"
+    );
+    assert!(duplicates::find(&root.join("site/node_modules"), 1, &Task::new()).is_err());
+    Ok(())
+}

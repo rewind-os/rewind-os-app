@@ -194,3 +194,112 @@ fn the_macos_data_volume_counts_as_the_root_it_mirrors() {
     assert!(refused_by_hand(&g, "/System/Library/CoreServices"));
     assert!(refused_by_hand(&g, "/System/Volumes/Data/home/ana"));
 }
+
+/// Keys and saved passwords are refused by hand and by cleanup, in any user's home.
+#[cfg(unix)]
+#[test]
+fn keys_and_password_stores_are_kept() {
+    let g = unix_guard();
+    for path in [
+        "/home/ana/.ssh/id_ed25519",
+        "/home/bob/.gnupg",
+        "/home/ana/.local/share/keyrings/login.keyring",
+        "/Users/ana/Library/Keychains/login.keychain-db",
+    ] {
+        assert!(refused_by_hand(&g, path), "{path} was allowed by hand");
+        assert!(
+            refused_by_cleanup(&g, path),
+            "{path} was allowed by cleanup"
+        );
+    }
+    assert!(!refused_by_hand(&g, "/home/ana/.local/share/old-app"));
+}
+
+/// Files of programs and projects are never offered as duplicates; personal files are.
+#[test]
+fn program_and_project_folders_are_told_apart_from_personal_ones() {
+    let home = if cfg!(windows) {
+        PathBuf::from(r"C:\Users\ana")
+    } else {
+        PathBuf::from("/home/ana")
+    };
+    let os = if cfg!(windows) {
+        Os::Windows
+    } else {
+        Os::Linux
+    };
+    let g = Guard::for_system(
+        os,
+        &[
+            (Known::Home, home.clone()),
+            (Known::Config, home.join(".config")),
+            (Known::ProgramFiles, PathBuf::from(r"C:\Program Files")),
+        ],
+    );
+    for inside in [
+        "projects/site/node_modules/react/index.js",
+        "code/repo/.git/objects/pack/pack-1.pack",
+        "code/tool/.venv/lib/x.so",
+        "Games/SteamLibrary/steamapps/common/Game/data.pak",
+        "Apps/Editor.app/Contents/Frameworks/x.dylib",
+        ".config/some-app/settings.json",
+    ] {
+        assert!(
+            g.is_program_folder(&home.join(inside)),
+            "{inside} was not a program folder"
+        );
+    }
+    for inside in [
+        "Downloads/photo.jpg",
+        "Pictures/myapp/screen.png",
+        "Documents/venvs.txt",
+    ] {
+        assert!(
+            !g.is_program_folder(&home.join(inside)),
+            "{inside} was a program folder"
+        );
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn windows_parts_outside_the_windows_folder_are_kept() {
+    let g = windows_guard();
+    for path in [
+        r"C:\Users\ana\NTUSER.DAT",
+        r"C:\Users\bob\ntuser.dat.LOG1",
+        r"C:\Users\ana\AppData\Local\Microsoft\Windows\UsrClass.dat",
+        r"C:\Users\ana\AppData\Roaming\Microsoft\Protect",
+        r"C:\Users\bob\AppData\Roaming\Microsoft\Credentials\x",
+        r"C:\Users\ana\AppData\Local\Packages\Microsoft.Windows.StartMenuExperienceHost_cw5n1h2txyewy",
+        r"C:\ProgramData\Microsoft\Windows\Start Menu",
+        r"C:\ProgramData\Package Cache\{1234}\setup.exe",
+        r"C:\Program Files\Windows NT",
+        r"C:\Program Files\dotnet",
+        r"D:\Windows",
+        r"D:\bootmgr",
+        r"E:\EFI",
+    ] {
+        assert!(refused_by_hand(&g, path), "{path} was allowed");
+    }
+    // The user's keys stay out of cleanup too, while its curated places stay open.
+    assert!(refused_by_cleanup(
+        &g,
+        r"C:\Users\ana\AppData\Roaming\Microsoft\Protect\x"
+    ));
+    assert!(!refused_by_cleanup(
+        &g,
+        r"C:\ProgramData\Microsoft\Windows\WER\ReportQueue\x"
+    ));
+    assert!(!refused_by_cleanup(
+        &g,
+        r"C:\Users\ana\AppData\Local\Microsoft\Windows\Explorer\thumbcache_32.db"
+    ));
+    for path in [
+        r"D:\Games\old",
+        r"D:\Windows backup.zip",
+        r"C:\Users\ana\AppData\Local\Old App",
+    ] {
+        assert!(!refused_by_hand(&g, path), "{path} was refused");
+    }
+}

@@ -9,7 +9,7 @@ guarantees, where they are enforced, and the tests that hold them.
 |---|---|
 | Junk cleanup | Only curated categories of caches and temporary files, each a fixed path template. Every matched path passes the guard's cleanup check. In system locations only files are deleted and every folder is kept. Files in use are skipped. Categories that need rights are skipped without them. |
 | Move to recycle bin (analyzer, leftovers, duplicates) | Passes the guard's removal check. Goes to the recycle bin, so it can be restored. |
-| Duplicate files | Only files with identical contents, compared in full. Hard links to one file are not offered, since removing one frees nothing. The operating system's folders are not searched. The app never lets the last copy of a file be chosen (`duplicates::keeps_a_copy`, checked again when the dialog is confirmed). |
+| Duplicate files | Only files with identical contents, compared in full. Hard links to one file are not offered, since removing one frees nothing. The operating system's folders are not searched, and neither are the folders of programs and projects (`Guard::is_program_folder`: Program Files, ProgramData, AppData, `~/.config`, `~/.local/share`, `~/.cache`, `/opt`, `/Applications`, `~/Library`, and any `.git`, `node_modules`, `site-packages`, virtual environment, `steamapps` or macOS bundle), where every copy is needed where it is; the skipped folders are reported. The app never lets the last copy of a file be chosen (`duplicates::keeps_a_copy`, checked again when the dialog is confirmed). |
 | Make Windows lighter | Only the settings in a closed catalog (`crates/engine/src/tweaks.rs`): documented registry values and policies. Each records exactly how it goes back to Windows' default, and a setting that fails halfway puts back the values it already wrote. Nothing is uninstalled. |
 | Preinstalled Store apps | Only a closed list of Microsoft extras and sponsored apps (`crates/engine/src/apps.rs`); the Store, the app installer, security, codecs, Xbox components and everyday tools are never in it. Removed for the signed-in person only (`Remove-AppxPackage`, never `-AllUsers` or deprovisioning), so each can be installed again from the Store. Asks first; `--yes` in the CLI. |
 | Startup programs | Only the system's own on/off records (Windows "startup approved", XDG `Hidden=` in the user's folder, `schtasks /Change /DISABLE` for scheduled tasks). Nothing is deleted. Windows' own scheduled tasks (`\Microsoft\…`) are never listed and are refused if asked for. Services: only those programs installed (never drivers, anything in the Windows folder, `svchost` services or Windows Defender); turning one off sets it to start when needed, never to disabled, and the app remembers which it changed (`%ProgramData%\rewind-os`) so only those can be set back. Security, VPN, sound, input and backup services are never turned off. Essential entries (security, sign-in, accessibility, sound, the desktop session) cannot be turned off. |
@@ -31,8 +31,17 @@ Every removal goes through it in the engine, whatever front end asked:
   (Documents, Desktop, Pictures, Music, Videos, OneDrive), `/`, `/home`, `/Users`,
   `/Applications`, `~/Library`.
 - **Never removed by hand**: anything inside the operating system (`C:\Windows`, `C:\Boot`,
-  `C:\Recovery`, `/usr`, `/etc`, `/var`, `/System`, `/Library`…), and `pagefile.sys`,
-  `hiberfil.sys`, `bootmgr`.
+  `C:\Recovery`, `/usr`, `/etc`, `/var`, `/nix`, `/System`, `/Library`…), and `pagefile.sys`,
+  `hiberfil.sys`, `bootmgr`. On Windows also: the boot and system folders at the root of
+  *any* drive (a second Windows on `D:`), the parts of Windows in Program Files (`Windows NT`,
+  `WindowsPowerShell`, `dotnet`…), `ProgramData\Microsoft`, `ProgramData\Package Cache`
+  (installers programs need to repair or uninstall themselves), and in every profile the
+  registry hive (`NTUSER.DAT`, `UsrClass.dat`), `AppData\Local\Packages` and Windows' own
+  `AppData\…\Microsoft\Windows` folders.
+- **Never removed, by hand or by cleanup**: in every profile, keys and saved passwords
+  (`AppData\…\Microsoft\Protect`, `Crypto`, `Credentials`, `Vault`, `SystemCertificates`;
+  `~/.ssh`, `~/.gnupg`, `~/.pki`, `~/.password-store`, `~/.local/share/keyrings`,
+  `~/Library/Keychains`).
 - **Never touched by cleanup**: `System32`, `SysWOW64`, `WinSxS`, `servicing`, fonts, drivers,
   the installer cache, Windows Defender, `/etc`, `/boot`, `/usr`, the package databases, and the
   personal folders.

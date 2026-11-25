@@ -2,8 +2,8 @@ name: Release
 
 # Pushing to the `release` branch builds the Windows and Linux packages (portable zip and MSI;
 # tar.gz, .deb, .rpm, Flatpak bundle), drafts a GitHub release named
-# after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages and
-# publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
+# after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages with
+# SHA256SUMS.txt and its minisign signature, and publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
 # Run it by hand (workflow_dispatch) for a dry run that only builds and keeps the artifacts.
 on:
   push:
@@ -154,16 +154,43 @@ jobs:
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
+      # Only for packaging/minisign.pub, the key the signature must match.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: release-*
           path: dist
           merge-multiple: true
-      - name: Draft the release with every package
+      - name: List the checksums of every package
         run: |
           set -euo pipefail
           ls -l dist
           (cd dist && sha256sum -- * > SHA256SUMS.txt)
+      # The signature is what the app's updater trusts: a package is installed only when
+      # SHA256SUMS.txt.minisig checks out against the public key built into the app, and its
+      # trusted comment names this version. The secret key never leaves this step.
+      - name: Sign the checksums
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MINISIGN_SECRET_KEY:-}" ]; then
+            echo "::error::The MINISIGN_SECRET_KEY secret is missing: releases are signed. See packaging/README.md."
+            exit 1
+          fi
+          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends minisign
+          key="$RUNNER_TEMP/minisign.key"
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$MINISIGN_SECRET_KEY" > "$key")
+          minisign -S -s "$key" -m dist/SHA256SUMS.txt -x dist/SHA256SUMS.txt.minisig \
+            -t "rewind-os $VERSION SHA256SUMS.txt"
+          minisign -V -p packaging/minisign.pub -m dist/SHA256SUMS.txt -x dist/SHA256SUMS.txt.minisig
+          echo "Checksums signed with the key in packaging/minisign.pub." >> "$GITHUB_STEP_SUMMARY"
+      - name: Draft the release with every package
+        run: |
+          set -euo pipefail
           state="$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null || echo missing)"
           if [ "$state" = false ]; then
             echo "::error::$TAG is already published. Raise [workspace.package] version in Cargo.toml for a new release."

@@ -72,7 +72,8 @@ macOS builds are checked in CI but not released yet.
 ## Download
 
 Ready-made builds are on the [releases page](../../releases); check them against
-`SHA256SUMS.txt`.
+`SHA256SUMS.txt`, which is signed with the key in [packaging/minisign.pub](packaging/minisign.pub)
+(see [packaging/README.md](packaging/README.md#release-signature)).
 
 - **Windows** x64 and ARM64: run `rewind-os-<version>-windows-<arch>.msi` to install it (Start
   menu, uninstall from Settings), or unzip `rewind-os-<version>-windows-<arch>-portable.zip` and

@@ -76,7 +76,8 @@ funcionar. Las versiones para macOS se comprueban en CI pero aún no se publican
 ## Descargar
 
 Hay versiones listas en la [página de releases](../../releases); puedes comprobarlas con
-`SHA256SUMS.txt`.
+`SHA256SUMS.txt`, firmado con la clave de [packaging/minisign.pub](packaging/minisign.pub)
+(ver [packaging/README.md](packaging/README.md#release-signature)).
 
 - **Windows** x64 y ARM64: ejecuta `rewind-os-<versión>-windows-<arq>.msi` para instalarlo (menú
   Inicio, se desinstala desde Configuración), o descomprime

@@ -8,3 +8,4 @@ pub mod maintenance;
 pub mod overview;
 pub mod programs;
 pub mod startup;
+pub mod startup_speed;

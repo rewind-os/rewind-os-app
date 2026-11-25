@@ -105,6 +105,8 @@ enum Command {
     /// Programs that start with Windows.
     #[command(subcommand)]
     Startup(Startup),
+    /// How long the computer takes to start, and what slowed it down.
+    Boot,
     /// Windows maintenance tools (need administrator rights).
     #[command(subcommand)]
     Maintenance(Maintenance),
@@ -378,6 +380,7 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             }
             Request::DevClean { paths }
         }
+        Command::Boot => Request::BootReport,
         Command::Update(Update::Check) => Request::UpdateCheck { now: true },
         Command::Update(Update::On) => Request::UpdateAuto { enabled: true },
         Command::Update(Update::Off) => Request::UpdateAuto { enabled: false },
@@ -951,6 +954,68 @@ fn print_human(response: &Response, top: usize) {
                 )
             ),
         },
+        Response::Boot(report) => {
+            use rewind_os_engine::format::{duration_ms, local_date};
+            match report.boots.first() {
+                Some(last) => {
+                    let mut line = trf(
+                        "Last start: {time}",
+                        &[("time", &duration_ms(last.total_ms))],
+                    );
+                    if let Some(desktop) = last.desktop_ms {
+                        line.push_str(&format!(
+                            " ({})",
+                            trf(
+                                "desktop ready after {time}",
+                                &[("time", &duration_ms(desktop))]
+                            )
+                        ));
+                    }
+                    if let Some(at) = last.at {
+                        line.push_str(&format!(", {}", local_date(at)));
+                    }
+                    println!("{line}");
+                }
+                None => println!("{}", tr("The system has no record of its starts yet.")),
+            }
+            if report.boots.len() > 1 {
+                println!("\n{}", tr("Recent starts"));
+                for b in &report.boots {
+                    let date = b.at.map(local_date).unwrap_or_default();
+                    println!("{:>12}  {date}", duration_ms(b.total_ms));
+                }
+            }
+            if !report.slow.is_empty() {
+                println!(
+                    "\n{}",
+                    if report.history {
+                        tr("What made starts slower than usual")
+                    } else {
+                        tr("What took longest to start since the last start")
+                    }
+                );
+                for s in report.slow.iter().take(top) {
+                    let times = if report.history {
+                        format!(
+                            "  {}",
+                            trf("{n} starts", &[("n", &count(u64::from(s.times)))])
+                        )
+                    } else {
+                        String::new()
+                    };
+                    println!(
+                        "{:>12}  {:<8} {}{times}",
+                        duration_ms(s.delay_ms),
+                        tr(s.kind.label()),
+                        if s.name == s.file {
+                            s.name.clone()
+                        } else {
+                            format!("{} ({})", s.name, s.file)
+                        }
+                    );
+                }
+            }
+        }
         Response::Startup(entries) => {
             for e in entries {
                 let state = if e.enabled { tr("On") } else { tr("Off") };

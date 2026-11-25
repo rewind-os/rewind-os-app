@@ -46,6 +46,9 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 - **Programas de inicio**: activar y desactivar, con los registros del propio sistema, incluidas
   las tareas programadas y los servicios que añaden los programas (los del propio Windows nunca
   se muestran; los servicios pasan a arrancar cuando se necesitan, nunca se deshabilitan).
+- **Velocidad de arranque**: cuánto tarda en arrancar el equipo, sus últimos arranques y qué los
+  ralentizó (el registro de rendimiento del propio Windows, como administrador; `systemd-analyze`
+  en Linux), con un interruptor para el programa de inicio que causa un retraso.
 - **Aligerar Windows**: desactiva anuncios, sugerencias, rastreo y extras que no usas. Una lista
   cerrada de ajustes documentados, cada uno se puede deshacer, y quitar de forma opcional apps
   preinstaladas de la Store (Noticias, Consejos, Clipchamp…) de tu cuenta; la Store puede volver
@@ -64,6 +67,7 @@ administrador cuando una tarea lo necesita.
 | Resumen, analizador de disco, archivos duplicados, carpetas de compilación | ✓ | ✓ | ✓ |
 | Limpieza, papelera | ✓ | ✓ | ✓ |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
+| Velocidad de arranque | ✓ (como administrador) | ✓ (systemd, último arranque) | — |
 | Recomendaciones | ✓ | ✓ | ✓ |
 | Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, a la Papelera) |
 | Restos de programas | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |

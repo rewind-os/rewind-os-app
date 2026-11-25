@@ -52,3 +52,15 @@ pub fn local_date(at: chrono::DateTime<chrono::Utc>) -> String {
         .format("%Y-%m-%d")
         .to_string()
 }
+
+/// A duration for people: `850 ms`, `4.2 s`, `1 min 05 s`.
+pub fn duration_ms(ms: u64) -> String {
+    if ms < 1000 {
+        format!("{ms} ms")
+    } else if ms < 60_000 {
+        format!("{:.1} s", ms as f64 / 1000.0)
+    } else {
+        let s = (ms + 500) / 1000;
+        format!("{} min {:02} s", s / 60, s % 60)
+    }
+}

@@ -16,6 +16,17 @@ pub struct State {
     /// The id of the entry whose details are open.
     selected: Option<String>,
     started: bool,
+    view: View,
+    view_applied: bool,
+    speed: super::startup_speed::Speed,
+}
+
+/// What the page shows: the startup entries, or how long starts take.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+enum View {
+    #[default]
+    Entries,
+    Speed,
 }
 
 const CARD_HEIGHT: f32 = 64.0;
@@ -92,7 +103,7 @@ fn details(
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.job.is_some()
+        self.job.is_some() || self.speed.busy()
     }
 
     fn refresh(&mut self, ctx: &egui::Context, shared: &Shared) {
@@ -131,10 +142,26 @@ impl State {
                 "Programs that start when you sign in, and the tasks programs scheduled for themselves. Turning one off does not uninstall it, and you can turn it back on at any time.",
             ),
         );
+        if crate::devtools::analyzer_view().as_deref() == Some("speed") && !self.started_view() {
+            self.view = View::Speed;
+        }
+        if rewind_os_engine::tool("boot.report").is_some_and(|tool| tool.available()) {
+            ui.horizontal(|ui| {
+                ui.selectable_value(&mut self.view, View::Entries, tr("Startup programs"));
+                ui.selectable_value(&mut self.view, View::Speed, tr("Startup speed"));
+            });
+            ui.add_space(t.gap * 0.75);
+        }
         let Some(entries) = &self.entries else {
             ui.spinner();
             return;
         };
+        if self.view == View::Speed {
+            if let Some(id) = self.speed.ui(ui, shared, entries) {
+                self.set(&ctx, shared, id, false);
+            }
+            return;
+        }
         if entries.is_empty() {
             ui.label(tr("No startup programs found."));
             return;
@@ -195,16 +222,26 @@ impl State {
             self.selected = Some(id);
         }
         if let Some((id, enabled)) = changed {
-            match shared
-                .engine
-                .run(Request::StartupSet { id, enabled }, &Task::new())
-            {
-                Ok(Response::Done(message)) => shared.info(tr(message)),
-                Ok(_) => {}
-                Err(err) => shared.error(crate::widgets::error_text(&err)),
-            }
-            self.refresh(&ctx, shared);
+            self.set(&ctx, shared, id, enabled);
         }
+    }
+
+    /// Turns an entry on or off (the app can undo it in place, so it acts on click).
+    fn set(&mut self, ctx: &egui::Context, shared: &mut Shared, id: String, enabled: bool) {
+        match shared
+            .engine
+            .run(Request::StartupSet { id, enabled }, &Task::new())
+        {
+            Ok(Response::Done(message)) => shared.info(tr(message)),
+            Ok(_) => {}
+            Err(err) => shared.error(crate::widgets::error_text(&err)),
+        }
+        self.refresh(ctx, shared);
+    }
+
+    /// The devtools view is applied once, on the first frame.
+    fn started_view(&mut self) -> bool {
+        std::mem::replace(&mut self.view_applied, true)
     }
 }
 

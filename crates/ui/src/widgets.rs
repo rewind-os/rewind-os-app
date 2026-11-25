@@ -288,13 +288,20 @@ pub fn fill_color(t: &Theme, fraction: f32) -> Color32 {
 
 /// A short status word in a status colour. The word carries the meaning; colour only
 /// reinforces it.
+///
+/// Sized to its word, whatever the layout around it: a frame would grow to the height of a row
+/// laid out with its items centred.
 pub fn badge(ui: &mut Ui, text: &str, color: Color32) -> Response {
-    egui::Frame::new()
-        .fill(color.gamma_multiply(0.14))
-        .corner_radius(CornerRadius::same(6))
-        .inner_margin(Margin::symmetric(7, 2))
-        .show(ui, |ui| ui.label(RichText::new(text).color(color).small()))
-        .inner
+    let font = egui::TextStyle::Small.resolve(ui.style());
+    let galley = ui.painter().layout_no_wrap(text.to_owned(), font, color);
+    let padding = egui::vec2(7.0, 2.0);
+    let (rect, response) = ui.allocate_exact_size(galley.size() + padding * 2.0, Sense::hover());
+    ui.painter()
+        .rect_filled(rect, CornerRadius::same(6), color.gamma_multiply(0.14));
+    ui.painter().galley(rect.min + padding, galley, color);
+    let text = text.to_owned();
+    response.widget_info(move || WidgetInfo::labeled(Role::Label, true, &text));
+    response
 }
 
 /// One entry of the navigation list: an icon and a label; the current page sits on a filled

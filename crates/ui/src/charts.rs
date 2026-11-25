@@ -92,12 +92,24 @@ pub fn grid(ui: &mut Ui, n: usize, min_width: f32, mut add: impl FnMut(&mut Ui, 
     }
 }
 
+/// Points around a full ring.
+const RING_STEPS: usize = 96;
+
 /// Draws a ring of `segments` (fraction of the circle, colour), clockwise from the top, on a
 /// track. Fractions above 1 in total are cut at a full circle.
 fn paint_ring(ui: &Ui, center: egui::Pos2, radius: f32, width: f32, segments: &[(f32, Color32)]) {
     let t = theme::current(ui.ctx());
     let painter = ui.painter();
-    painter.circle_stroke(center, radius, Stroke::new(width, t.track));
+    // The track is drawn like the segments, centred on `radius`: egui's own circle stroke lies
+    // outside the radius, which left the segments inside the track instead of on it.
+    let point = |turn: f32| {
+        let a = turn * TAU - FRAC_PI_2;
+        center + radius * egui::vec2(a.cos(), a.sin())
+    };
+    let track: Vec<egui::Pos2> = (0..RING_STEPS)
+        .map(|i| point(i as f32 / RING_STEPS as f32))
+        .collect();
+    painter.add(egui::Shape::closed_line(track, Stroke::new(width, t.track)));
     let mut start = 0.0_f32;
     for &(fraction, color) in segments {
         let fraction = fraction.clamp(0.0, 1.0 - start);
@@ -105,12 +117,9 @@ fn paint_ring(ui: &Ui, center: egui::Pos2, radius: f32, width: f32, segments: &[
             continue;
         }
         let end = start + fraction;
-        let steps = ((fraction * 96.0).ceil() as usize).max(2);
+        let steps = ((fraction * RING_STEPS as f32).ceil() as usize).max(2);
         let points: Vec<egui::Pos2> = (0..=steps)
-            .map(|i| {
-                let a = (start + fraction * i as f32 / steps as f32) * TAU - FRAC_PI_2;
-                center + radius * egui::vec2(a.cos(), a.sin())
-            })
+            .map(|i| point(start + fraction * i as f32 / steps as f32))
             .collect();
         painter.add(egui::Shape::line(points, Stroke::new(width, color)));
         start = end;

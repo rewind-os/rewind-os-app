@@ -7,6 +7,8 @@ version = "0.9.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.90"
+# Nothing here goes to crates.io; internal crates depend on each other by path.
+publish = false
 
 [workspace.dependencies]
 # internal (layers, lowest first: i18n + platform = L0, engine = L1, ui = L2)

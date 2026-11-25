@@ -585,6 +585,15 @@ fn print_human(response: &Response, top: usize) {
                     )
                 );
             }
+            if report.program_folders_skipped > 0 {
+                println!(
+                    "{}",
+                    trf(
+                        "{n} program folders were not searched: each program needs its own copy of its files.",
+                        &[("n", &count(report.program_folders_skipped))]
+                    )
+                );
+            }
             for set in report.sets.iter().take(top) {
                 println!(
                     "\n{} × {}",

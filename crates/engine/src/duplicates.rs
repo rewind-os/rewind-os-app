@@ -1,7 +1,9 @@
 //! Duplicate files: files with the same size, then the same first block, then the same whole
 //! contents (BLAKE3). Hard links to one file are one file, not duplicates: removing a link
 //! frees nothing. Cloud placeholders are skipped, because reading them would download them, and
-//! so are the operating system's folders, where nothing may be removed by hand.
+//! so are the operating system's folders, where nothing may be removed by hand, and the
+//! folders of programs and projects (Program Files, AppData, `.git`, `node_modules`, `.app`
+//! bundles), where each copy is needed where it is: removing one breaks that program.
 
 use crate::{EngineError, Result, Task, safety};
 use chrono::{DateTime, Utc};
@@ -22,6 +24,7 @@ const BUFFER: usize = 64 * 1024;
 
 pub const SYSTEM_FOLDER: &str =
     "Duplicates are not searched inside the operating system's folders.";
+pub const PROGRAM_FOLDER: &str = "Duplicates are not searched inside program folders: each program needs its own copy of its files.";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Copy {
@@ -57,6 +60,8 @@ pub struct DuplicateReport {
     pub unreadable: u64,
     /// Files only in the cloud, not compared.
     pub cloud_skipped: u64,
+    /// Folders of programs and projects that were not searched.
+    pub program_folders_skipped: u64,
     /// Stopped before the end: some duplicates may be missing.
     pub cancelled: bool,
 }
@@ -99,6 +104,7 @@ struct Collected {
     seen: u64,
     unreadable: u64,
     cloud: u64,
+    programs: u64,
 }
 
 impl Collected {
@@ -107,6 +113,7 @@ impl Collected {
         self.seen += other.seen;
         self.unreadable += other.unreadable;
         self.cloud += other.cloud;
+        self.programs += other.programs;
     }
 }
 
@@ -121,6 +128,9 @@ pub fn find(root: &Path, min_bytes: u64, task: &Task) -> Result<DuplicateReport>
     }
     if in_system_zone(root) {
         return Err(EngineError::Refused(SYSTEM_FOLDER));
+    }
+    if safety::Guard::current().is_program_folder(root) {
+        return Err(EngineError::Refused(PROGRAM_FOLDER));
     }
     let min_bytes = min_bytes.max(1);
     task.set_stage("Looking for files");
@@ -158,6 +168,7 @@ pub fn find(root: &Path, min_bytes: u64, task: &Task) -> Result<DuplicateReport>
         files_seen: collected.seen,
         unreadable,
         cloud_skipped: collected.cloud,
+        program_folders_skipped: collected.programs,
         cancelled: task.is_cancelled(),
     })
 }
@@ -189,7 +200,11 @@ fn collect(dir: &Path, min_bytes: u64, task: &Task) -> Collected {
             continue;
         }
         if kind.is_dir() {
-            subdirs.push(path);
+            if safety::Guard::current().is_program_folder(&path) {
+                out.programs += 1;
+            } else {
+                subdirs.push(path);
+            }
             continue;
         }
         if !kind.is_file() {

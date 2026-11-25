@@ -264,6 +264,12 @@ impl State {
                 &[("n", &count(report.cloud_skipped))],
             ));
         }
+        if report.program_folders_skipped > 0 {
+            notes.push(trf(
+                "{n} program folders were not searched: each program needs its own copy of its files.",
+                &[("n", &count(report.program_folders_skipped))],
+            ));
+        }
         if !notes.is_empty() {
             ui.label(RichText::new(notes.join(" ")).small().color(t.warn));
         }

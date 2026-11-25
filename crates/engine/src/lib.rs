@@ -7,6 +7,7 @@ pub mod cleanup;
 pub mod duplicates;
 pub mod elevated;
 pub mod format;
+pub mod history;
 pub mod icons;
 pub mod leftovers;
 pub mod macapps;
@@ -394,9 +395,12 @@ impl Engine {
                 rewind_os_platform::elevation::relaunch_elevated(&args)?;
                 Ok(Response::Done("An elevated copy was started"))
             }
-            Request::DiskScan { root } => {
-                scan::scan(&root, task).map(|t| Response::Scan(Arc::new(t)))
-            }
+            Request::DiskScan { root } => scan::scan(&root, task).map(|mut tree| {
+                if let Some(dir) = history::folder() {
+                    tree.history = history::record(&tree, &dir, chrono::Utc::now());
+                }
+                Response::Scan(Arc::new(tree))
+            }),
             Request::ListFiles { dir } => scan::list_files(&dir).map(Response::Files),
             Request::Duplicates { root, min_bytes } => duplicates::find(
                 &root,

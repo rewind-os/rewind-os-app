@@ -75,7 +75,7 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
 - Never delete, weaken or skip a test to make a check pass.
 - UI checks: `REWIND_OS_PAGE=<page> REWIND_OS_SCREENSHOT=out.ppm cargo run -p rewind-os` saves the
   window and exits; `REWIND_OS_SCAN=<path>` starts a scan first;
-  `REWIND_OS_THEME=light` checks the light theme. See `crates/ui/src/devtools.rs`.
+  `REWIND_OS_THEME=light` checks the light theme; `REWIND_OS_VIEW=changes` opens an analyzer view. See `crates/ui/src/devtools.rs`.
 
 ## Checks
 

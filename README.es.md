@@ -22,7 +22,9 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   (`hiberfil.sys`, `pagefile.sys`).
 - **Analizador de disco**: escanea una unidad o carpeta en paralelo; lista de carpetas, treemap,
   archivos más grandes y tamaño por tipo de archivo. Como administrador en Windows, lee de una
-  vez la tabla maestra de archivos de una unidad NTFS, en segundos. Cualquier elemento se puede mostrar en el
+  vez la tabla maestra de archivos de una unidad NTFS, en segundos. «Qué ha cambiado» señala las
+  carpetas que más han crecido o menguado desde el último escaneo de la misma carpeta (un resumen
+  breve de tamaños de carpetas se guarda en este equipo, en la carpeta de datos de la app). Cualquier elemento se puede mostrar en el
   gestor de archivos o mover a la papelera.
 - **Archivos duplicados**: archivos con exactamente el mismo contenido (tamaño, después el primer
   bloque y después un hash BLAKE3 completo). Los enlaces duros no cuentan como copias y los

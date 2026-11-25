@@ -223,6 +223,7 @@ impl Signals {
     pub fn accounts_for(&self, folder_name: &str) -> bool {
         let lower = folder_name.to_lowercase();
         if SHARED.contains(&lower.as_str())
+            || lower == crate::history::APP_FOLDER
             || lower.starts_with('{')
             || lower.starts_with("microsoft")
         {

@@ -4,7 +4,7 @@
 mod mcp;
 
 use clap::{Parser, Subcommand};
-use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::format::{bytes, count, local_date, signed_bytes};
 use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
 use rewind_os_i18n::{tr, trf};
 use std::io::IsTerminal;
@@ -541,6 +541,47 @@ fn print_human(response: &Response, top: usize) {
                         &[("size", &bytes(tree.hard_linked_bytes))]
                     )
                 );
+            }
+            match &tree.history {
+                Some(rewind_os_engine::history::Comparison::Changes {
+                    since,
+                    before,
+                    after,
+                    grew,
+                    shrank,
+                    ..
+                }) => {
+                    println!(
+                        "{}",
+                        trf(
+                            "Since the scan of {date}: {before} then, {after} now.",
+                            &[
+                                ("date", &local_date(*since)),
+                                ("before", &bytes(*before)),
+                                ("after", &bytes(*after)),
+                            ]
+                        )
+                    );
+                    for (title, list) in
+                        [(tr("Grew the most"), grew), (tr("Shrank the most"), shrank)]
+                    {
+                        if list.is_empty() {
+                            continue;
+                        }
+                        println!("\n{title}");
+                        for change in list {
+                            println!(
+                                "{:>12}  {}",
+                                signed_bytes(change.delta()),
+                                change.path.display()
+                            );
+                        }
+                    }
+                }
+                Some(rewind_os_engine::history::Comparison::Nothing { reason }) => {
+                    println!("{}", tr(reason));
+                }
+                None => {}
             }
             println!("\n{}", tr("Largest folders"));
             for (id, node) in tree

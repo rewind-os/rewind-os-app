@@ -33,3 +33,22 @@ pub fn count(n: u64) -> String {
     }
     out
 }
+
+/// A change in size with its sign: "+1.2 GB", "-300 MB" (an ASCII minus: every font has it).
+pub fn signed_bytes(delta: i128) -> String {
+    let size = bytes(u64::try_from(delta.unsigned_abs()).unwrap_or(u64::MAX));
+    if delta < 0 {
+        format!("-{size}")
+    } else if delta == 0 {
+        size
+    } else {
+        format!("+{size}")
+    }
+}
+
+/// A moment as a date in this computer's time zone: "2026-11-25".
+pub fn local_date(at: chrono::DateTime<chrono::Utc>) -> String {
+    at.with_timezone(&chrono::Local)
+        .format("%Y-%m-%d")
+        .to_string()
+}

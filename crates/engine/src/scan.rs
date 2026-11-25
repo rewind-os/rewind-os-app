@@ -80,6 +80,9 @@ pub struct ScanTree {
     /// Measured from the volume's master file table (NTFS, with administrator rights) instead
     /// of folder by folder.
     pub from_file_table: bool,
+    /// How it compares with the last scan of the same folder; set by the engine after the
+    /// scan, `None` for a stopped scan.
+    pub history: Option<crate::history::Comparison>,
 }
 
 impl ScanTree {
@@ -165,6 +168,7 @@ pub fn serialize_summary<S: Serializer>(
         largest_folders: Vec<Child>,
         largest_files: &'a [FileEntry],
         extensions: &'a [ExtensionStat],
+        changes: &'a Option<crate::history::Comparison>,
     }
     let root = tree.root_node();
     let summary = Summary {
@@ -190,6 +194,7 @@ pub fn serialize_summary<S: Serializer>(
             .collect(),
         largest_files: &tree.top_files[..tree.top_files.len().min(100)],
         extensions: &tree.extensions,
+        changes: &tree.history,
     };
     summary.serialize(serializer)
 }
@@ -352,6 +357,7 @@ impl<'a> Context<'a> {
             cancelled: self.task.is_cancelled(),
             hard_linked_bytes: self.linked_bytes.into_inner(),
             from_file_table,
+            history: None,
         }
     }
 }

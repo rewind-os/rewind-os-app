@@ -5,7 +5,8 @@ use crate::theme;
 use crate::treemap;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::{Color32, CornerRadius, RichText, Role, Sense, Stroke, WidgetInfo};
-use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::format::{bytes, count, local_date, signed_bytes};
+use rewind_os_engine::history::Comparison;
 use rewind_os_engine::scan::{FileEntry, NodeId, ScanTree};
 use rewind_os_engine::{Request, Response};
 use rewind_os_i18n::{tr, trf};
@@ -19,6 +20,7 @@ enum View {
     Folders,
     LargestFiles,
     FileTypes,
+    Changes,
 }
 
 /// Most tiles drawn in the treemap; the rest are too small to see.
@@ -65,6 +67,13 @@ impl State {
                 }
                 self.tree = Some(tree);
                 self.current = ScanTree::ROOT;
+                match crate::devtools::analyzer_view().as_deref() {
+                    Some("folders") => self.view = View::Folders,
+                    Some("files") => self.view = View::LargestFiles,
+                    Some("types") => self.view = View::FileTypes,
+                    Some("changes") => self.view = View::Changes,
+                    _ => {}
+                }
             }
             Some(Ok(_)) => {}
             Some(Err(err)) => shared.error(err),
@@ -145,12 +154,14 @@ impl State {
             ui.selectable_value(&mut self.view, View::Folders, tr("Folders"));
             ui.selectable_value(&mut self.view, View::LargestFiles, tr("Largest files"));
             ui.selectable_value(&mut self.view, View::FileTypes, tr("File types"));
+            ui.selectable_value(&mut self.view, View::Changes, tr("What changed"));
         });
         ui.separator();
         match self.view {
             View::Folders => self.folders(ui, shared, &tree),
             View::LargestFiles => self.largest_files(ui, shared, &tree),
             View::FileTypes => file_types(ui, &tree),
+            View::Changes => self.changes(ui, &tree),
         }
         self.confirm_trash(&ctx, shared);
     }
@@ -252,6 +263,28 @@ impl State {
                 RichText::new(trf(
                     "{size} of hard links (one file under several names) was counted once.",
                     &[("size", &bytes(tree.hard_linked_bytes))],
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+        }
+        if let Some(Comparison::Changes {
+            since,
+            before,
+            after,
+            ..
+        }) = &tree.history
+        {
+            ui.label(
+                RichText::new(trf(
+                    "{change} since the scan of {date} (see What changed).",
+                    &[
+                        (
+                            "change",
+                            &signed_bytes(i128::from(*after) - i128::from(*before)),
+                        ),
+                        ("date", &local_date(*since)),
+                    ],
                 ))
                 .small()
                 .color(t.text_muted),
@@ -453,6 +486,115 @@ impl State {
             &self.trashed,
             &tree.top_files,
         );
+    }
+
+    /// The folders that grew and shrank most since the last scan of the same folder.
+    fn changes(&mut self, ui: &mut egui::Ui, tree: &ScanTree) {
+        let t = theme::current(ui.ctx());
+        let muted = |ui: &mut egui::Ui, text: &str| {
+            ui.label(RichText::new(text).color(t.text_muted));
+        };
+        let Some(comparison) = &tree.history else {
+            muted(ui, tr("Stopped scans are neither compared nor kept."));
+            return;
+        };
+        let (since, before, after, min_bytes, grew, shrank) = match comparison {
+            Comparison::Nothing { reason } => {
+                muted(ui, tr(reason));
+                return;
+            }
+            Comparison::Changes {
+                since,
+                before,
+                after,
+                min_bytes,
+                grew,
+                shrank,
+            } => (since, before, after, *min_bytes, grew, shrank),
+        };
+        let total = i128::from(*after) - i128::from(*before);
+        muted(
+            ui,
+            &trf(
+                "Since the scan of {date}: {before} then, {after} now.",
+                &[
+                    ("date", &local_date(*since)),
+                    ("before", &bytes(*before)),
+                    ("after", &bytes(*after)),
+                ],
+            ),
+        );
+        ui.add_space(4.0);
+        ui.label(RichText::new(signed_bytes(total)).heading().strong());
+        let mut open = None;
+        egui::ScrollArea::vertical()
+            .id_salt("changes")
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                for (title, list, empty) in [
+                    (tr("Grew the most"), grew, tr("No folder grew noticeably.")),
+                    (
+                        tr("Shrank the most"),
+                        shrank,
+                        tr("No folder shrank noticeably."),
+                    ),
+                ] {
+                    ui.add_space(t.gap);
+                    charts::section_title(ui, title);
+                    if list.is_empty() {
+                        muted(ui, empty);
+                    }
+                    for (index, change) in list.iter().enumerate() {
+                        let found = tree.find(&change.names);
+                        widgets::list_row(ui, index, 38.0, |ui| {
+                            ui.add_sized(
+                                [96.0, 38.0],
+                                egui::Label::new(
+                                    RichText::new(signed_bytes(change.delta())).strong(),
+                                ),
+                            );
+                            ui.add_sized(
+                                [130.0, 38.0],
+                                egui::Label::new(
+                                    RichText::new(if change.before == 0 {
+                                        trf("was under {size}", &[("size", &bytes(min_bytes))])
+                                    } else {
+                                        trf("was {size}", &[("size", &bytes(change.before))])
+                                    })
+                                    .color(t.text_muted),
+                                ),
+                            );
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    let button =
+                                        widgets::row_button(ui, tr("Show"), found.is_some());
+                                    if button.clicked() {
+                                        open = found;
+                                    }
+                                    if found.is_none() {
+                                        button.on_disabled_hover_text(tr("It is no longer there."));
+                                    }
+                                    ui.with_layout(
+                                        egui::Layout::left_to_right(egui::Align::Center),
+                                        |ui| {
+                                            let below =
+                                                change.names.join(std::path::MAIN_SEPARATOR_STR);
+                                            ui.add(egui::Label::new(below).truncate())
+                                                .on_hover_text(change.path.display().to_string());
+                                        },
+                                    );
+                                },
+                            );
+                        });
+                    }
+                }
+            });
+        if let Some(id) = open {
+            self.current = id;
+            self.view = View::Folders;
+            self.show_files = false;
+        }
     }
 
     fn confirm_trash(&mut self, ctx: &egui::Context, shared: &mut Shared) {

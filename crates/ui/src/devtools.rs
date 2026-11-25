@@ -6,6 +6,7 @@
 //! - `REWIND_OS_THEME=<light|dark>` shows that theme instead of following the system.
 //! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a duplicate search on the duplicates
 //!   page).
+//! - `REWIND_OS_VIEW=<folders|files|types|changes>` opens that view of the analyzer after a scan.
 //! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
 //!   settled (or after 20 seconds) and closes the app.
 
@@ -33,6 +34,11 @@ pub fn apply_theme(ctx: &egui::Context) {
 
 pub fn scan_path() -> Option<PathBuf> {
     std::env::var_os("REWIND_OS_SCAN").map(PathBuf::from)
+}
+
+/// The analyzer view asked for, as the variable spells it.
+pub fn analyzer_view() -> Option<String> {
+    std::env::var("REWIND_OS_VIEW").ok()
 }
 
 impl Devtools {

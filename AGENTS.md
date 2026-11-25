@@ -87,6 +87,7 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --workspace --all-targets --target x86_64-pc-windows-msvc -- -D warnings
 cargo clippy --workspace --all-targets --target aarch64-apple-darwin -- -D warnings
 cargo test --workspace
+cargo deny check licenses bans sources
 ```
 
 ## Conventions

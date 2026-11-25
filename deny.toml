@@ -23,6 +23,8 @@ confidence-threshold = 0.9
 [bans]
 multiple-versions = "allow"
 wildcards = "deny"
+# Internal crates depend on each other by path; none of them is published.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"

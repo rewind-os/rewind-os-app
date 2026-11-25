@@ -11,9 +11,13 @@ fn write(path: &Path, bytes: usize) -> std::io::Result<()> {
     fs::write(path, vec![7u8; bytes])
 }
 
-/// A folder whose name is not hidden: `tempfile` names its folders `.tmp…`.
+/// A folder whose name is not hidden (`tempfile` names its folders `.tmp…`), in the build's
+/// own temporary folder: the system's is inside AppData on Windows, where projects are never
+/// searched.
 fn workspace() -> std::io::Result<tempfile::TempDir> {
-    tempfile::Builder::new().prefix("rewind-projects").tempdir()
+    tempfile::Builder::new()
+        .prefix("rewind-projects")
+        .tempdir_in(env!("CARGO_TARGET_TMPDIR"))
 }
 
 /// A Node.js project with its lockfile and packages.

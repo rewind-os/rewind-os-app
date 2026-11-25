@@ -14,7 +14,10 @@ pub struct Theme {
     pub border: Color32,
     pub text: Color32,
     pub text_muted: Color32,
+    /// Actions and selection as text, icons and outlines: 4.5:1 against the surfaces.
     pub accent: Color32,
+    /// The fill of primary buttons, dark enough for `on_accent` text at 4.5:1.
+    pub accent_fill: Color32,
     pub on_accent: Color32,
     pub ok: Color32,
     pub warn: Color32,
@@ -33,28 +36,31 @@ pub struct Theme {
     pub card_padding: i8,
 }
 
-// A professional, data-first look: neutral graphite surfaces (white and cool greys in the light
-// theme), one blue accent for actions and selection, no borders, muted secondary text. Charts
-// use `palette`, a categorical set that stays distinct in both themes; status colours appear as
-// text, a faint tint behind a word, or a gauge that also shows its number.
+// A calm, data-first look in the manner of Termius: deep navy layers (the page, then the
+// navigation, tool band and cards a step lighter, then hovered and selected items), one blue for
+// actions and selection, no borders, semibold names and muted secondary text. The light theme
+// keeps the same layers in white and cool greys. Charts use `palette`, a categorical set that
+// stays distinct in both themes; status colours appear as text, a faint tint behind a word, or
+// a gauge that also shows its number.
 pub const DARK: Theme = Theme {
-    background: Color32::from_rgb(0x0e, 0x11, 0x16),
-    sidebar: Color32::from_rgb(0x0a, 0x0d, 0x12),
-    surface: Color32::from_rgb(0x16, 0x1a, 0x22),
-    surface_raised: Color32::from_rgb(0x1f, 0x24, 0x2e),
-    border: Color32::from_rgb(0x2a, 0x30, 0x3c),
-    text: Color32::from_rgb(0xe8, 0xeb, 0xf0),
-    text_muted: Color32::from_rgb(0x8d, 0x96, 0xa6),
-    accent: Color32::from_rgb(0x4c, 0x8d, 0xff),
-    on_accent: Color32::from_rgb(0x06, 0x12, 0x2a),
-    ok: Color32::from_rgb(0x3f, 0xb9, 0x6b),
-    warn: Color32::from_rgb(0xe0, 0xa4, 0x2e),
-    danger: Color32::from_rgb(0xf8, 0x5f, 0x5a),
+    background: Color32::from_rgb(0x1d, 0x20, 0x33),
+    sidebar: Color32::from_rgb(0x28, 0x2b, 0x3d),
+    surface: Color32::from_rgb(0x28, 0x2b, 0x3d),
+    surface_raised: Color32::from_rgb(0x3e, 0x42, 0x57),
+    border: Color32::from_rgb(0x4a, 0x4f, 0x66),
+    text: Color32::from_rgb(0xf2, 0xf3, 0xf7),
+    text_muted: Color32::from_rgb(0x9a, 0x9e, 0xb2),
+    accent: Color32::from_rgb(0x4a, 0xa3, 0xf8),
+    accent_fill: Color32::from_rgb(0x17, 0x74, 0xd6),
+    on_accent: Color32::from_rgb(0xff, 0xff, 0xff),
+    ok: Color32::from_rgb(0x4c, 0xc7, 0x7c),
+    warn: Color32::from_rgb(0xec, 0xb2, 0x45),
+    danger: Color32::from_rgb(0xff, 0x6b, 0x6b),
     on_danger: Color32::from_rgb(0x1f, 0x06, 0x05),
-    track: Color32::from_rgb(0x24, 0x2a, 0x35),
-    control: Color32::from_rgb(0x5d, 0x67, 0x78),
+    track: Color32::from_rgb(0x3e, 0x42, 0x57),
+    control: Color32::from_rgb(0x6c, 0x71, 0x8a),
     palette: [
-        Color32::from_rgb(0x4c, 0x8d, 0xff),
+        Color32::from_rgb(0x4a, 0xa3, 0xf8),
         Color32::from_rgb(0x2d, 0xc0, 0xa8),
         Color32::from_rgb(0x9b, 0x7d, 0xff),
         Color32::from_rgb(0xf0, 0xa9, 0x3b),
@@ -70,14 +76,15 @@ pub const DARK: Theme = Theme {
 };
 
 pub const LIGHT: Theme = Theme {
-    background: Color32::from_rgb(0xf4, 0xf6, 0xf9),
-    sidebar: Color32::from_rgb(0xeb, 0xee, 0xf3),
+    background: Color32::from_rgb(0xf1, 0xf2, 0xf6),
+    sidebar: Color32::from_rgb(0xff, 0xff, 0xff),
     surface: Color32::from_rgb(0xff, 0xff, 0xff),
-    surface_raised: Color32::from_rgb(0xed, 0xf0, 0xf5),
-    border: Color32::from_rgb(0xdc, 0xe1, 0xe8),
-    text: Color32::from_rgb(0x13, 0x18, 0x21),
-    text_muted: Color32::from_rgb(0x5a, 0x63, 0x72),
-    accent: Color32::from_rgb(0x1f, 0x63, 0xe0),
+    surface_raised: Color32::from_rgb(0xe6, 0xe8, 0xf0),
+    border: Color32::from_rgb(0xd6, 0xd9, 0xe4),
+    text: Color32::from_rgb(0x1d, 0x20, 0x33),
+    text_muted: Color32::from_rgb(0x5c, 0x61, 0x75),
+    accent: Color32::from_rgb(0x17, 0x6c, 0xc8),
+    accent_fill: Color32::from_rgb(0x17, 0x74, 0xd6),
     on_accent: Color32::from_rgb(0xff, 0xff, 0xff),
     ok: Color32::from_rgb(0x1a, 0x7f, 0x37),
     warn: Color32::from_rgb(0x9a, 0x63, 0x00),
@@ -101,17 +108,30 @@ pub const LIGHT: Theme = Theme {
     card_padding: 18,
 };
 
-/// Fills for the initial tile of a program without an icon; white text reads on each.
-const TILES: [Color32; 8] = [
-    Color32::from_rgb(0x2f, 0x5f, 0xb8),
-    Color32::from_rgb(0x1d, 0x7a, 0x6e),
+/// Fills of icon tiles (a program's initial, a page's icon); white reads on each at 4.5:1.
+pub const TILES: [Color32; 8] = [
+    Color32::from_rgb(0x00, 0x48, 0x78),
+    Color32::from_rgb(0xb8, 0x00, 0x4d),
+    Color32::from_rgb(0x1d, 0x6e, 0x63),
     Color32::from_rgb(0x5b, 0x4b, 0xb0),
     Color32::from_rgb(0x8a, 0x5a, 0x12),
-    Color32::from_rgb(0x9a, 0x3a, 0x68),
-    Color32::from_rgb(0x1f, 0x6c, 0x93),
+    Color32::from_rgb(0x1f, 0x5f, 0x93),
     Color32::from_rgb(0x4a, 0x6b, 0x24),
     Color32::from_rgb(0x4b, 0x55, 0x66),
 ];
+
+/// The font family of names, titles and buttons: the system's semibold face where one is
+/// found (see `lib.rs`), the regular one otherwise.
+pub const SEMIBOLD: &str = "semibold";
+
+pub fn semibold(size: f32) -> egui::FontId {
+    egui::FontId::new(size, bold())
+}
+
+/// The semibold family, for `RichText::family`: names and figures that stand out.
+pub fn bold() -> egui::FontFamily {
+    egui::FontFamily::Name(SEMIBOLD.into())
+}
 
 /// The tokens for the theme egui is currently showing.
 pub fn current(ctx: &egui::Context) -> &'static Theme {
@@ -187,7 +207,7 @@ pub fn install(ctx: &egui::Context) {
         style.spacing.button_padding = egui::vec2(12.0, 6.0);
         style.spacing.interact_size.y = 30.0;
         for (text_style, size) in [
-            (egui::TextStyle::Heading, 22.0),
+            (egui::TextStyle::Heading, 20.0),
             (egui::TextStyle::Body, 14.0),
             (egui::TextStyle::Button, 14.0),
             (egui::TextStyle::Small, 12.0),
@@ -195,6 +215,12 @@ pub fn install(ctx: &egui::Context) {
         ] {
             if let Some(font) = style.text_styles.get_mut(&text_style) {
                 font.size = size;
+            }
+        }
+        // Buttons and headings in semibold, as Termius sets its actions and names.
+        for text_style in [egui::TextStyle::Button, egui::TextStyle::Heading] {
+            if let Some(font) = style.text_styles.get_mut(&text_style) {
+                font.family = egui::FontFamily::Name(SEMIBOLD.into());
             }
         }
     });

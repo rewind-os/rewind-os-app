@@ -350,7 +350,12 @@ impl App {
                         .alt_text("Rewind OS"),
                 );
             }
-            ui.label(RichText::new("Rewind OS").size(17.0).strong());
+            ui.label(
+                RichText::new("Rewind OS")
+                    .size(17.0)
+                    .strong()
+                    .family(crate::theme::bold()),
+            );
         });
         ui.add_space(22.0);
         for (heading, pages) in SECTIONS {
@@ -358,11 +363,7 @@ impl App {
                 ui.add_space(14.0);
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
-                    ui.label(
-                        RichText::new(tr(heading).to_uppercase())
-                            .size(11.0)
-                            .color(t.text_muted),
-                    );
+                    ui.label(RichText::new(tr(heading)).size(12.0).color(t.text_muted));
                 });
                 ui.add_space(2.0);
             }
@@ -483,9 +484,9 @@ impl eframe::App for App {
                 egui::Frame::new()
                     .fill(t.background)
                     .inner_margin(Margin {
-                        left: 20,
-                        right: 32,
-                        top: 22,
+                        left: 24,
+                        right: 24,
+                        top: 18,
                         bottom: 16,
                     })
                     .corner_radius(CornerRadius::ZERO),

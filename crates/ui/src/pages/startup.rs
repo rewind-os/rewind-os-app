@@ -120,7 +120,11 @@ impl State {
                                         |ui| {
                                             ui.add_space(8.0);
                                             ui.horizontal(|ui| {
-                                                ui.label(RichText::new(&entry.name).strong());
+                                                ui.label(
+                                                    RichText::new(&entry.name)
+                                                        .strong()
+                                                        .family(crate::theme::bold()),
+                                                );
                                                 ui.label(
                                                     RichText::new(tr(entry
                                                         .when
@@ -239,7 +243,11 @@ fn summary(ui: &mut egui::Ui, entries: &[StartupEntry]) {
     ui.add_space(t.gap * 0.75);
     card(ui, |ui| {
         ui.set_width(ui.available_width());
-        ui.label(RichText::new(tr("What starts with the system")).strong());
+        ui.label(
+            RichText::new(tr("What starts with the system"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
         ui.add_space(8.0);
         let sizes: Vec<u64> = kinds.iter().map(|(_, n)| *n as u64).collect();
         let parts = charts::shares(t, &sizes, on as u64);

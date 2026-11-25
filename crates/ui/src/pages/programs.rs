@@ -162,7 +162,11 @@ impl State {
                             .show(ui, program.display_icon.as_deref(), &program.name);
                         ui.add_space(6.0);
                         ui.vertical(|ui| {
-                            ui.label(RichText::new(&program.name).strong());
+                            ui.label(
+                                RichText::new(&program.name)
+                                    .strong()
+                                    .family(crate::theme::bold()),
+                            );
                             let mut details = Vec::new();
                             if let Some(p) = &program.publisher {
                                 details.push(p.clone());

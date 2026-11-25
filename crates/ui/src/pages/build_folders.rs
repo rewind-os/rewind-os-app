@@ -151,34 +151,45 @@ impl State {
         let ctx = ui.ctx().clone();
         let busy = self.busy();
         ui.horizontal(|ui| {
-            let folder = self
-                .root
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| tr("No folder chosen").to_owned());
-            ui.add(egui::Label::new(RichText::new(folder).strong()).truncate());
-            if ui
-                .add_enabled(!busy, egui::Button::new(tr("Choose folder…")))
-                .clicked()
-            {
-                let mut dialog = rfd::FileDialog::new();
-                if let Some(root) = &self.root {
-                    dialog = dialog.set_directory(root);
+            // Buttons first, from the right, so a long path is cut short instead of pushing
+            // them out of the window.
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let label = if self.report.is_some() {
+                    tr("Search again")
+                } else {
+                    tr("Search")
+                };
+                if widgets::primary_button(ui, label, !busy && self.root.is_some()).clicked()
+                    && let Some(root) = self.root.clone()
+                {
+                    self.start(&ctx, shared, root);
                 }
-                if let Some(folder) = dialog.pick_folder() {
-                    self.root = Some(folder);
+                if ui
+                    .add_enabled(!busy, egui::Button::new(tr("Choose folder…")))
+                    .clicked()
+                {
+                    let mut dialog = rfd::FileDialog::new();
+                    if let Some(root) = &self.root {
+                        dialog = dialog.set_directory(root);
+                    }
+                    if let Some(folder) = dialog.pick_folder() {
+                        self.root = Some(folder);
+                    }
                 }
-            }
-            let label = if self.report.is_some() {
-                tr("Search again")
-            } else {
-                tr("Search")
-            };
-            if widgets::primary_button(ui, label, !busy && self.root.is_some()).clicked()
-                && let Some(root) = self.root.clone()
-            {
-                self.start(&ctx, shared, root);
-            }
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    let folder = self
+                        .root
+                        .as_ref()
+                        .map(|p| p.display().to_string())
+                        .unwrap_or_else(|| tr("No folder chosen").to_owned());
+                    ui.add(
+                        egui::Label::new(
+                            RichText::new(folder).strong().family(crate::theme::bold()),
+                        )
+                        .truncate(),
+                    );
+                });
+            });
         });
     }
 
@@ -301,9 +312,15 @@ impl State {
                                 self.selected.remove(&folder.path);
                             }
                         }
+                        let tile = if folder.risk == Risk::Safe {
+                            crate::theme::TILES[0]
+                        } else {
+                            crate::theme::TILES[4]
+                        };
+                        widgets::icon_tile(ui, crate::glyphs::Glyph::BuildFolders, tile, 32.0);
                         ui.add_sized(
                             [76.0, 20.0],
-                            egui::Label::new(RichText::new(bytes(folder.bytes)).strong()),
+                            egui::Label::new(RichText::new(bytes(folder.bytes)).strong().family(crate::theme::bold())),
                         );
                         let color = if folder.risk == Risk::Safe {
                             t.accent

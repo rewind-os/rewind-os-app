@@ -360,7 +360,11 @@ fn breakdown(ui: &mut egui::Ui, reports: &[CategoryReport], selected_bytes: u64,
     ui.add_space(t.gap * 0.75);
     card(ui, |ui| {
         ui.set_width(ui.available_width());
-        ui.label(RichText::new(tr("Where the junk is")).strong());
+        ui.label(
+            RichText::new(tr("Where the junk is"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
         ui.add_space(8.0);
         let sizes: Vec<u64> = groups.iter().map(|(_, s)| *s).collect();
         let parts = charts::shares(t, &sizes, found);
@@ -397,7 +401,12 @@ fn category_row(ui: &mut egui::Ui, report: &CategoryReport, selected: &mut HashS
         let mut checked = selected.contains(c.id);
         let response = ui.add_enabled(
             enabled,
-            egui::Checkbox::new(&mut checked, RichText::new(tr(c.name)).strong()),
+            egui::Checkbox::new(
+                &mut checked,
+                RichText::new(tr(c.name))
+                    .strong()
+                    .family(crate::theme::bold()),
+            ),
         );
         if response.changed() {
             if checked {
@@ -413,7 +422,11 @@ fn category_row(ui: &mut egui::Ui, report: &CategoryReport, selected: &mut HashS
                 ui.label(RichText::new(note).color(t.text_muted))
                     .on_hover_text(note);
             } else {
-                ui.label(RichText::new(bytes(report.bytes)).strong());
+                ui.label(
+                    RichText::new(bytes(report.bytes))
+                        .strong()
+                        .family(crate::theme::bold()),
+                );
                 ui.label(
                     RichText::new(trf("{n} files", &[("n", &count(report.files))]))
                         .color(t.text_muted),
@@ -450,14 +463,22 @@ fn results_card(ui: &mut egui::Ui, results: &[CategoryResult], reports: Option<&
     };
     card(ui, |ui| {
         ui.set_width(ui.available_width());
-        ui.label(RichText::new(tr("Last cleanup")).strong());
+        ui.label(
+            RichText::new(tr("Last cleanup"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
         egui::Grid::new("cleanup_results")
             .num_columns(3)
             .spacing([16.0, 4.0])
             .show(ui, |ui| {
                 for r in results {
                     ui.label(name(r.id));
-                    ui.label(RichText::new(bytes(r.bytes)).strong());
+                    ui.label(
+                        RichText::new(bytes(r.bytes))
+                            .strong()
+                            .family(crate::theme::bold()),
+                    );
                     let mut notes = Vec::new();
                     if r.failed > 0 {
                         notes.push(trf(

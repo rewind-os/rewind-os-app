@@ -8,7 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{self, Receiver, Sender};
 
 /// Side of the drawn icon, in points.
-pub const SIZE: f32 = 28.0;
+pub const SIZE: f32 = 36.0;
 
 pub struct IconCache {
     textures: HashMap<String, Option<TextureHandle>>,
@@ -82,7 +82,7 @@ impl IconCache {
             Some(texture) => {
                 ui.add(
                     egui::Image::new((texture.id(), egui::vec2(SIZE, SIZE)))
-                        .corner_radius(CornerRadius::same(7)),
+                        .corner_radius(CornerRadius::same(8)),
                 );
             }
             None => initial(ui, name),
@@ -102,7 +102,7 @@ fn initial(ui: &mut Ui, name: &str) {
         .get(hash as usize % t.tiles.len())
         .copied()
         .unwrap_or(t.surface_raised);
-    ui.painter().rect_filled(rect, CornerRadius::same(7), fill);
+    ui.painter().rect_filled(rect, CornerRadius::same(8), fill);
     let letter: String = name
         .chars()
         .find(|c| c.is_alphanumeric())
@@ -112,7 +112,7 @@ fn initial(ui: &mut Ui, name: &str) {
         rect.center(),
         egui::Align2::CENTER_CENTER,
         letter,
-        egui::FontId::proportional(14.0),
+        crate::theme::semibold(15.0),
         egui::Color32::WHITE,
     );
 }

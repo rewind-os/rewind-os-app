@@ -525,7 +525,12 @@ impl State {
             ),
         );
         ui.add_space(4.0);
-        ui.label(RichText::new(signed_bytes(total)).heading().strong());
+        ui.label(
+            RichText::new(signed_bytes(total))
+                .heading()
+                .strong()
+                .family(crate::theme::bold()),
+        );
         let mut open = None;
         egui::ScrollArea::vertical()
             .id_salt("changes")
@@ -550,7 +555,9 @@ impl State {
                             ui.add_sized(
                                 [96.0, 38.0],
                                 egui::Label::new(
-                                    RichText::new(signed_bytes(change.delta())).strong(),
+                                    RichText::new(signed_bytes(change.delta()))
+                                        .strong()
+                                        .family(crate::theme::bold()),
                                 ),
                             );
                             ui.add_sized(
@@ -642,7 +649,11 @@ impl State {
 fn size_label(ui: &mut egui::Ui, row_height: f32, size: u64, disk: u64) {
     ui.add_sized(
         [76.0, row_height],
-        egui::Label::new(RichText::new(bytes(size)).strong()),
+        egui::Label::new(
+            RichText::new(bytes(size))
+                .strong()
+                .family(crate::theme::bold()),
+        ),
     )
     .on_hover_text(trf("{size} on disk", &[("size", &bytes(disk))]));
 }
@@ -761,7 +772,7 @@ fn file_types(ui: &mut egui::Ui, tree: &ScanTree) {
                         } else {
                             t.control
                         };
-                        ui.label(RichText::new(&name).strong());
+                        ui.label(RichText::new(&name).strong().family(crate::theme::bold()));
                         ui.label(bytes(ext.bytes));
                         ui.label(
                             RichText::new(trf("{n} files", &[("n", &count(ext.files))]))

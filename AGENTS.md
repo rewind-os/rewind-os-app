@@ -46,7 +46,8 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
    follows Termius: deep navy layers (the page, then the navigation, the page's tool band and
    the cards a step lighter, then hovered and selected items; white and cool greys in the light
    theme), one blue for actions and selection, flat surfaces without borders, names and buttons
-   in semibold, list rows as cards, icons as white line glyphs (`crates/ui/src/glyphs.rs`) on a
+   in semibold, list rows as cards (items people pick from, such as programs, as a grid of cards that opens
+   a detail panel on the right), icons as white line glyphs (`crates/ui/src/glyphs.rs`) on a
    rounded square of a `TILES` colour, tags as words on a faint tint, muted secondary text.
    Figures are shown as charts from `crates/ui/src/charts.rs` (key-figure tiles, gauges, ring
    charts, stacked bars) in the theme's categorical `palette`, always next to their numbers. Add

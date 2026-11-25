@@ -25,7 +25,17 @@ pub struct State {
     search: String,
     sort: Sort,
     uninstall: Option<InstalledProgram>,
+    /// The key of the program whose details are open.
+    selected: Option<String>,
     started: bool,
+}
+
+const CARD_HEIGHT: f32 = 64.0;
+
+/// What the user asked for in a program's details.
+enum Action {
+    Uninstall,
+    Reveal(std::path::PathBuf),
 }
 
 impl State {
@@ -45,6 +55,11 @@ impl State {
                 shared
                     .icons
                     .request(&ctx, list.iter().filter_map(|p| p.display_icon.clone()));
+                if self.selected.is_none()
+                    && let Some(index) = crate::devtools::selected_item()
+                {
+                    self.selected = list.get(index).map(|p| p.key.clone());
+                }
                 self.programs = Some(list);
             }
             Some(Ok(_)) => {}
@@ -150,72 +165,69 @@ impl State {
             ),
         });
         ui.add_space(t.gap * 0.75);
-        let row_height = 52.0;
-        egui::ScrollArea::vertical()
-            .auto_shrink([false; 2])
-            .show_rows(ui, row_height, shown.len(), |ui, range| {
-                for (index, program) in shown.iter().enumerate().skip(range.start).take(range.len())
-                {
-                    widgets::list_row(ui, index, row_height, |ui| {
-                        shared
-                            .icons
-                            .show(ui, program.display_icon.as_deref(), &program.name);
-                        ui.add_space(6.0);
-                        ui.vertical(|ui| {
-                            ui.label(
-                                RichText::new(&program.name)
-                                    .strong()
-                                    .family(crate::theme::bold()),
-                            );
-                            let mut details = Vec::new();
-                            if let Some(p) = &program.publisher {
-                                details.push(p.clone());
+        let can_uninstall =
+            rewind_os_engine::tool("programs.uninstall").is_some_and(|t| t.available());
+        let idle = self.uninstall_job.is_none();
+        let mut uninstall = None;
+        let mut reveal = None;
+        if let Some(key) = &self.selected {
+            match programs.iter().find(|p| &p.key == key) {
+                Some(program) => {
+                    let closed = widgets::detail_panel(ui, "program_detail", tr("Program"), |ui| {
+                        if let Some(action) = details(ui, shared, program, can_uninstall && idle) {
+                            match action {
+                                Action::Uninstall => uninstall = Some(program.clone()),
+                                Action::Reveal(path) => reveal = Some(path),
                             }
-                            if let Some(v) = &program.version {
-                                details.push(v.clone());
-                            }
-                            if let Some(d) = program.installed_on {
-                                details.push(d.format("%Y-%m-%d").to_string());
-                            }
-                            if let Some(manager) = program.manager {
-                                details.push(manager.to_owned());
-                            }
-                            if program.scope == Scope::User {
-                                details.push(tr("only for you").to_owned());
-                            }
-                            ui.label(
-                                RichText::new(details.join(" · "))
-                                    .small()
-                                    .color(t.text_muted),
-                            );
-                        });
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            let can_uninstall = rewind_os_engine::tool("programs.uninstall")
-                                .is_some_and(|t| t.available());
-                            if can_uninstall
-                                && ui
-                                    .add_enabled(
-                                        self.uninstall_job.is_none(),
-                                        egui::Button::new(tr("Uninstall…")),
-                                    )
-                                    .clicked()
-                            {
-                                self.uninstall = Some((*program).clone());
-                            }
-                            if let Some(location) = &program.install_location
-                                && ui.button(tr("Open")).clicked()
-                            {
-                                shared.reveal(location.clone());
-                            }
-                            if let Some(size) = program.estimated_bytes {
-                                ui.label(bytes(size)).on_hover_text(tr(
-                                    "Size the installer declared; it may be out of date.",
-                                ));
-                            }
-                        });
+                        }
                     });
+                    // Escape belongs to the confirmation while it is open.
+                    if closed && self.uninstall.is_none() {
+                        self.selected = None;
+                    }
                 }
-            });
+                None => self.selected = None,
+            }
+        }
+        let mut clicked = None;
+        let selected = self.selected.as_deref();
+        widgets::card_grid(ui, shown.len(), 280.0, CARD_HEIGHT, |ui, index| {
+            let Some(program) = shown.get(index) else {
+                return;
+            };
+            let card = widgets::item_card(
+                ui,
+                &program.name,
+                selected == Some(program.key.as_str()),
+                CARD_HEIGHT,
+                |ui| {
+                    shared
+                        .icons
+                        .show(ui, program.display_icon.as_deref(), &program.name);
+                    ui.add_space(2.0);
+                    let mut line = Vec::new();
+                    if let Some(p) = program.publisher.as_deref().or(program.manager) {
+                        line.push(p.to_owned());
+                    }
+                    if let Some(size) = program.estimated_bytes {
+                        line.push(bytes(size));
+                    }
+                    widgets::card_text(ui, &program.name, &line.join(" · "));
+                },
+            );
+            if card.clicked() {
+                clicked = Some(program.key.clone());
+            }
+        });
+        if let Some(key) = clicked {
+            self.selected = Some(key);
+        }
+        if let Some(program) = uninstall {
+            self.uninstall = Some(program);
+        }
+        if let Some(path) = reveal {
+            shared.reveal(path);
+        }
 
         if let Some(program) = &self.uninstall {
             let body = if Os::current() == Os::Windows {
@@ -257,4 +269,56 @@ impl State {
             }
         }
     }
+}
+
+/// The details of one program: everything its installer reported, and what can be done with it.
+fn details(
+    ui: &mut egui::Ui,
+    shared: &mut Shared,
+    program: &InstalledProgram,
+    can_uninstall: bool,
+) -> Option<Action> {
+    let mut action = None;
+    ui.horizontal(|ui| {
+        shared
+            .icons
+            .show(ui, program.display_icon.as_deref(), &program.name);
+        ui.add(egui::Label::new(RichText::new(&program.name).font(theme::semibold(16.0))).wrap());
+    });
+    ui.add_space(12.0);
+    if let Some(publisher) = &program.publisher {
+        widgets::detail_field(ui, tr("Publisher"), publisher);
+    }
+    if let Some(version) = &program.version {
+        widgets::detail_field(ui, tr("Version"), version);
+    }
+    if let Some(date) = program.installed_on {
+        widgets::detail_field(ui, tr("Installed on"), date.format("%Y-%m-%d").to_string());
+    }
+    if let Some(manager) = program.manager {
+        widgets::detail_field(ui, tr("Installed with"), manager);
+    }
+    let scope = match program.scope {
+        Scope::Machine => tr("Everyone on this computer"),
+        Scope::User => tr("Only you"),
+    };
+    widgets::detail_field(ui, tr("Installed for"), scope);
+    if let Some(size) = program.estimated_bytes {
+        widgets::detail_field(ui, tr("Size the installer declared"), bytes(size));
+    }
+    if let Some(location) = &program.install_location {
+        widgets::detail_field(ui, tr("Folder"), location.display().to_string());
+    }
+    ui.add_space(8.0);
+    ui.horizontal_wrapped(|ui| {
+        if can_uninstall && ui.button(tr("Uninstall…")).clicked() {
+            action = Some(Action::Uninstall);
+        }
+        if let Some(location) = &program.install_location
+            && ui.button(tr("Open folder")).clicked()
+        {
+            action = Some(Action::Reveal(location.clone()));
+        }
+    });
+    action
 }

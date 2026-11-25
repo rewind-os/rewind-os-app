@@ -7,6 +7,7 @@
 //! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a search on the duplicates and build
 //!   folders pages).
 //! - `REWIND_OS_VIEW=<folders|files|types|changes>` opens that view of the analyzer after a scan.
+//! - `REWIND_OS_SELECT=<n>` selects the n-th item (from 0) on the programs and startup pages.
 //! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
 //!   settled (or after 20 seconds) and closes the app.
 
@@ -34,6 +35,12 @@ pub fn apply_theme(ctx: &egui::Context) {
 
 pub fn scan_path() -> Option<PathBuf> {
     std::env::var_os("REWIND_OS_SCAN").map(PathBuf::from)
+}
+
+/// The item to select on the programs and startup pages, counting from 0, so the screenshot
+/// shows its detail panel.
+pub fn selected_item() -> Option<usize> {
+    std::env::var("REWIND_OS_SELECT").ok()?.parse().ok()
 }
 
 /// The analyzer view asked for, as the variable spells it.

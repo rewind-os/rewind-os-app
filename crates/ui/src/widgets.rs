@@ -81,6 +81,150 @@ pub fn list_row<R>(ui: &mut Ui, _index: usize, height: f32, add: impl FnOnce(&mu
     add(&mut row)
 }
 
+/// Items as a grid of cards, as Termius shows its hosts: as many columns of at least
+/// `min_width` as fit, rows of `height`, in a scroll area that only lays out the visible rows.
+/// `add` draws item `index` into its cell, usually with [`item_card`].
+pub fn card_grid(
+    ui: &mut Ui,
+    n: usize,
+    min_width: f32,
+    height: f32,
+    mut add: impl FnMut(&mut Ui, usize),
+) {
+    let t = theme::current(ui.ctx());
+    let width = ui.available_width();
+    let per_row = (((width + t.gap) / (min_width + t.gap)).floor() as usize).max(1);
+    let cell = (width - t.gap * (per_row - 1) as f32) / per_row as f32;
+    let rows = n.div_ceil(per_row);
+    egui::ScrollArea::vertical()
+        .auto_shrink([false; 2])
+        .show_rows(ui, height, rows, |ui, range| {
+            for row in range {
+                ui.horizontal_top(|ui| {
+                    ui.spacing_mut().item_spacing.x = t.gap;
+                    let first = row * per_row;
+                    for index in first..(first + per_row).min(n) {
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(cell, height),
+                            egui::Layout::top_down(egui::Align::Min),
+                            |ui| {
+                                ui.set_width(cell);
+                                add(ui, index);
+                            },
+                        );
+                    }
+                });
+            }
+        });
+}
+
+/// One item of a [`card_grid`]: a card that selects the item when clicked (or chosen with Tab
+/// and Enter). The selected card is lighter and ringed in the accent colour; screen readers
+/// hear `label` as a list option and whether it is selected. `add` lays the card out from left
+/// to right, vertically centred.
+pub fn item_card(
+    ui: &mut Ui,
+    label: &str,
+    selected: bool,
+    height: f32,
+    add: impl FnOnce(&mut Ui),
+) -> Response {
+    let t = theme::current(ui.ctx());
+    let size = egui::vec2(ui.available_width(), height);
+    let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+    let radius = CornerRadius::same(t.radius);
+    let fill = if selected || response.hovered() {
+        t.surface_raised
+    } else {
+        t.surface
+    };
+    ui.painter().rect_filled(rect, radius, fill);
+    if selected || response.has_focus() {
+        ui.painter().rect_stroke(
+            rect,
+            radius,
+            Stroke::new(1.5, t.accent),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let mut inner = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(rect.shrink2(egui::vec2(14.0, 0.0)))
+            .layout(egui::Layout::left_to_right(egui::Align::Center)),
+    );
+    add(&mut inner);
+    let label = label.to_owned();
+    response.widget_info(move || WidgetInfo::selected(Role::ListBoxOption, true, selected, &label));
+    response
+}
+
+/// The selected item's details on a card along the right edge, as Termius opens a host's
+/// settings beside the list. Call it before laying out the list, so the list takes the space
+/// that is left. `add` draws the details under a row with a Close button; returns true when
+/// the user closed the panel with that button or Escape.
+pub fn detail_panel(ui: &mut Ui, id: &str, title: &str, add: impl FnOnce(&mut Ui)) -> bool {
+    let t = theme::current(ui.ctx());
+    let mut closed = ui.input(|i| i.key_pressed(egui::Key::Escape));
+    egui::Panel::right(id)
+        .exact_size(320.0)
+        .resizable(false)
+        .show_separator_line(false)
+        .frame(egui::Frame::new().outer_margin(Margin {
+            left: t.gap as i8,
+            ..Margin::ZERO
+        }))
+        .show(ui, |ui| {
+            card(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.set_min_height(ui.available_height());
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(title).small().color(t.text_muted));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if row_button(ui, tr("Close"), true)
+                            .on_hover_text(tr("Close the details (Escape)"))
+                            .clicked()
+                        {
+                            closed = true;
+                        }
+                    });
+                });
+                ui.add_space(8.0);
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, add);
+            });
+        });
+    closed
+}
+
+/// One fact in a [`detail_panel`]: a muted caption over its value, which wraps.
+pub fn detail_field(ui: &mut Ui, caption: &str, value: impl Into<egui::WidgetText>) {
+    let t = theme::current(ui.ctx());
+    ui.scope(|ui| {
+        ui.spacing_mut().item_spacing.y = 2.0;
+        ui.label(RichText::new(caption).small().color(t.text_muted));
+        ui.add(egui::Label::new(value).wrap());
+    });
+    ui.add_space(6.0);
+}
+
+/// A card's name in semibold over one muted line, both cut short with "…" when the card is
+/// narrow, centred in the card's height. Hovering a cut name shows it whole.
+pub fn card_text(ui: &mut Ui, name: &str, line: &str) {
+    let t = theme::current(ui.ctx());
+    let gap = 2.0;
+    let height = ui.text_style_height(&egui::TextStyle::Body)
+        + gap
+        + ui.text_style_height(&egui::TextStyle::Small);
+    let top = ((ui.available_height() - height) / 2.0).max(0.0);
+    ui.vertical(|ui| {
+        ui.spacing_mut().item_spacing.y = gap;
+        ui.add_space(top);
+        ui.add(egui::Label::new(RichText::new(name).family(theme::bold())).truncate());
+        ui.add(egui::Label::new(RichText::new(line).small().color(t.text_muted)).truncate());
+    });
+}
+
 /// A Termius-style icon: a line glyph in white on a rounded square of `fill` (one of
 /// `theme::TILES`). Decorative: the name next to it is what screen readers read.
 pub fn icon_tile(ui: &mut Ui, glyph: crate::glyphs::Glyph, fill: Color32, size: f32) -> Response {

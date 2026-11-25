@@ -210,8 +210,6 @@ Sort by	Ordenar por
 Name	Nombre
 Size	Tamaño
 Install date	Fecha de instalación
-only for you	solo para ti
-Size the installer declared; it may be out of date.	Tamaño que declaró el instalador; puede estar desactualizado.
 Uninstall…	Desinstalar…
 Uninstall this program?	¿Desinstalar este programa?
 This starts the uninstaller of {name}. Follow its steps; afterwards, search for leftovers.	Se iniciará el desinstalador de {name}. Sigue sus pasos y después busca restos.
@@ -618,3 +616,22 @@ When the project last changed	Cuándo cambió el proyecto por última vez
 {n} build folders ({size}) will be deleted permanently, not moved to the recycle bin. Each project makes its own again with its build tool (npm install, cargo build…).	Se borrarán para siempre {n} carpetas de compilación ({size}), sin pasar por la papelera. Cada proyecto vuelve a crear las suyas con su herramienta de compilación (npm install, cargo build…).
 Delete build folders?	¿Borrar las carpetas de compilación?
 Name at least one build folder.	Indica al menos una carpeta de compilación.
+Close	Cerrar
+Close the details (Escape)	Cerrar los detalles (Escape)
+Program	Programa
+Publisher	Editor
+Version	Versión
+Installed on	Instalado el
+Installed with	Instalado con
+Everyone on this computer	Todos en este equipo
+Only you	Solo tú
+Installed for	Instalado para
+Size the installer declared	Tamaño que declaró el instalador
+Folder	Carpeta
+Open folder	Abrir carpeta
+Startup entry	Entrada de inicio
+Status	Estado
+When it runs	Cuándo se ejecuta
+Registered in	Registrado en
+Command	Comando
+At sign-in	Al iniciar sesión

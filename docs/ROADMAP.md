@@ -64,3 +64,4 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.5 Optional removal of preinstalled Store apps (reinstallable from the Store)
 - [x] R3.6 Recommendations from leftovers and duplicate files (duplicates in Downloads only, to stay quick)
 - [x] R3.7 A Termius-like look: navy layers, a tool band on every page, semibold names, list rows as cards, icons on coloured tiles
+- [x] R3.8 Installed and startup programs as a grid of cards, with the selected one's details in a panel on the right

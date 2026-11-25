@@ -13,7 +13,81 @@ use rewind_os_i18n::{tr, trf};
 pub struct State {
     job: Option<Job>,
     entries: Option<Vec<StartupEntry>>,
+    /// The id of the entry whose details are open.
+    selected: Option<String>,
     started: bool,
+}
+
+const CARD_HEIGHT: f32 = 64.0;
+
+/// Whether an entry starts, as a word and its colour (the word carries the meaning).
+fn state(t: &theme::Theme, entry: &StartupEntry) -> (&'static str, egui::Color32) {
+    if entry.enabled {
+        (tr("On"), t.ok)
+    } else {
+        (tr("Off"), t.text_muted)
+    }
+}
+
+/// When an entry runs, in English for `tr`.
+fn when(entry: &StartupEntry) -> &'static str {
+    entry.when.unwrap_or("At sign-in")
+}
+
+/// The details of one entry and its switch. Returns the state the user asked for.
+fn details(
+    ui: &mut egui::Ui,
+    shared: &mut Shared,
+    entry: &StartupEntry,
+    elevated: bool,
+) -> Option<bool> {
+    let t = theme::current(ui.ctx());
+    let mut asked = None;
+    ui.horizontal(|ui| {
+        let program = rewind_os_engine::icons::program_of_command(&entry.command);
+        shared.icons.show(ui, program.as_deref(), &entry.name);
+        ui.add(egui::Label::new(RichText::new(&entry.name).font(theme::semibold(16.0))).wrap());
+    });
+    ui.add_space(12.0);
+    let (word, color) = state(t, entry);
+    ui.label(RichText::new(tr("Status")).small().color(t.text_muted));
+    ui.horizontal(|ui| {
+        widgets::badge(ui, word, color);
+        if entry.essential {
+            widgets::badge(ui, tr("Needed by the system"), t.text_muted)
+                .on_hover_text(tr(rewind_os_engine::startup::ESSENTIAL));
+        }
+    });
+    ui.add_space(6.0);
+    widgets::detail_field(ui, tr("When it runs"), tr(when(entry)));
+    widgets::detail_field(ui, tr("Registered in"), tr(entry.source.label()));
+    widgets::detail_field(ui, tr("Command"), RichText::new(&entry.command).monospace());
+    ui.add_space(6.0);
+    // Essential entries can be turned on but never off.
+    if entry.essential && entry.enabled {
+        ui.label(
+            RichText::new(tr(rewind_os_engine::startup::ESSENTIAL))
+                .small()
+                .color(t.text_muted),
+        );
+    } else {
+        let needs_rights = entry.needs_admin && !elevated;
+        let label = if entry.enabled {
+            tr("Turn off")
+        } else {
+            tr("Turn on")
+        };
+        let button = ui.add_enabled(!needs_rights, egui::Button::new(label));
+        let button = if needs_rights {
+            button.on_disabled_hover_text(tr("This needs administrator rights."))
+        } else {
+            button
+        };
+        if button.clicked() {
+            asked = Some(!entry.enabled);
+        }
+    }
+    asked
 }
 
 impl State {
@@ -39,6 +113,11 @@ impl State {
                     list.iter()
                         .filter_map(|e| rewind_os_engine::icons::program_of_command(&e.command)),
                 );
+                if self.selected.is_none()
+                    && let Some(index) = crate::devtools::selected_item()
+                {
+                    self.selected = list.get(index).map(|e| e.id.clone());
+                }
                 self.entries = Some(list);
             }
             Some(Ok(_)) => {}
@@ -60,101 +139,61 @@ impl State {
             ui.label(tr("No startup programs found."));
             return;
         }
+        summary(ui, entries);
+        ui.add_space(t.gap);
+        if !shared.elevated && entries.iter().any(|e| e.needs_admin) {
+            shared.admin_hint(ui);
+            ui.add_space(t.gap * 0.75);
+        }
         let mut changed = None;
-        egui::ScrollArea::vertical()
-            .auto_shrink([false; 2])
-            .show(ui, |ui| {
-                summary(ui, entries);
-                ui.add_space(t.gap * 1.5);
-                card(ui, |ui| {
-                    ui.set_width(ui.available_width());
-                    for (index, entry) in entries.iter().enumerate() {
-                        let needs_rights = entry.needs_admin && !shared.elevated;
-                        // Essential entries can be turned on but never off.
-                        let essential = entry.essential && entry.enabled;
-                        widgets::list_row(ui, index, 62.0, |ui| {
-                            let program =
-                                rewind_os_engine::icons::program_of_command(&entry.command);
-                            shared.icons.show(ui, program.as_deref(), &entry.name);
-                            ui.add_space(6.0);
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if essential {
-                                        ui.label(
-                                            RichText::new(tr("Needed by the system"))
-                                                .small()
-                                                .color(t.text_muted),
-                                        )
-                                        .on_hover_text(tr(rewind_os_engine::startup::ESSENTIAL));
-                                    } else {
-                                        let label = if entry.enabled {
-                                            tr("Turn off")
-                                        } else {
-                                            tr("Turn on")
-                                        };
-                                        let button = widgets::row_button(ui, label, !needs_rights);
-                                        let button = if needs_rights {
-                                            button.on_disabled_hover_text(tr(
-                                                "This needs administrator rights.",
-                                            ))
-                                        } else {
-                                            button
-                                        };
-                                        if button.clicked() {
-                                            changed = Some((entry.id.clone(), !entry.enabled));
-                                        }
-                                    }
-                                    let (word, color) = if entry.enabled {
-                                        (tr("On"), t.ok)
-                                    } else {
-                                        (tr("Off"), t.text_muted)
-                                    };
-                                    ui.allocate_ui_with_layout(
-                                        egui::vec2(90.0, 20.0),
-                                        egui::Layout::right_to_left(egui::Align::Center),
-                                        |ui| ui.label(RichText::new(word).small().color(color)),
-                                    );
-                                    ui.with_layout(
-                                        egui::Layout::top_down(egui::Align::Min),
-                                        |ui| {
-                                            ui.add_space(8.0);
-                                            ui.horizontal(|ui| {
-                                                ui.label(
-                                                    RichText::new(&entry.name)
-                                                        .strong()
-                                                        .family(crate::theme::bold()),
-                                                );
-                                                ui.label(
-                                                    RichText::new(tr(entry
-                                                        .when
-                                                        .unwrap_or(entry.source.label())))
-                                                    .small()
-                                                    .color(t.text_muted),
-                                                );
-                                            });
-                                            ui.add(
-                                                egui::Label::new(
-                                                    RichText::new(&entry.command)
-                                                        .small()
-                                                        .monospace()
-                                                        .color(t.text_muted),
-                                                )
-                                                .truncate(),
-                                            )
-                                            .on_hover_text(&entry.command);
-                                        },
-                                    );
-                                },
-                            );
+        if let Some(id) = &self.selected {
+            match entries.iter().find(|e| &e.id == id) {
+                Some(entry) => {
+                    let elevated = shared.elevated;
+                    let closed =
+                        widgets::detail_panel(ui, "startup_detail", tr("Startup entry"), |ui| {
+                            if let Some(enabled) = details(ui, shared, entry, elevated) {
+                                changed = Some((entry.id.clone(), enabled));
+                            }
                         });
+                    if closed {
+                        self.selected = None;
                     }
-                });
-                if !shared.elevated && entries.iter().any(|e| e.needs_admin) {
-                    ui.add_space(t.gap);
-                    shared.admin_hint(ui);
                 }
-            });
+                None => self.selected = None,
+            }
+        }
+        let mut clicked = None;
+        let selected = self.selected.as_deref();
+        widgets::card_grid(ui, entries.len(), 280.0, CARD_HEIGHT, |ui, index| {
+            let Some(entry) = entries.get(index) else {
+                return;
+            };
+            let card = widgets::item_card(
+                ui,
+                &entry.name,
+                selected == Some(entry.id.as_str()),
+                CARD_HEIGHT,
+                |ui| {
+                    let program = rewind_os_engine::icons::program_of_command(&entry.command);
+                    shared.icons.show(ui, program.as_deref(), &entry.name);
+                    ui.add_space(2.0);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let (word, color) = state(t, entry);
+                        ui.label(RichText::new(word).small().color(color));
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                            widgets::card_text(ui, &entry.name, tr(when(entry)));
+                        });
+                    });
+                },
+            );
+            if card.clicked() {
+                clicked = Some(entry.id.clone());
+            }
+        });
+        if let Some(id) = clicked {
+            self.selected = Some(id);
+        }
         if let Some((id, enabled)) = changed {
             match shared
                 .engine

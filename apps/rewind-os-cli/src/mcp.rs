@@ -4,8 +4,8 @@
 //! Limits, so an assistant can never do more than the person allowed:
 //! - Tools that read a path only accept paths inside a `--automation-read-root` (or a write
 //!   root). Without roots, they are refused.
-//! - `files.trash` only accepts paths inside a `--automation-write-root`, and the engine's
-//!   safety guard still checks every path.
+//! - `files.trash` and `dev.clean` only accept paths inside a `--automation-write-root`, and
+//!   the engine's safety guard still checks every path.
 //! - Other tools that change the computer (cleanup, startup, settings, apps, uninstall,
 //!   maintenance) are offered only with `--allow-system-changes`.
 //! - Restarting the app as administrator is never offered.
@@ -29,8 +29,11 @@ const READS_PATHS: &[&str] = &[
     "disk.scan",
     "disk.list_files",
     "disk.duplicates",
+    "dev.find",
     "files.reveal",
 ];
+/// Tools whose arguments name paths to remove.
+const WRITES_PATHS: &[&str] = &["files.trash", "dev.clean"];
 
 /// MCP tool names allow letters, digits, `_` and `-`: `disk.scan` is offered as `disk_scan`.
 pub fn mcp_name(id: &str) -> String {
@@ -47,7 +50,7 @@ impl Policy {
         if NEVER.contains(&tool.id) || !tool.available() {
             return false;
         }
-        if tool.id == "files.trash" {
+        if WRITES_PATHS.contains(&tool.id) {
             return !self.write_roots.is_empty();
         }
         if READS_PATHS.contains(&tool.id) {
@@ -70,7 +73,7 @@ impl Policy {
             }
         };
         let (wanted, roots, kind): (Vec<PathBuf>, Vec<&PathBuf>, &str) = match tool {
-            "disk.scan" | "disk.duplicates" => (
+            "disk.scan" | "disk.duplicates" | "dev.find" => (
                 paths("root"),
                 self.read_roots.iter().chain(&self.write_roots).collect(),
                 "--automation-read-root",
@@ -85,7 +88,7 @@ impl Policy {
                 self.read_roots.iter().chain(&self.write_roots).collect(),
                 "--automation-read-root",
             ),
-            "files.trash" => (
+            "files.trash" | "dev.clean" => (
                 paths("paths"),
                 self.write_roots.iter().collect(),
                 "--automation-write-root",
@@ -125,7 +128,8 @@ fn input_schema(id: &str) -> Value {
             json!({ "root": string, "min_bytes": { "type": "integer", "minimum": 1 } }),
             &["root"],
         ),
-        "files.trash" => object(json!({ "paths": strings }), &["paths"]),
+        "files.trash" | "dev.clean" => object(json!({ "paths": strings }), &["paths"]),
+        "dev.find" => object(json!({ "root": string }), &["root"]),
         "files.reveal" => object(json!({ "path": string }), &["path"]),
         "cleanup.run" => object(json!({ "categories": strings }), &["categories"]),
         "programs.uninstall" => object(json!({ "key": string }), &["key"]),

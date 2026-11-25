@@ -28,6 +28,11 @@ large forgotten files and programs that start with the system for no reason.
 - **Duplicate files**: files with exactly the same contents (size, then first block, then a full
   BLAKE3 hash). Hard links are not counted as copies and cloud-only files are not downloaded. One
   copy of each file always stays; the others go to the recycle bin.
+- **Build folders**: `node_modules`, Rust's `target`, Python virtual environments, Gradle, Maven,
+  .NET, Flutter and CMake output, and web framework caches in your projects. A folder counts only
+  beside the file that proves what it is (`package.json` with its lockfile, `Cargo.toml` with
+  Cargo's cache tag), never inside hidden folders, app data or programs. Deleted for good, since
+  each project makes them again (`npm install`, `cargo build`).
 - **Junk cleanup**: temporary files, update downloads, crash reports, browser and app caches,
   package manager caches, old installers in Downloads, the recycle bin. Each category says how
   safe it is and whether it needs administrator rights.
@@ -52,7 +57,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 
 | Feature | Windows | Linux | macOS |
 |---|:-:|:-:|:-:|
-| Overview, disk analyzer, duplicate files | ✓ | ✓ | ✓ |
+| Overview, disk analyzer, duplicate files, build folders | ✓ | ✓ | ✓ |
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Recommendations | ✓ | ✓ | ✓ |
@@ -102,6 +107,7 @@ rewind-os-cli commands                       # every tool and its id
 rewind-os-cli overview
 rewind-os-cli scan C:\ --top 30
 rewind-os-cli duplicates C:\Users\me --min-mb 10
+rewind-os-cli dev find                       # build folders of your projects
 rewind-os-cli clean analyze
 rewind-os-cli clean run --defaults --yes     # the categories marked safe
 rewind-os-cli leftovers

@@ -578,3 +578,43 @@ This is the first scan of this folder; what changed shows from the next one.	Es 
 The last scan of this folder was measured another way (from the master file table or folder by folder); what changed shows from the next scan.	El último escaneo de esta carpeta se midió de otra forma (con la tabla maestra de archivos o carpeta a carpeta); lo que cambie se verá a partir del siguiente.
 was {size}	antes {size}
 was under {size}	antes menos de {size}
+Build folders	Carpetas de compilación
+node_modules, target and other folders your projects can rebuild	node_modules, target y otras carpetas que tus proyectos pueden rehacer
+Downloaded packages and build output of your software projects. Each project makes them again with its own tool when you next build it.	Paquetes descargados y resultados de compilación de tus proyectos de software. Cada proyecto los vuelve a crear con su propia herramienta la próxima vez que lo compiles.
+Find build folders of software projects (node_modules, target, virtual environments) under a folder	Buscar carpetas de compilación de proyectos de software (node_modules, target, entornos virtuales) dentro de una carpeta
+Delete chosen build folders of software projects; each project's own tool makes them again	Borrar las carpetas de compilación elegidas; la herramienta de cada proyecto las vuelve a crear
+Node.js packages	Paquetes de Node.js
+Rust build	Compilación de Rust
+Maven build	Compilación de Maven
+Gradle build	Compilación de Gradle
+.NET build	Compilación de .NET
+Python environment	Entorno de Python
+Web framework cache	Caché de framework web
+Flutter build	Compilación de Flutter
+CMake build	Compilación de CMake
+This is not a build folder Rewind OS recognises, so nothing was deleted.	Esta no es una carpeta de compilación que Rewind OS reconozca, así que no se ha borrado nada.
+This is inside a hidden folder, an app's data or a program's folder, where build folders belong to installed tools.	Está dentro de una carpeta oculta, de los datos de una aplicación o de la carpeta de un programa, donde las carpetas de compilación pertenecen a herramientas instaladas.
+Projects are not searched inside the operating system's or programs' folders.	No se buscan proyectos dentro de las carpetas del sistema ni de los programas.
+Looking for projects	Buscando proyectos
+Measuring	Midiendo
+Deleting	Borrando
+Search finished: {n} build folders, {size} in total.	Búsqueda terminada: {n} carpetas de compilación, {size} en total.
+{n} build folders, {size} in total.	{n} carpetas de compilación, {size} en total.
+{n} files in use were kept.	Se han conservado {n} archivos en uso.
+Deleted {size}.	Borrados {size}.
+No build folders found.	No se han encontrado carpetas de compilación.
+{n} folders	{n} carpetas
+Projects	Proyectos
+Not used for 3 months	Sin usar en 3 meses
+The search was stopped; some folders may be missing.	La búsqueda se detuvo; puede faltar alguna carpeta.
+{n} folders could not be read.	No se pudieron leer {n} carpetas.
+Select projects not used for 3 months	Elegir proyectos sin usar en 3 meses
+Python environments are left out: packages installed by hand would be lost.	Los entornos de Python quedan fuera: se perderían los paquetes instalados a mano.
+Delete {size}	Borrar {size}
+Made again with: {command}	Se vuelve a crear con: {command}
+Check first	Revisar antes
+Packages installed by hand into this environment would be lost.	Se perderían los paquetes instalados a mano en este entorno.
+When the project last changed	Cuándo cambió el proyecto por última vez
+{n} build folders ({size}) will be deleted permanently, not moved to the recycle bin. Each project makes its own again with its build tool (npm install, cargo build…).	Se borrarán para siempre {n} carpetas de compilación ({size}), sin pasar por la papelera. Cada proyecto vuelve a crear las suyas con su herramienta de compilación (npm install, cargo build…).
+Delete build folders?	¿Borrar las carpetas de compilación?
+Name at least one build folder.	Indica al menos una carpeta de compilación.

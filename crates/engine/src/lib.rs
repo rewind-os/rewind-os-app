@@ -15,6 +15,7 @@ pub mod maintenance;
 pub mod mft;
 pub mod packages;
 pub mod programs;
+pub mod projects;
 pub mod recommend;
 pub mod safety;
 pub mod scan;
@@ -168,6 +169,15 @@ pub const TOOLS: &[ToolSpec] = &[
         "Find files with identical contents under a folder",
     ),
     ToolSpec::new(
+        "dev.find",
+        "Find build folders of software projects (node_modules, target, virtual environments) under a folder",
+    ),
+    ToolSpec::new(
+        "dev.clean",
+        "Delete chosen build folders of software projects; each project's own tool makes them again",
+    )
+    .changes(),
+    ToolSpec::new(
         "cleanup.analyze",
         "Measure temporary files, caches and other junk by category",
     )
@@ -292,6 +302,14 @@ pub enum Request {
         #[serde(default)]
         min_bytes: Option<u64>,
     },
+    /// `root` defaults to the home folder.
+    #[serde(rename = "dev.find")]
+    DevFind {
+        #[serde(default)]
+        root: Option<PathBuf>,
+    },
+    #[serde(rename = "dev.clean")]
+    DevClean { paths: Vec<PathBuf> },
     #[serde(rename = "cleanup.analyze")]
     CleanupAnalyze,
     #[serde(rename = "cleanup.run")]
@@ -338,6 +356,8 @@ pub enum Response {
     Scan(#[serde(serialize_with = "scan::serialize_summary")] Arc<scan::ScanTree>),
     Files(Vec<scan::FileEntry>),
     Duplicates(duplicates::DuplicateReport),
+    BuildFolders(projects::Report),
+    BuildFoldersCleaned(Vec<projects::Cleaned>),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
     CleanupDone(Vec<cleanup::CategoryResult>),
     Programs(Vec<programs::InstalledProgram>),
@@ -426,6 +446,18 @@ impl Engine {
                 Ok(Response::RegistryLeftovers(leftovers::find_registry(task)))
             }
             Request::FilesTrash { paths } => Ok(Response::Trashed(trash(&paths, task))),
+            Request::DevFind { root } => {
+                let root = root
+                    .or_else(projects::default_root)
+                    .ok_or_else(|| EngineError::NotFound("home folder".to_owned()))?;
+                projects::find(&root, &projects::Places::current(), task)
+                    .map(Response::BuildFolders)
+            }
+            Request::DevClean { paths } => Ok(Response::BuildFoldersCleaned(projects::clean(
+                &paths,
+                &projects::Places::current(),
+                task,
+            ))),
             Request::FilesReveal { path } => {
                 use rewind_os_platform::shell::{Revealed, reveal};
                 Ok(Response::Done(match reveal(&path)? {
@@ -482,6 +514,8 @@ impl Request {
             Request::LeftoversFind => "leftovers.find",
             Request::RegistryLeftovers => "leftovers.registry",
             Request::FilesTrash { .. } => "files.trash",
+            Request::DevFind { .. } => "dev.find",
+            Request::DevClean { .. } => "dev.clean",
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",
             Request::StartupSet { .. } => "startup.set",

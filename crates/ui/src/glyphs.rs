@@ -11,6 +11,7 @@ pub enum Glyph {
     Duplicates,
     Cleanup,
     Leftovers,
+    BuildFolders,
     Programs,
     Startup,
     Lighten,
@@ -69,6 +70,20 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
                 p(14.0, 13.5),
                 p(2.0, 13.5),
             ]);
+        }
+        Glyph::BuildFolders => {
+            // A package: a box seen from above, with its lid's seam.
+            line(vec![
+                p(8.0, 2.0),
+                p(14.0, 5.0),
+                p(14.0, 11.0),
+                p(8.0, 14.0),
+                p(2.0, 11.0),
+                p(2.0, 5.0),
+                p(8.0, 2.0),
+            ]);
+            line(vec![p(2.0, 5.0), p(8.0, 8.0), p(14.0, 5.0)]);
+            line(vec![p(8.0, 8.0), p(8.0, 14.0)]);
         }
         Glyph::Programs => {
             for (x, y) in [(2.0, 2.0), (9.0, 2.0), (2.0, 9.0), (9.0, 9.0)] {

@@ -30,6 +30,12 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   bloque y después un hash BLAKE3 completo). Los enlaces duros no cuentan como copias y los
   archivos que solo están en la nube no se descargan. Siempre queda una copia de cada archivo; las
   demás van a la papelera.
+- **Carpetas de compilación**: `node_modules`, `target` de Rust, entornos virtuales de Python,
+  salidas de Gradle, Maven, .NET, Flutter y CMake, y cachés de frameworks web de tus proyectos. Una
+  carpeta solo cuenta junto al archivo que demuestra qué es (`package.json` con su lockfile,
+  `Cargo.toml` con la etiqueta de caché de Cargo), nunca dentro de carpetas ocultas, datos de apps
+  o programas. Se borran del todo, porque cada proyecto las vuelve a crear (`npm install`,
+  `cargo build`).
 - **Limpieza de basura**: temporales, descargas de actualizaciones, informes de bloqueos, cachés
   de navegadores y apps, cachés de gestores de paquetes, instaladores antiguos en Descargas y la
   papelera. Cada categoría indica lo segura que es y si necesita permisos de administrador.
@@ -55,7 +61,7 @@ administrador cuando una tarea lo necesita.
 
 | Función | Windows | Linux | macOS |
 |---|:-:|:-:|:-:|
-| Resumen, analizador de disco, archivos duplicados | ✓ | ✓ | ✓ |
+| Resumen, analizador de disco, archivos duplicados, carpetas de compilación | ✓ | ✓ | ✓ |
 | Limpieza, papelera | ✓ | ✓ | ✓ |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Recomendaciones | ✓ | ✓ | ✓ |

@@ -140,6 +140,11 @@ enum Update {
     On,
     /// Stop the desktop app from checking by itself.
     Off,
+    /// Download the newer version, check its signature, and install it (MSI or portable copy).
+    Install {
+        #[arg(long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -224,6 +229,7 @@ enum Maintenance {
 fn main() -> ExitCode {
     let cli = Cli::parse();
     rewind_os_i18n::init(cli.lang.as_deref());
+    rewind_os_engine::update::tidy();
     let mut json = cli.json;
     let top = match &cli.command {
         Command::Scan { top, .. }
@@ -375,6 +381,10 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
         Command::Update(Update::Check) => Request::UpdateCheck { now: true },
         Command::Update(Update::On) => Request::UpdateAuto { enabled: true },
         Command::Update(Update::Off) => Request::UpdateAuto { enabled: false },
+        Command::Update(Update::Install { yes }) => {
+            confirm(yes)?;
+            Request::UpdateInstall { restart: false }
+        }
         Command::Clean(Clean::Analyze) => Request::CleanupAnalyze,
         Command::Clean(Clean::Run {
             mut categories,
@@ -922,6 +932,25 @@ fn print_human(response: &Response, top: usize) {
                 );
             }
         }
+        Response::UpdateInstalled(done) => match &done.folder {
+            Some(folder) => println!(
+                "{}",
+                trf(
+                    "Rewind OS {version} is installed in {folder}.",
+                    &[
+                        ("version", &done.version),
+                        ("folder", &folder.display().to_string())
+                    ],
+                )
+            ),
+            None => println!(
+                "{}",
+                trf(
+                    "The installer of Rewind OS {version} was started; follow its steps.",
+                    &[("version", &done.version)],
+                )
+            ),
+        },
         Response::Startup(entries) => {
             for e in entries {
                 let state = if e.enabled { tr("On") } else { tr("Off") };

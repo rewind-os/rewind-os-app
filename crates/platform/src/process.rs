@@ -44,6 +44,20 @@ pub fn command(program: &str) -> Command {
     cmd
 }
 
+/// Starts `program` with `args` and does not wait for it; it keeps running after this program
+/// exits.
+pub fn start(program: &std::path::Path, args: &[&str]) -> Result<()> {
+    let name = program.display().to_string();
+    command(&name)
+        .args(args)
+        .spawn()
+        .map(|_| ())
+        .map_err(|source| PlatformError::Spawn {
+            program: name,
+            source,
+        })
+}
+
 /// Runs `program` with `args` and waits for it. A non-zero exit code is not an error here;
 /// callers decide what it means.
 pub fn run(program: &str, args: &[&str]) -> Result<Finished> {

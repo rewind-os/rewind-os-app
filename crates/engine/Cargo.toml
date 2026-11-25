@@ -21,6 +21,8 @@ pelite.workspace = true
 ico.workspace = true
 blake3.workspace = true
 same-file.workspace = true
+sha2.workspace = true
+minisign-verify.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

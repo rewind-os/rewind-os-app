@@ -95,6 +95,7 @@ const EVERYWHERE: &[Os] = &[Os::Windows, Os::Linux, Os::MacOs];
 const WINDOWS: &[Os] = &[Os::Windows];
 const LINUX: &[Os] = &[Os::Linux];
 const LINUX_MAC: &[Os] = &[Os::Linux, Os::MacOs];
+const WINDOWS_LINUX: &[Os] = &[Os::Windows, Os::Linux];
 
 impl ToolSpec {
     const fn new(id: &'static str, summary: &'static str) -> Self {
@@ -186,6 +187,12 @@ pub const TOOLS: &[ToolSpec] = &[
         "update.auto",
         "Turn the daily check for a newer version on or off",
     ),
+    ToolSpec::new(
+        "update.install",
+        "Download the newer version, check that the Rewind OS project signed it, and install it (the MSI or a portable copy)",
+    )
+    .changes()
+    .only(WINDOWS_LINUX),
     ToolSpec::new(
         "update.notes",
         "Open the page of the newer version, with its notes and downloads, in the web browser",
@@ -331,6 +338,12 @@ pub enum Request {
     },
     #[serde(rename = "update.auto")]
     UpdateAuto { enabled: bool },
+    /// `restart` starts the new version afterwards; the caller should then exit.
+    #[serde(rename = "update.install")]
+    UpdateInstall {
+        #[serde(default)]
+        restart: bool,
+    },
     #[serde(rename = "update.notes")]
     UpdateNotes,
     #[serde(rename = "cleanup.analyze")]
@@ -382,6 +395,7 @@ pub enum Response {
     BuildFolders(projects::Report),
     BuildFoldersCleaned(Vec<projects::Cleaned>),
     Update(update::Status),
+    UpdateInstalled(update::Installed),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
     CleanupDone(Vec<cleanup::CategoryResult>),
     Programs(Vec<programs::InstalledProgram>),
@@ -491,6 +505,9 @@ impl Engine {
                     "Rewind OS will not check for new versions by itself"
                 }))
             }
+            Request::UpdateInstall { restart } => {
+                update::install(restart, task).map(Response::UpdateInstalled)
+            }
             Request::UpdateNotes => {
                 update::open_notes()?;
                 Ok(Response::Done("Opened in the web browser"))
@@ -555,6 +572,7 @@ impl Request {
             Request::DevClean { .. } => "dev.clean",
             Request::UpdateCheck { .. } => "update.check",
             Request::UpdateAuto { .. } => "update.auto",
+            Request::UpdateInstall { .. } => "update.install",
             Request::UpdateNotes => "update.notes",
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",

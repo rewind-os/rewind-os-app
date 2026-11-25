@@ -13,20 +13,39 @@ pub fn page_header(ui: &mut Ui, title: &str, subtitle: &str) {
     page_header_with(ui, title, subtitle, |_| {});
 }
 
-/// The page title and its one-line description, with `actions` laid out from the right edge.
+/// The page's tool band, as in Termius: the title in semibold and its one-line description on
+/// a band a step lighter than the page, running across the page's whole width, with `actions`
+/// laid out from the right edge.
 pub fn page_header_with(ui: &mut Ui, title: &str, subtitle: &str, actions: impl FnOnce(&mut Ui)) {
     let t = theme::current(ui.ctx());
-    ui.add_space(4.0);
-    ui.horizontal(|ui| {
-        ui.vertical(|ui| {
-            ui.label(RichText::new(title).size(22.0).strong().color(t.text));
-            if !subtitle.is_empty() {
-                ui.label(RichText::new(subtitle).color(t.text_muted));
-            }
-        });
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), actions);
-    });
-    ui.add_space(t.gap * 1.25);
+    // The band is painted under the header once its height is known.
+    let band = ui.painter().add(egui::Shape::Noop);
+    let header = ui
+        .horizontal(|ui| {
+            ui.vertical(|ui| {
+                ui.label(
+                    RichText::new(title)
+                        .font(theme::semibold(18.0))
+                        .color(t.text),
+                );
+                if !subtitle.is_empty() {
+                    ui.label(RichText::new(subtitle).small().color(t.text_muted));
+                }
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), actions);
+        })
+        .response
+        .rect;
+    let clip = ui.clip_rect();
+    let rect = egui::Rect::from_min_max(
+        egui::pos2(clip.left() + 1.0, clip.top()),
+        egui::pos2(clip.right(), header.bottom() + 14.0),
+    );
+    ui.painter().set(
+        band,
+        egui::Shape::rect_filled(rect, CornerRadius::ZERO, t.surface),
+    );
+    ui.add_space(14.0 + t.gap);
 }
 
 pub fn card<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
@@ -39,24 +58,20 @@ pub fn card<R>(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui) -> R) -> R {
         .inner
 }
 
-/// One row of a list. Every other row is faintly shaded and the row under the pointer is
-/// highlighted across its whole width, so the buttons at the end of a row clearly belong to it.
-/// `add` lays the row out from left to right, vertically centred.
-pub fn list_row<R>(ui: &mut Ui, index: usize, height: f32, add: impl FnOnce(&mut Ui) -> R) -> R {
+/// One row of a list, on its own card as Termius lists its hosts and logs. The row under the
+/// pointer is lighter across its whole width, so the buttons at the end of a row clearly belong
+/// to it. `add` lays the row out from left to right, vertically centred.
+pub fn list_row<R>(ui: &mut Ui, _index: usize, height: f32, add: impl FnOnce(&mut Ui) -> R) -> R {
     let t = theme::current(ui.ctx());
     let width = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), Sense::hover());
     let fill = if ui.rect_contains_pointer(rect) {
-        Some(t.surface_raised)
-    } else if index % 2 == 1 {
-        Some(stripe(t))
+        t.surface_raised
     } else {
-        None
+        t.surface
     };
-    if let Some(fill) = fill {
-        ui.painter()
-            .rect_filled(rect, CornerRadius::same(t.radius), fill);
-    }
+    ui.painter()
+        .rect_filled(rect, CornerRadius::same(t.radius), fill);
     let inner = rect.shrink2(egui::vec2(12.0, 0.0));
     let mut row = ui.new_child(
         egui::UiBuilder::new()
@@ -66,15 +81,13 @@ pub fn list_row<R>(ui: &mut Ui, index: usize, height: f32, add: impl FnOnce(&mut
     add(&mut row)
 }
 
-/// Halfway between the background and the surface: shading that guides the eye without
-/// drawing lines.
-fn stripe(t: &Theme) -> Color32 {
-    let mix = |a: u8, b: u8| ((u16::from(a) + u16::from(b)) / 2) as u8;
-    Color32::from_rgb(
-        mix(t.background.r(), t.surface.r()),
-        mix(t.background.g(), t.surface.g()),
-        mix(t.background.b(), t.surface.b()),
-    )
+/// A Termius-style icon: a line glyph in white on a rounded square of `fill` (one of
+/// `theme::TILES`). Decorative: the name next to it is what screen readers read.
+pub fn icon_tile(ui: &mut Ui, glyph: crate::glyphs::Glyph, fill: Color32, size: f32) -> Response {
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(size, size), Sense::hover());
+    ui.painter().rect_filled(rect, CornerRadius::same(8), fill);
+    crate::glyphs::paint(ui.painter(), rect, glyph, Color32::WHITE);
+    response
 }
 
 /// A small button at the end of a list row.
@@ -159,26 +172,17 @@ pub fn nav_item(
     };
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let hovered = enabled && (response.hovered() || response.has_focus());
-    // A faint accent tint marks the current page in both themes; hover uses the card surface.
+    // The current page sits on a lighter pill, as in Termius; hover shows a fainter one.
     let fill = if selected {
-        Some(t.accent.gamma_multiply(0.16))
+        Some(t.surface_raised)
     } else if hovered {
-        Some(t.surface)
+        Some(t.surface_raised.gamma_multiply(0.5))
     } else {
         None
     };
     if let Some(fill) = fill {
         ui.painter()
             .rect_filled(rect, CornerRadius::same(t.radius), fill);
-    }
-    if selected {
-        // A short accent bar marks the current page, as well as the fill and the bold label.
-        let bar = egui::Rect::from_center_size(
-            rect.left_center() + egui::vec2(1.5, 0.0),
-            egui::vec2(3.0, 16.0),
-        );
-        ui.painter()
-            .rect_filled(bar, CornerRadius::same(2), t.accent);
     }
     if response.has_focus() {
         ui.painter().rect_stroke(
@@ -188,24 +192,21 @@ pub fn nav_item(
             egui::StrokeKind::Inside,
         );
     }
-    let color = if !enabled {
-        t.text_muted.gamma_multiply(0.6)
-    } else if selected {
+    let color = if enabled {
         t.text
     } else {
-        t.text_muted
+        t.text_muted.gamma_multiply(0.6)
     };
-    let icon_color = if selected && enabled { t.accent } else { color };
     let icon = egui::Rect::from_center_size(
-        rect.left_center() + egui::vec2(22.0, 0.0),
+        rect.left_center() + egui::vec2(20.0, 0.0),
         egui::vec2(16.0, 16.0),
     );
-    crate::glyphs::paint(ui.painter(), icon, glyph, icon_color);
+    crate::glyphs::paint(ui.painter(), icon, glyph, color);
     ui.painter().text(
-        rect.left_center() + egui::vec2(42.0, 0.0),
+        rect.left_center() + egui::vec2(40.0, 0.0),
         egui::Align2::LEFT_CENTER,
         label,
-        egui::FontId::proportional(14.0),
+        theme::semibold(14.0),
         color,
     );
     let label = label.to_owned();
@@ -217,7 +218,13 @@ pub fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> Response {
     let t = theme::current(ui.ctx());
     ui.add_enabled(
         enabled,
-        egui::Button::new(RichText::new(text).color(t.on_accent).strong()).fill(t.accent),
+        egui::Button::new(
+            RichText::new(text)
+                .color(t.on_accent)
+                .strong()
+                .family(crate::theme::bold()),
+        )
+        .fill(t.accent_fill),
     )
 }
 
@@ -225,7 +232,13 @@ pub fn danger_button(ui: &mut Ui, text: &str, enabled: bool) -> Response {
     let t = theme::current(ui.ctx());
     ui.add_enabled(
         enabled,
-        egui::Button::new(RichText::new(text).color(t.on_danger).strong()).fill(t.danger),
+        egui::Button::new(
+            RichText::new(text)
+                .color(t.on_danger)
+                .strong()
+                .family(crate::theme::bold()),
+        )
+        .fill(t.danger),
     )
 }
 
@@ -242,7 +255,7 @@ pub fn job_progress(ui: &mut Ui, job: &Job, cancellable: bool) -> bool {
         } else {
             tr(p.stage)
         };
-        ui.label(RichText::new(stage).strong());
+        ui.label(RichText::new(stage).strong().family(crate::theme::bold()));
         if p.items > 0 {
             ui.label(
                 RichText::new(trf("{n} items", &[("n", &format::count(p.items))]))

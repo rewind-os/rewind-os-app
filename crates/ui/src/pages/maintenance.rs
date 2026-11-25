@@ -85,7 +85,7 @@ impl State {
             if journal {
                 card(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    ui.label(RichText::new(tr("System journal")).strong());
+                    ui.label(RichText::new(tr("System journal")).strong().family(crate::theme::bold()));
                     ui.label(RichText::new(tr("systemd keeps a log of everything the system does. Old entries are rarely needed and can take gigabytes.")).color(t.text_muted));
                     ui.horizontal(|ui| {
                         if ui.add_enabled(self.job.is_none(), egui::Button::new(tr("Measure"))).clicked() {
@@ -101,7 +101,7 @@ impl State {
             if windows {
             card(ui, |ui| {
                 ui.set_width(ui.available_width());
-                ui.label(RichText::new(tr("Windows component store")).strong());
+                ui.label(RichText::new(tr("Windows component store")).strong().family(crate::theme::bold()));
                 ui.label(RichText::new(tr("The WinSxS folder looks huge in a disk scan because most of its files are shared with Windows itself. This measures its real size and removes old versions of updated components.")).color(t.text_muted));
                 ui.horizontal(|ui| {
                     if ui.add_enabled(ready, egui::Button::new(tr("Measure real size"))).clicked() {
@@ -115,7 +115,7 @@ impl State {
             ui.add_space(t.gap);
             card(ui, |ui| {
                 ui.set_width(ui.available_width());
-                ui.label(RichText::new(tr("Hibernation")).strong());
+                ui.label(RichText::new(tr("Hibernation")).strong().family(crate::theme::bold()));
                 ui.label(RichText::new(tr("Turning hibernation off deletes hiberfil.sys, which is often as large as your memory. Fast startup also stops working.")).color(t.text_muted));
                 ui.horizontal(|ui| {
                     if ui.add_enabled(ready, egui::Button::new(tr("Turn off"))).clicked() {
@@ -139,7 +139,7 @@ impl State {
                 ui.add_space(t.gap);
                 card(ui, |ui| {
                     ui.set_width(ui.available_width());
-                    ui.label(RichText::new(tr("Result")).strong());
+                    ui.label(RichText::new(tr("Result")).strong().family(crate::theme::bold()));
                     ui.add(egui::Label::new(RichText::new(output).monospace().small()).wrap());
                 });
             }

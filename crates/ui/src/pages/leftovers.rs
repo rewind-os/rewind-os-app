@@ -260,7 +260,11 @@ impl State {
                         }
                         ui.add_sized(
                             [80.0, 20.0],
-                            egui::Label::new(RichText::new(bytes(item.bytes)).strong()),
+                            egui::Label::new(
+                                RichText::new(bytes(item.bytes))
+                                    .strong()
+                                    .family(crate::theme::bold()),
+                            ),
                         );
                         let color = match item.confidence {
                             Confidence::High => t.ok,

@@ -211,7 +211,8 @@ impl State {
                                                 ui.horizontal(|ui| {
                                                     ui.label(
                                                         RichText::new(tr(status.tweak.name))
-                                                            .strong(),
+                                                            .strong()
+                                                            .family(crate::theme::bold()),
                                                     );
                                                     if status.tweak.recommended {
                                                         widgets::badge(
@@ -288,7 +289,11 @@ impl State {
             return;
         }
         let t = theme::current(ui.ctx());
-        ui.label(RichText::new(tr("Preinstalled apps")).strong());
+        ui.label(
+            RichText::new(tr("Preinstalled apps"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
         ui.label(
             RichText::new(tr(
                 "Removed for your account only. Any of them can be installed again from the Microsoft Store.",
@@ -333,7 +338,11 @@ impl State {
                             self.apps_selected.remove(&app.id);
                         }
                     }
-                    ui.label(RichText::new(tr(app.name)).strong());
+                    ui.label(
+                        RichText::new(tr(app.name))
+                            .strong()
+                            .family(crate::theme::bold()),
+                    );
                     if app.recommended {
                         widgets::badge(ui, tr("Suggested"), t.accent);
                     }
@@ -418,7 +427,11 @@ fn progress(ui: &mut egui::Ui, tweaks: &[TweakStatus], pending: usize, removable
     ui.add_space(t.gap * 0.75);
     card(ui, |ui| {
         ui.set_width(ui.available_width());
-        ui.label(RichText::new(tr("Progress by group")).strong());
+        ui.label(
+            RichText::new(tr("Progress by group"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
         ui.add_space(8.0);
         egui::Grid::new("tweak_progress")
             .num_columns(3)

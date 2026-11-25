@@ -38,26 +38,55 @@ pub fn run() -> eframe::Result {
     )
 }
 
-/// Uses the Windows interface font when it is installed (it is read from the system, not
-/// shipped with the app). Elsewhere egui's bundled font stays.
+/// Uses the system's interface font when it is installed (read from the system, not shipped
+/// with the app): Segoe UI on Windows. The semibold family (`theme::SEMIBOLD`) takes the
+/// system's semibold face, Segoe UI Semibold on Windows or a common one on Linux, and falls back
+/// to the regular font, so it always exists.
 fn load_system_font(ctx: &egui::Context) {
-    let Some(windir) = std::env::var_os("WINDIR") else {
-        return;
-    };
-    let path = std::path::Path::new(&windir)
-        .join("Fonts")
-        .join("segoeui.ttf");
-    let Ok(data) = std::fs::read(path) else {
-        return;
-    };
-    ctx.add_font(egui::epaint::text::FontInsert::new(
-        "system-ui",
-        egui::FontData::from_owned(data),
-        vec![egui::epaint::text::InsertFontFamily {
-            family: egui::FontFamily::Proportional,
-            priority: egui::epaint::text::FontPriority::Highest,
-        }],
-    ));
+    let mut fonts = egui::FontDefinitions::default();
+    let mut regular: Vec<std::path::PathBuf> = Vec::new();
+    let mut semibold: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(windir) = std::env::var_os("WINDIR") {
+        let dir = std::path::Path::new(&windir).join("Fonts");
+        regular.push(dir.join("segoeui.ttf"));
+        semibold.push(dir.join("seguisb.ttf"));
+    } else {
+        for path in [
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-M.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSans-SemiBold.ttf",
+            "/usr/share/fonts/noto/NotoSans-SemiBold.ttf",
+            "/usr/share/fonts/google-noto/NotoSans-SemiBold.ttf",
+        ] {
+            semibold.push(path.into());
+        }
+    }
+    let mut family = fonts
+        .families
+        .get(&egui::FontFamily::Proportional)
+        .cloned()
+        .unwrap_or_default();
+    if let Some(data) = regular.iter().find_map(|p| std::fs::read(p).ok()) {
+        fonts.font_data.insert(
+            "system-ui".to_owned(),
+            std::sync::Arc::new(egui::FontData::from_owned(data)),
+        );
+        family.insert(0, "system-ui".to_owned());
+        fonts
+            .families
+            .insert(egui::FontFamily::Proportional, family.clone());
+    }
+    let mut strong = family;
+    if let Some(data) = semibold.iter().find_map(|p| std::fs::read(p).ok()) {
+        fonts.font_data.insert(
+            "system-ui-semibold".to_owned(),
+            std::sync::Arc::new(egui::FontData::from_owned(data)),
+        );
+        strong.insert(0, "system-ui-semibold".to_owned());
+    }
+    fonts
+        .families
+        .insert(egui::FontFamily::Name(theme::SEMIBOLD.into()), strong);
+    ctx.set_fonts(fonts);
 }
 
 /// The window icon: the 256 px app icon on Windows and Linux, the one with Apple's margin on

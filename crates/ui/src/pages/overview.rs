@@ -105,7 +105,11 @@ impl State {
                             egui::Layout::right_to_left(egui::Align::Center),
                             |ui| {
                                 if let Some(saving) = r.saving.filter(|b| *b > 0) {
-                                    ui.label(RichText::new(bytes(saving)).strong());
+                                    ui.label(
+                                        RichText::new(bytes(saving))
+                                            .strong()
+                                            .family(crate::theme::bold()),
+                                    );
                                 }
                             },
                         );
@@ -118,7 +122,11 @@ impl State {
                             ui.add_space(9.0);
                             let args: Vec<(&str, &str)> =
                                 r.args.iter().map(|(k, v)| (*k, v.as_str())).collect();
-                            ui.label(RichText::new(trf(r.title, &args)).strong());
+                            ui.label(
+                                RichText::new(trf(r.title, &args))
+                                    .strong()
+                                    .family(crate::theme::bold()),
+                            );
                             ui.add(
                                 egui::Label::new(
                                     RichText::new(tr(r.detail)).small().color(t.text_muted),
@@ -300,10 +308,17 @@ fn drives(ui: &mut egui::Ui, shared: &mut Shared, overview: &Overview) {
                         widgets::badge(ui, kind, t.text_muted);
                     }
                     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        widgets::icon_tile(
+                            ui,
+                            crate::glyphs::Glyph::Drive,
+                            crate::theme::TILES[0],
+                            36.0,
+                        );
                         ui.add(
                             egui::Label::new(
                                 RichText::new(drive.mount.display().to_string())
                                     .strong()
+                                    .family(crate::theme::bold())
                                     .size(15.0),
                             )
                             .truncate(),
@@ -340,7 +355,11 @@ fn drives(ui: &mut egui::Ui, shared: &mut Shared, overview: &Overview) {
                                 (tr("Total"), drive.total),
                             ] {
                                 ui.label(RichText::new(word).color(t.text_muted));
-                                ui.label(RichText::new(bytes(value)).strong());
+                                ui.label(
+                                    RichText::new(bytes(value))
+                                        .strong()
+                                        .family(crate::theme::bold()),
+                                );
                                 ui.end_row();
                             }
                         });
@@ -418,7 +437,11 @@ fn system(ui: &mut egui::Ui, overview: &Overview) {
         } else {
             card(ui, |ui| {
                 ui.set_width(ui.available_width());
-                ui.label(RichText::new(tr("Large system files")).strong());
+                ui.label(
+                    RichText::new(tr("Large system files"))
+                        .strong()
+                        .family(crate::theme::bold()),
+                );
                 ui.label(
                     RichText::new(tr(
                         "Windows manages these files itself. Never delete them by hand.",

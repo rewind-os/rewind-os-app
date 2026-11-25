@@ -8,14 +8,13 @@ use egui::{
 };
 use std::f32::consts::{FRAC_PI_2, TAU};
 
-/// A small, upper-case heading above a group of cards.
+/// A semibold heading above a group of cards ("Drives", "Hosts" in Termius).
 pub fn section_title(ui: &mut Ui, text: &str) {
     let t = theme::current(ui.ctx());
     ui.label(
-        RichText::new(text.to_uppercase())
-            .size(11.5)
-            .strong()
-            .color(t.text_muted),
+        RichText::new(text)
+            .font(theme::semibold(14.0))
+            .color(t.text),
     );
     ui.add_space(6.0);
 }
@@ -38,7 +37,13 @@ pub fn stat_tile(
             ui.set_width(ui.available_width());
             ui.label(RichText::new(label).small().color(t.text_muted));
             ui.add_space(2.0);
-            ui.label(RichText::new(value).size(24.0).strong().color(t.text));
+            ui.label(
+                RichText::new(value)
+                    .size(24.0)
+                    .strong()
+                    .family(crate::theme::bold())
+                    .color(t.text),
+            );
             // An empty line still takes its place, so tiles in a row keep one height.
             let detail = if detail.is_empty() { " " } else { detail };
             ui.add(egui::Label::new(RichText::new(detail).small().color(t.text_muted)).truncate());
@@ -226,7 +231,7 @@ pub fn legend_row(ui: &mut Ui, color: Color32, name: &str, value: &str, share: O
                         .color(t.text_muted),
                 );
             }
-            ui.label(RichText::new(value).strong());
+            ui.label(RichText::new(value).strong().family(crate::theme::bold()));
         });
     });
 }

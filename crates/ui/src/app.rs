@@ -19,6 +19,7 @@ pub enum Page {
     Duplicates,
     Cleanup,
     Leftovers,
+    BuildFolders,
     Programs,
     Startup,
     Lighten,
@@ -35,6 +36,7 @@ const SECTIONS: [(&str, &[Page]); 4] = [
             Page::Duplicates,
             Page::Cleanup,
             Page::Leftovers,
+            Page::BuildFolders,
         ],
     ),
     ("Programs", &[Page::Programs, Page::Startup]),
@@ -42,12 +44,13 @@ const SECTIONS: [(&str, &[Page]); 4] = [
 ];
 
 impl Page {
-    const ALL: [Page; 9] = [
+    const ALL: [Page; 10] = [
         Page::Overview,
         Page::Analyzer,
         Page::Duplicates,
         Page::Cleanup,
         Page::Leftovers,
+        Page::BuildFolders,
         Page::Programs,
         Page::Startup,
         Page::Lighten,
@@ -62,6 +65,7 @@ impl Page {
             Page::Duplicates => &["disk.duplicates"],
             Page::Cleanup => &["cleanup.analyze"],
             Page::Leftovers => &["leftovers.find"],
+            Page::BuildFolders => &["dev.find"],
             Page::Programs => &["programs.list"],
             Page::Startup => &["startup.list"],
             Page::Lighten => &["tweaks.list"],
@@ -85,6 +89,7 @@ impl Page {
             Page::Duplicates => "Duplicate files",
             Page::Cleanup => "Junk cleanup",
             Page::Leftovers => "Program leftovers",
+            Page::BuildFolders => "Build folders",
             Page::Programs => "Installed programs",
             Page::Startup => "Startup programs",
             Page::Lighten => "Make Windows lighter",
@@ -101,6 +106,7 @@ impl Page {
             Page::Duplicates => Glyph::Duplicates,
             Page::Cleanup => Glyph::Cleanup,
             Page::Leftovers => Glyph::Leftovers,
+            Page::BuildFolders => Glyph::BuildFolders,
             Page::Programs => Glyph::Programs,
             Page::Startup => Glyph::Startup,
             Page::Lighten => Glyph::Lighten,
@@ -115,6 +121,9 @@ impl Page {
             Page::Duplicates => "Find files you have more than once",
             Page::Cleanup => "Delete temporary files and caches",
             Page::Leftovers => "Folders left by uninstalled programs",
+            Page::BuildFolders => {
+                "node_modules, target and other folders your projects can rebuild"
+            }
             Page::Programs => "Uninstall what you no longer use",
             Page::Startup => "Choose what starts with the system",
             Page::Lighten => "Turn off ads, tracking and extras you do not use",
@@ -266,6 +275,7 @@ pub struct App {
     duplicates: pages::duplicates::State,
     cleanup: pages::cleanup::State,
     leftovers: pages::leftovers::State,
+    build_folders: pages::build_folders::State,
     programs: pages::programs::State,
     startup: pages::startup::State,
     lighten: pages::lighten::State,
@@ -304,6 +314,7 @@ impl App {
             duplicates: Default::default(),
             cleanup: Default::default(),
             leftovers: Default::default(),
+            build_folders: Default::default(),
             programs: Default::default(),
             startup: Default::default(),
             lighten: Default::default(),
@@ -319,6 +330,7 @@ impl App {
             || self.duplicates.busy()
             || self.cleanup.busy()
             || self.leftovers.busy()
+            || self.build_folders.busy()
             || self.programs.busy()
             || self.startup.busy()
             || self.lighten.busy()
@@ -486,6 +498,7 @@ impl eframe::App for App {
                     Page::Duplicates => self.duplicates.ui(ui, shared),
                     Page::Cleanup => self.cleanup.ui(ui, shared),
                     Page::Leftovers => self.leftovers.ui(ui, shared),
+                    Page::BuildFolders => self.build_folders.ui(ui, shared),
                     Page::Programs => self.programs.ui(ui, shared),
                     Page::Startup => self.startup.ui(ui, shared),
                     Page::Lighten => self.lighten.ui(ui, shared),

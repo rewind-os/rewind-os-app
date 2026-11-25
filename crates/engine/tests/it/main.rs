@@ -6,6 +6,7 @@ mod history;
 mod leftovers;
 mod mft;
 mod packages;
+mod projects;
 mod recommend;
 mod safety;
 mod scan;

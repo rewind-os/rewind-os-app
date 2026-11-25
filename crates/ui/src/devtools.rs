@@ -1,11 +1,11 @@
 //! Hooks for checking the interface without a person at the screen. Only active when the
 //! environment asks for them:
 //!
-//! - `REWIND_OS_PAGE=<overview|analyzer|duplicates|cleanup|leftovers|programs|startup|lighten|maintenance>`
+//! - `REWIND_OS_PAGE=<overview|analyzer|duplicates|cleanup|leftovers|buildfolders|programs|startup|lighten|maintenance>`
 //!   opens that page first.
 //! - `REWIND_OS_THEME=<light|dark>` shows that theme instead of following the system.
-//! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a duplicate search on the duplicates
-//!   page).
+//! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a search on the duplicates and build
+//!   folders pages).
 //! - `REWIND_OS_VIEW=<folders|files|types|changes>` opens that view of the analyzer after a scan.
 //! - `REWIND_OS_SCREENSHOT=<file.ppm>` saves the window as a PPM image once background work has
 //!   settled (or after 20 seconds) and closes the app.

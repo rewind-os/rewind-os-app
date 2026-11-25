@@ -76,6 +76,9 @@ enum Command {
         #[arg(long, default_value_t = 20)]
         top: usize,
     },
+    /// Build folders of software projects (node_modules, target, virtual environments).
+    #[command(subcommand)]
+    Dev(Dev),
     /// Junk cleanup.
     #[command(subcommand)]
     Clean(Clean),
@@ -107,6 +110,23 @@ enum Command {
     Maintenance(Maintenance),
     /// Run a raw request, for example '{"tool":"cleanup.analyze"}'. Always prints JSON.
     Run { request: String },
+}
+
+#[derive(Subcommand)]
+enum Dev {
+    /// Find build folders under PATH (the home folder when left out).
+    Find {
+        path: Option<PathBuf>,
+        /// How many folders to print.
+        #[arg(long, default_value_t = 30)]
+        top: usize,
+    },
+    /// Delete build folders (paths from `dev find`); each project's tool makes them again.
+    Clean {
+        paths: Vec<PathBuf>,
+        #[arg(long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -193,7 +213,9 @@ fn main() -> ExitCode {
     rewind_os_i18n::init(cli.lang.as_deref());
     let mut json = cli.json;
     let top = match &cli.command {
-        Command::Scan { top, .. } | Command::Duplicates { top, .. } => *top,
+        Command::Scan { top, .. }
+        | Command::Duplicates { top, .. }
+        | Command::Dev(Dev::Find { top, .. }) => *top,
         _ => 20,
     };
     let request = match build(cli.command, &mut json) {
@@ -329,6 +351,14 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             min_bytes: Some(min_mb.saturating_mul(1024 * 1024)),
         },
         Command::Files { dir } => Request::ListFiles { dir },
+        Command::Dev(Dev::Find { path, .. }) => Request::DevFind { root: path },
+        Command::Dev(Dev::Clean { paths, yes }) => {
+            confirm(yes)?;
+            if paths.is_empty() {
+                return Err(tr("Name at least one build folder.").to_owned());
+            }
+            Request::DevClean { paths }
+        }
         Command::Clean(Clean::Analyze) => Request::CleanupAnalyze,
         Command::Clean(Clean::Run {
             mut categories,
@@ -786,6 +816,65 @@ fn print_human(response: &Response, top: usize) {
             }
             if results.iter().any(|r| r.error.is_none()) {
                 println!("{}", tr("Space is freed when the recycle bin is emptied."));
+            }
+        }
+        Response::BuildFolders(report) => {
+            println!(
+                "{}",
+                trf(
+                    "{n} build folders, {size} in total.",
+                    &[
+                        ("n", &count(report.folders.len() as u64)),
+                        ("size", &bytes(report.total())),
+                    ]
+                )
+            );
+            if report.cancelled {
+                println!(
+                    "{}",
+                    tr("The search was stopped; some folders may be missing.")
+                );
+            }
+            if report.unreadable > 0 {
+                println!(
+                    "{}",
+                    trf(
+                        "{n} folders could not be read.",
+                        &[("n", &count(report.unreadable))]
+                    )
+                );
+            }
+            for f in report.folders.iter().take(top) {
+                let used = f
+                    .last_used
+                    .map(rewind_os_engine::format::local_date)
+                    .unwrap_or_default();
+                println!(
+                    "{:>10}  {:<20} {:<10}  {}",
+                    bytes(f.bytes),
+                    tr(f.kind.label()),
+                    used,
+                    f.path.display()
+                );
+            }
+        }
+        Response::BuildFoldersCleaned(results) => {
+            for r in results {
+                match r.refused {
+                    Some(why) => println!(
+                        "{:>10}  {}  {}",
+                        "-",
+                        r.path.display(),
+                        rewind_os_i18n::tr_text(why)
+                    ),
+                    None if r.failed > 0 => println!(
+                        "{:>10}  {}  {}",
+                        bytes(r.bytes),
+                        r.path.display(),
+                        trf("{n} files in use were kept.", &[("n", &count(r.failed))])
+                    ),
+                    None => println!("{:>10}  {}", bytes(r.bytes), r.path.display()),
+                }
             }
         }
         Response::Startup(entries) => {

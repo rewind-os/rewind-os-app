@@ -90,7 +90,6 @@ pub struct ToolSpec {
 const EVERYWHERE: &[Os] = &[Os::Windows, Os::Linux, Os::MacOs];
 const WINDOWS: &[Os] = &[Os::Windows];
 const LINUX: &[Os] = &[Os::Linux];
-const WINDOWS_LINUX: &[Os] = &[Os::Windows, Os::Linux];
 const LINUX_MAC: &[Os] = &[Os::Linux, Os::MacOs];
 
 impl ToolSpec {
@@ -193,11 +192,10 @@ pub const TOOLS: &[ToolSpec] = &[
         .admin(AdminNeed::Partly)
         .changes(),
     ToolSpec::new("files.reveal", "Show a file or folder in the file manager"),
-    ToolSpec::new("startup.list", "List programs that start with the system").only(WINDOWS_LINUX),
+    ToolSpec::new("startup.list", "List programs that start with the system"),
     ToolSpec::new("startup.set", "Enable or disable a startup program")
         .admin(AdminNeed::Partly)
-        .changes()
-        .only(WINDOWS_LINUX),
+        .changes(),
     ToolSpec::new(
         "maintenance.analyze_component_store",
         "Report how much space the Windows component store really uses",

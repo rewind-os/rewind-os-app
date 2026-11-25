@@ -54,7 +54,7 @@ administrador cuando una tarea lo necesita.
 |---|:-:|:-:|:-:|
 | Resumen, analizador de disco, archivos duplicados | ✓ | ✓ | ✓ |
 | Limpieza, papelera | ✓ | ✓ | ✓ |
-| Programas de inicio | ✓ | ✓ (XDG autostart) | — |
+| Programas de inicio | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Recomendaciones | ✓ | ✓ | ✓ |
 | Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, a la Papelera) |
 | Restos de programas | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |

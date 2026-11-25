@@ -46,7 +46,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.17 Linux: RPM uninstall (`rpm -e`, checked with `--test` first, never taking dependents along)
 - [x] R2.10 macOS: installed apps (`/Applications`, `~/Applications`), uninstalled to the Trash
 - [x] R2.18 macOS: leftovers of removed apps in `~/Library/Application Support` and `~/Library/Containers`
-- [ ] R2.11 macOS: login items and LaunchAgents
+- [x] R2.11 macOS: LaunchAgents on and off through launchd's own record (`launchctl disable`), never Apple's
+- [ ] R2.20 macOS: login items ("Open at Login"), which need permission to control System Events
 - [ ] R2.12 macOS release: `.app` bundle, `.icns`, signing and notarization, `.dmg`
 - [x] R2.13 Linux: `.deb` and `.rpm` packages next to the tar.gz
 - [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)

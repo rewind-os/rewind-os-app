@@ -1,7 +1,8 @@
 //! Programs that start with the system: the Run keys and Startup folders on Windows, XDG
-//! autostart entries on Linux. Turning one off never deletes it; it can be turned back on here
+//! autostart entries on Linux, LaunchAgents on macOS. Turning one off never deletes it; it can be turned back on here
 //! or from the system's own settings.
 
+pub mod launchd;
 pub mod services;
 pub mod tasks;
 mod windows;
@@ -29,6 +30,10 @@ pub enum Source {
     ScheduledTask,
     /// Windows: a service a program installed (never one of Windows' own or a driver).
     Service,
+    /// macOS: `~/Library/LaunchAgents`.
+    UserLaunchAgent,
+    /// macOS: `/Library/LaunchAgents`.
+    LaunchAgent,
 }
 
 impl Source {
@@ -43,6 +48,7 @@ impl Source {
             Source::UserAutostart | Source::SystemAutostart => "xdg",
             Source::ScheduledTask => "task",
             Source::Service => "service",
+            Source::UserLaunchAgent | Source::LaunchAgent => "launchd",
         }
     }
 
@@ -58,6 +64,8 @@ impl Source {
             Source::SystemAutostart => "Autostart (all users)",
             Source::ScheduledTask => "Scheduled task",
             Source::Service => "Service",
+            Source::UserLaunchAgent => "Launch agent (you)",
+            Source::LaunchAgent => "Launch agent (all users)",
         }
     }
 }
@@ -133,7 +141,7 @@ pub fn list() -> Vec<StartupEntry> {
             entries
         }
         Os::Linux => xdg::Dirs::current().map(|d| d.list()).unwrap_or_default(),
-        Os::MacOs => Vec::new(),
+        Os::MacOs => launchd::list(),
     }
 }
 
@@ -151,9 +159,10 @@ pub fn set_enabled(id: &str, enabled: bool) -> Result<()> {
         Os::Linux => xdg::Dirs::current()
             .ok_or_else(|| EngineError::NotFound("autostart folder".to_owned()))?
             .set_enabled(id, enabled),
-        Os::MacOs => Err(EngineError::Unsupported {
-            tool: "startup.set",
-            os: Os::MacOs.name(),
-        }),
+        Os::MacOs => launchd::set_enabled(
+            id.strip_prefix("launchd|")
+                .ok_or_else(|| EngineError::NotFound(id.to_owned()))?,
+            enabled,
+        ),
     }
 }

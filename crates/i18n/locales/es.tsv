@@ -565,3 +565,16 @@ Duplicates are not searched inside program folders: each program needs its own c
 Launch agent (you)	Agente de inicio (tú)
 Launch agent (all users)	Agente de inicio (todos los usuarios)
 This is part of macOS. Rewind OS only changes agents that programs installed.	Esto forma parte de macOS. Rewind OS solo cambia los agentes que instalaron los programas.
+What changed	Qué ha cambiado
+Stopped scans are neither compared nor kept.	Los escaneos detenidos no se comparan ni se guardan.
+Since the scan of {date}: {before} then, {after} now.	Desde el escaneo del {date}: {before} entonces, {after} ahora.
+Grew the most	Lo que más ha crecido
+Shrank the most	Lo que más ha menguado
+No folder grew noticeably.	Ninguna carpeta ha crecido de forma apreciable.
+No folder shrank noticeably.	Ninguna carpeta ha menguado de forma apreciable.
+It is no longer there.	Ya no está.
+{change} since the scan of {date} (see What changed).	{change} desde el escaneo del {date} (ver Qué ha cambiado).
+This is the first scan of this folder; what changed shows from the next one.	Es el primer escaneo de esta carpeta; lo que cambie se verá a partir del siguiente.
+The last scan of this folder was measured another way (from the master file table or folder by folder); what changed shows from the next scan.	El último escaneo de esta carpeta se midió de otra forma (con la tabla maestra de archivos o carpeta a carpeta); lo que cambie se verá a partir del siguiente.
+was {size}	antes {size}
+was under {size}	antes menos de {size}

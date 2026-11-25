@@ -29,6 +29,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.11 MSI installer (WiX) next to the portable zip
 - [ ] R1.12 Code signing certificate (Azure Trusted Signing or a .pfx) so SmartScreen does not warn
 - [x] R1.10 Faster scans via the NTFS master file table when elevated (drives and the folders right below them; anything else walks the folders)
+- [x] R1.14 What changed since the last scan of a folder: the folders that grew or shrank most, as deep as the change goes (summaries kept on this computer)
 
 ## R2 — Rewind OS on every system
 

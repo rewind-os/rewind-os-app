@@ -2,6 +2,7 @@
 
 mod cleanup;
 mod duplicates;
+mod history;
 mod leftovers;
 mod mft;
 mod packages;

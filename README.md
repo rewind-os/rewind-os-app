@@ -22,7 +22,9 @@ large forgotten files and programs that start with the system for no reason.
   `pagefile.sys`).
 - **Disk analyzer**: scans a drive or folder in parallel; folder list, treemap, largest files and
   size per file type. Run as administrator on Windows, it reads an NTFS drive's master file table
-  in one pass, in seconds. Anything can be shown in the file manager or moved to the recycle bin.
+  in one pass, in seconds. "What changed" names the folders that grew or shrank most since the
+  last scan of the same folder (a short summary of folder sizes stays on this computer, in the
+  app's data folder). Anything can be shown in the file manager or moved to the recycle bin.
 - **Duplicate files**: files with exactly the same contents (size, then first block, then a full
   BLAKE3 hash). Hard links are not counted as copies and cloud-only files are not downloaded. One
   copy of each file always stays; the others go to the recycle bin.

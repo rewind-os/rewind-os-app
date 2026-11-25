@@ -127,3 +127,10 @@ fn macos_folders_of_apple_are_never_leftovers_and_bundle_ids_account_for_theirs(
     assert!(s.accounts_for("com.google.Chrome"));
     assert!(!s.accounts_for("com.spotify.client"));
 }
+
+#[test]
+fn the_apps_own_folder_is_never_a_leftover() {
+    // A portable copy is not installed, and its scan summaries live in this folder.
+    let nothing_installed = Signals::default();
+    assert!(nothing_installed.accounts_for(rewind_os_engine::history::APP_FOLDER));
+}

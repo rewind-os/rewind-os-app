@@ -6,7 +6,7 @@ use crate::widgets::{self, Choice, page_header};
 use egui::RichText;
 use rewind_os_engine::format::{bytes, count};
 use rewind_os_engine::programs::{InstalledProgram, Scope};
-use rewind_os_engine::{Os, Request, Response, Task};
+use rewind_os_engine::{Os, Request, Response};
 use rewind_os_i18n::{tr, trf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -200,14 +200,8 @@ impl State {
                             }
                             if let Some(location) = &program.install_location
                                 && ui.button(tr("Open")).clicked()
-                                && let Err(err) = shared.engine.run(
-                                    Request::FilesReveal {
-                                        path: location.clone(),
-                                    },
-                                    &Task::new(),
-                                )
                             {
-                                shared.error(crate::widgets::error_text(&err));
+                                shared.reveal(location.clone());
                             }
                             if let Some(size) = program.estimated_bytes {
                                 ui.label(bytes(size)).on_hover_text(tr(

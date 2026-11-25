@@ -110,5 +110,8 @@ cargo deny check licenses bans sources
   compared with the previous release. Running the workflow by hand is a dry run (artifacts only).
 - Publishing a release cannot be undone by a new commit: ask the maintainer before pushing to
   `release`. A CI or release workflow change goes in its own pull request.
-- Signing is optional for now: set the `WINDOWS_CERTIFICATE` (base64 `.pfx`) and
+- `SHA256SUMS.txt` is signed with minisign (`SHA256SUMS.txt.minisig`); the release stops without
+  the `MINISIGN_SECRET_KEY` secret or when it does not match `packaging/minisign.pub`. See
+  [packaging/README.md](packaging/README.md). Changing that key needs a release signed with the old one.
+- Code signing is optional for now: set the `WINDOWS_CERTIFICATE` (base64 `.pfx`) and
   `WINDOWS_CERTIFICATE_PASSWORD` secrets to sign. Unsigned builds say so in the run summary.

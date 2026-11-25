@@ -51,7 +51,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 |---|:-:|:-:|:-:|
 | Overview, disk analyzer, duplicate files | ✓ | ✓ | ✓ |
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
-| Startup programs | ✓ | ✓ (XDG autostart) | — |
+| Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |

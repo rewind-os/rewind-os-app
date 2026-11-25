@@ -3,50 +3,93 @@
 use crate::{PlatformError, Result, process};
 use std::path::{Path, PathBuf};
 
-/// Opens the file manager with `path` selected (or opened, for a folder).
-pub fn reveal(path: &Path) -> Result<()> {
+/// What the file manager was opened on.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Revealed {
+    /// The path itself, selected (or opened, for a folder).
+    Exact,
+    /// The path no longer exists; its nearest existing folder was opened instead.
+    Nearest(PathBuf),
+}
+
+/// Opens the file manager with `path` selected (or opened, for a folder). When `path` no longer
+/// exists, opens the nearest folder above it that does, instead of the file manager's default
+/// place (explorer.exe falls back to Documents for a path it cannot find).
+pub fn reveal(path: &Path) -> Result<Revealed> {
+    if std::fs::symlink_metadata(path).is_ok() {
+        select(path)?;
+        return Ok(Revealed::Exact);
+    }
+    let folder = nearest_existing(path, |p| p.is_dir()).ok_or_else(|| PlatformError::Io {
+        path: path.to_path_buf(),
+        source: std::io::Error::from(std::io::ErrorKind::NotFound),
+    })?;
+    open_folder(&folder)?;
+    Ok(Revealed::Nearest(folder))
+}
+
+/// The closest folder above `path` for which `is_dir` holds.
+fn nearest_existing(path: &Path, is_dir: impl Fn(&Path) -> bool) -> Option<PathBuf> {
+    path.ancestors()
+        .skip(1)
+        .find(|p| !p.as_os_str().is_empty() && is_dir(p))
+        .map(Path::to_path_buf)
+}
+
+fn spawned(program: &str, result: std::io::Result<std::process::Child>) -> Result<()> {
+    result.map(|_| ()).map_err(|source| PlatformError::Spawn {
+        program: program.to_owned(),
+        source,
+    })
+}
+
+/// Shows `path`, which exists, selected in the file manager.
+fn select(path: &Path) -> Result<()> {
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         // explorer.exe parses its own command line and wants `/select,"C:\a b\c"`. Rust's usual
         // quoting wraps the whole argument (`"/select,C:\a b\c"`), which explorer does not
         // understand: it opens Documents instead. Paths cannot contain `"` on Windows.
-        let arg = format!("/select,\"{}\"", explorer_path(path));
         // explorer.exe returns 1 even when it works, so only a failure to start counts.
-        process::command("explorer.exe")
-            .raw_arg(arg)
-            .spawn()
-            .map(|_| ())
-            .map_err(|source| PlatformError::Spawn {
-                program: "explorer.exe".into(),
-                source,
-            })
+        let arg = format!("/select,\"{}\"", explorer_path(path));
+        spawned(
+            "explorer.exe",
+            process::command("explorer.exe").raw_arg(arg).spawn(),
+        )
     }
     #[cfg(not(windows))]
     if cfg!(target_os = "macos") {
-        process::command("open")
-            .arg("-R")
-            .arg(path)
-            .spawn()
-            .map(|_| ())
-            .map_err(|source| PlatformError::Spawn {
-                program: "open".into(),
-                source,
-            })
+        spawned("open", process::command("open").arg("-R").arg(path).spawn())
     } else {
         let dir = if path.is_dir() {
             path
         } else {
             path.parent().unwrap_or(path)
         };
-        process::command("xdg-open")
-            .arg(dir)
-            .spawn()
-            .map(|_| ())
-            .map_err(|source| PlatformError::Spawn {
-                program: "xdg-open".into(),
-                source,
-            })
+        open_folder(dir)
+    }
+}
+
+/// Opens the folder `dir` in the file manager.
+fn open_folder(dir: &Path) -> Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let arg = format!("\"{}\"", explorer_path(dir));
+        spawned(
+            "explorer.exe",
+            process::command("explorer.exe").raw_arg(arg).spawn(),
+        )
+    }
+    #[cfg(not(windows))]
+    {
+        let program = if cfg!(target_os = "macos") {
+            "open"
+        } else {
+            "xdg-open"
+        };
+        spawned(program, process::command(program).arg(dir).spawn())
     }
 }
 
@@ -181,7 +224,7 @@ fn size_of(path: &Path) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::explorer_path;
+    use super::{explorer_path, nearest_existing};
     use std::path::Path;
 
     #[test]
@@ -198,5 +241,21 @@ mod tests {
             explorer_path(Path::new("C:/Users/me/a b")),
             r"C:\Users\me\a b"
         );
+    }
+
+    #[test]
+    fn a_missing_path_leads_to_its_nearest_existing_folder() {
+        let existing = [Path::new("/home/ana"), Path::new("/home"), Path::new("/")];
+        let is_dir = |p: &Path| existing.contains(&p);
+        assert_eq!(
+            nearest_existing(Path::new("/home/ana/gone/deeper/file.txt"), is_dir),
+            Some(Path::new("/home/ana").to_path_buf())
+        );
+        // Never the path itself, even when it is a folder: it is the one that went missing.
+        assert_eq!(
+            nearest_existing(Path::new("/home/ana"), is_dir),
+            Some(Path::new("/home").to_path_buf())
+        );
+        assert_eq!(nearest_existing(Path::new("gone"), |_| false), None);
     }
 }

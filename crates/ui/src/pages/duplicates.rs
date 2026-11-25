@@ -413,15 +413,8 @@ impl State {
                                     |ui| {
                                         let show = widgets::row_button(ui, tr("Show"), true)
                                             .on_hover_text(tr("Show in File Explorer"));
-                                        if show.clicked()
-                                            && let Err(err) = shared.engine.run(
-                                                Request::FilesReveal {
-                                                    path: copy.path.clone(),
-                                                },
-                                                &rewind_os_engine::Task::new(),
-                                            )
-                                        {
-                                            shared.error(widgets::error_text(&err));
+                                        if show.clicked() {
+                                            shared.reveal(copy.path.clone());
                                         }
                                         let mut name =
                                             RichText::new(copy.path.display().to_string());

@@ -482,12 +482,7 @@ impl State {
 }
 
 fn reveal(shared: &mut Shared, path: PathBuf) {
-    if let Err(err) = shared.engine.run(
-        Request::FilesReveal { path },
-        &rewind_os_engine::Task::new(),
-    ) {
-        shared.error(crate::widgets::error_text(&err));
-    }
+    shared.reveal(path);
 }
 
 fn file_rows(

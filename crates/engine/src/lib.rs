@@ -57,6 +57,10 @@ pub enum EngineError {
     },
 }
 
+/// The answer to `files.reveal` when the path is gone and its nearest folder was opened.
+pub const REVEALED_NEAREST: &str =
+    "It is no longer there; opened the nearest folder that still exists";
+
 pub type Result<T> = std::result::Result<T, EngineError>;
 
 /// How much of a tool needs administrator rights.
@@ -420,8 +424,11 @@ impl Engine {
             }
             Request::FilesTrash { paths } => Ok(Response::Trashed(trash(&paths, task))),
             Request::FilesReveal { path } => {
-                rewind_os_platform::shell::reveal(&path)?;
-                Ok(Response::Done("Opened in the file manager"))
+                use rewind_os_platform::shell::{Revealed, reveal};
+                Ok(Response::Done(match reveal(&path)? {
+                    Revealed::Exact => "Opened in the file manager",
+                    Revealed::Nearest(_) => REVEALED_NEAREST,
+                }))
             }
             Request::StartupList => Ok(Response::Startup(startup::list())),
             Request::StartupSet { id, enabled } => {

@@ -290,15 +290,8 @@ impl State {
                             );
                         });
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if ui.button(tr("Open")).clicked()
-                                && let Err(err) = shared.engine.run(
-                                    Request::FilesReveal {
-                                        path: item.path.clone(),
-                                    },
-                                    &rewind_os_engine::Task::new(),
-                                )
-                            {
-                                shared.error(crate::widgets::error_text(&err));
+                            if ui.button(tr("Open")).clicked() {
+                                shared.reveal(item.path.clone());
                             }
                         });
                     });

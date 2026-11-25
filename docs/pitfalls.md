@@ -43,7 +43,8 @@ Things that look wrong but are not, and mistakes worth not repeating.
 
 - `explorer.exe /select,<path>` parses its own command line. Rust quotes an argument with spaces
   as a whole (`"/select,C:\a b"`), which explorer does not understand, so it opens Documents.
-  Pass `/select,"C:\a b"` with `raw_arg` and drop the `\\?\` prefix.
+  Pass `/select,"C:\a b"` with `raw_arg` and drop the `\\?\` prefix. It also opens Documents
+  for a path that no longer exists, so `shell::reveal` opens the nearest existing folder then.
 - Windows Installer saves an `<Icon>` under its `Id`: without an `.ico` extension the Start menu
   shortcut and the Settings entry show a blank icon. Small icon sizes are bitmaps, not PNG.
 

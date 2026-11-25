@@ -188,6 +188,23 @@ impl Shared {
         }
     }
 
+    /// Shows `path` in the file manager. Says so when it is gone and the nearest folder that
+    /// still exists was opened instead.
+    pub fn reveal(&mut self, path: std::path::PathBuf) {
+        match self.engine.run(
+            rewind_os_engine::Request::FilesReveal { path },
+            &rewind_os_engine::Task::new(),
+        ) {
+            Ok(rewind_os_engine::Response::Done(message))
+                if message == rewind_os_engine::REVEALED_NEAREST =>
+            {
+                self.info(rewind_os_i18n::tr(message));
+            }
+            Ok(_) => {}
+            Err(err) => self.error(crate::widgets::error_text(&err)),
+        }
+    }
+
     pub fn info(&mut self, text: impl Into<String>) {
         self.status = Some(Status {
             text: text.into(),

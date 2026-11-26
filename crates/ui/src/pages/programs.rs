@@ -2,7 +2,7 @@ use crate::app::{Page, Shared};
 use crate::charts;
 use crate::jobs::{self, Job};
 use crate::theme;
-use crate::widgets::{self, Choice, page_header};
+use crate::widgets::{self, Choice, page_header_with};
 use egui::RichText;
 use rewind_os_engine::format::{bytes, count};
 use rewind_os_engine::programs::{InstalledProgram, Scope};
@@ -79,7 +79,9 @@ impl State {
             Some(Err(err)) => shared.error(err),
             None => {}
         }
-        page_header(
+        let mut refresh = false;
+        let busy = self.job.is_some();
+        page_header_with(
             ui,
             tr("Installed programs"),
             if Page::Leftovers.available() {
@@ -91,7 +93,19 @@ impl State {
                     "Programs installed with the system's package managers, without libraries and the base system.",
                 )
             },
+            |ui| {
+                if Page::Leftovers.available() && ui.button(tr("Find program leftovers")).clicked()
+                {
+                    shared.goto = Some(Page::Leftovers);
+                }
+                refresh = ui
+                    .add_enabled(!busy, egui::Button::new(tr("Refresh")))
+                    .clicked();
+            },
         );
+        if refresh {
+            self.job = Some(Job::start(&ctx, &shared.engine, Request::ProgramsList));
+        }
         ui.horizontal(|ui| {
             ui.add(
                 egui::TextEdit::singleline(&mut self.search)
@@ -102,15 +116,6 @@ impl State {
             ui.selectable_value(&mut self.sort, Sort::Name, tr("Name"));
             ui.selectable_value(&mut self.sort, Sort::Size, tr("Size"));
             ui.selectable_value(&mut self.sort, Sort::Date, tr("Install date"));
-            if ui
-                .add_enabled(self.job.is_none(), egui::Button::new(tr("Refresh")))
-                .clicked()
-            {
-                self.job = Some(Job::start(&ctx, &shared.engine, Request::ProgramsList));
-            }
-            if Page::Leftovers.available() && ui.button(tr("Find program leftovers")).clicked() {
-                shared.goto = Some(Page::Leftovers);
-            }
         });
         ui.add_space(t.gap);
         if self.job.is_some() {

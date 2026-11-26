@@ -365,6 +365,60 @@ pub fn nav_item(
     response
 }
 
+/// One button of the navigation rail: an icon over a short name; the current group sits on a
+/// filled pill with its icon in the accent colour. Works with the keyboard (Tab, Enter).
+pub fn rail_item(
+    ui: &mut Ui,
+    glyph: crate::glyphs::Glyph,
+    label: &str,
+    selected: bool,
+) -> Response {
+    let t = theme::current(ui.ctx());
+    let (rect, response) = ui.allocate_exact_size(egui::vec2(56.0, 52.0), Sense::click());
+    let hovered = response.hovered() || response.has_focus();
+    let fill = if selected {
+        Some(t.surface_raised)
+    } else if hovered {
+        Some(t.surface_raised.gamma_multiply(0.5))
+    } else {
+        None
+    };
+    if let Some(fill) = fill {
+        ui.painter()
+            .rect_filled(rect, CornerRadius::same(t.radius), fill);
+    }
+    if response.has_focus() {
+        ui.painter().rect_stroke(
+            rect,
+            CornerRadius::same(t.radius),
+            Stroke::new(1.5, t.accent),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let (icon_color, text_color) = if selected {
+        (t.accent, t.text)
+    } else if hovered {
+        (t.text, t.text)
+    } else {
+        (t.text_muted, t.text_muted)
+    };
+    let icon = egui::Rect::from_center_size(
+        rect.center_top() + egui::vec2(0.0, 19.0),
+        egui::vec2(16.0, 16.0),
+    );
+    crate::glyphs::paint(ui.painter(), icon, glyph, icon_color);
+    ui.painter().text(
+        rect.center_top() + egui::vec2(0.0, 38.0),
+        egui::Align2::CENTER_CENTER,
+        label,
+        theme::semibold(11.0),
+        text_color,
+    );
+    let label = label.to_owned();
+    response.widget_info(move || WidgetInfo::selected(Role::Tab, true, selected, &label));
+    response
+}
+
 pub fn primary_button(ui: &mut Ui, text: &str, enabled: bool) -> Response {
     let t = theme::current(ui.ctx());
     ui.add_enabled(

@@ -46,6 +46,10 @@ large forgotten files and programs that start with the system for no reason.
 - **Startup speed**: how long the computer takes to start, its last starts, and what slowed them
   down (Windows' own performance log, as administrator; `systemd-analyze` on Linux), with a
   switch for the startup program behind a delay.
+- **Running programs**: what each program takes of the processor and memory right now (its
+  processes counted together), closing one after asking (forcing only when it does not close),
+  and a switch for the ones that start with the system. The system's own programs, other
+  accounts' programs and Rewind OS itself are never closed.
 - **Disk health**: whether each drive reports problems, with its temperature, wear, hours and
   errors (Windows' own storage reports, the figures as administrator; udisks on Linux), a warning
   on Home when one is failing, and the system's own optimization (TRIM on SSDs, defragmentation
@@ -68,6 +72,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Startup speed | ✓ (as administrator) | ✓ (systemd, last start) | — |
+| Running programs | ✓ | ✓ | — |
 | Disk health and optimization | ✓ (figures as administrator) | ✓ (udisks; TRIM with the password) | — |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |

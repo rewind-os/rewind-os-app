@@ -107,6 +107,9 @@ enum Command {
     Startup(Startup),
     /// How long the computer takes to start, and what slowed it down.
     Boot,
+    /// Running programs: what each uses of the processor and memory, and closing one.
+    #[command(subcommand)]
+    Processes(Processes),
     /// Drive health, and optimizing the drives.
     #[command(subcommand)]
     Disks(Disks),
@@ -214,6 +217,25 @@ enum Startup {
 }
 
 #[derive(Subcommand)]
+enum Processes {
+    /// Measure for a second what each running program uses, heaviest first.
+    List {
+        /// How many programs to print.
+        #[arg(long, default_value_t = 20)]
+        top: usize,
+    },
+    /// Close a running program by the name `processes list` shows (unsaved work can be lost).
+    Close {
+        name: String,
+        /// End it at once instead of asking it to close.
+        #[arg(long)]
+        force: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
 enum Disks {
     /// Whether the drives report problems: health, temperature, wear and errors.
     Health,
@@ -250,7 +272,8 @@ fn main() -> ExitCode {
     let top = match &cli.command {
         Command::Scan { top, .. }
         | Command::Duplicates { top, .. }
-        | Command::Dev(Dev::Find { top, .. }) => *top,
+        | Command::Dev(Dev::Find { top, .. })
+        | Command::Processes(Processes::List { top }) => *top,
         _ => 20,
     };
     let request = match build(cli.command, &mut json) {
@@ -395,6 +418,32 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::DevClean { paths }
         }
         Command::Boot => Request::BootReport,
+        Command::Processes(Processes::List { .. }) => Request::ProcessesList,
+        Command::Processes(Processes::Close { name, force, yes }) => {
+            confirm(yes)?;
+            let listed = Engine::new()
+                .run(Request::ProcessesList, &Task::new())
+                .map_err(|e| e.to_string())?;
+            let Response::Processes(report) = listed else {
+                return Err(tr("No running program has that name.").to_owned());
+            };
+            // One the app may close if there is one; otherwise the engine says why not.
+            let mut named: Vec<_> = report
+                .programs
+                .into_iter()
+                .filter(|p| p.name.eq_ignore_ascii_case(&name))
+                .collect();
+            named.sort_by_key(|p| p.refusal.is_some());
+            let program = named
+                .into_iter()
+                .next()
+                .ok_or_else(|| tr("No running program has that name.").to_owned())?;
+            Request::ProcessesClose {
+                name: program.name,
+                pids: program.pids,
+                force,
+            }
+        }
         Command::Disks(Disks::Health) => Request::DiskHealth,
         Command::Disks(Disks::Optimize { yes }) => {
             confirm(yes)?;
@@ -1033,6 +1082,56 @@ fn print_human(response: &Response, top: usize) {
                         }
                     );
                 }
+            }
+        }
+        Response::Processes(report) => {
+            println!(
+                "{}: {:.0} %   {}: {} / {}   {}",
+                tr("Processor"),
+                report.cpu,
+                tr("Memory in use"),
+                bytes(report.memory_used),
+                bytes(report.memory_total),
+                trf("{n} processes", &[("n", &count(report.processes as u64))])
+            );
+            println!();
+            for p in report.programs.iter().take(top) {
+                let mut notes = Vec::new();
+                if p.pids.len() > 1 {
+                    notes.push(trf("{n} processes", &[("n", &count(p.pids.len() as u64))]));
+                }
+                if p.startup.is_some() {
+                    notes.push(tr("starts with the system").to_owned());
+                }
+                if p.refusal.is_some() {
+                    notes.push(tr("not closed by Rewind OS").to_owned());
+                }
+                println!(
+                    "{:>6.1} %  {:>10}  {}{}",
+                    p.cpu,
+                    bytes(p.memory),
+                    p.name,
+                    if notes.is_empty() {
+                        String::new()
+                    } else {
+                        format!("  ({})", notes.join(", "))
+                    }
+                );
+            }
+        }
+        Response::ProcessClosed(done) => {
+            if let Some(why) = done.refusal {
+                println!("{}", tr(why));
+            } else if done.running == 0 {
+                println!("{}", trf("{name} was closed.", &[("name", &done.name)]));
+            } else {
+                println!(
+                    "{}",
+                    trf(
+                        "{name} did not close: it may be asking to save your work, or it only ends when forced (--force).",
+                        &[("name", &done.name)]
+                    )
+                );
             }
         }
         Response::DiskHealth(report) => {

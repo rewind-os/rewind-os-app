@@ -49,6 +49,10 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
 - **Velocidad de arranque**: cuánto tarda en arrancar el equipo, sus últimos arranques y qué los
   ralentizó (el registro de rendimiento del propio Windows, como administrador; `systemd-analyze`
   en Linux), con un interruptor para el programa de inicio que causa un retraso.
+- **Programas abiertos**: cuánto procesador y memoria usa cada programa ahora mismo (sumando
+  sus procesos), cerrar uno tras preguntar (forzando solo si no se cierra) y un interruptor para
+  los que arrancan con el sistema. Nunca cierra los programas del sistema, los de otras cuentas
+  ni el propio Rewind OS.
 - **Salud de los discos**: si cada disco avisa de problemas, con su temperatura, desgaste, horas
   y errores (los informes de almacenamiento del propio Windows, las cifras como administrador;
   udisks en Linux), un aviso en Inicio cuando uno falla, y la optimización del propio sistema
@@ -72,6 +76,7 @@ administrador cuando una tarea lo necesita.
 | Limpieza, papelera | ✓ | ✓ | ✓ |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Velocidad de arranque | ✓ (como administrador) | ✓ (systemd, último arranque) | — |
+| Programas abiertos | ✓ | ✓ | — |
 | Salud y optimización de los discos | ✓ (cifras como administrador) | ✓ (udisks; TRIM con la contraseña) | — |
 | Recomendaciones | ✓ | ✓ | ✓ |
 | Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, a la Papelera) |

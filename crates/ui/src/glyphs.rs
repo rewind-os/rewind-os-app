@@ -18,6 +18,7 @@ pub enum Glyph {
     Maintenance,
     Drive,
     Health,
+    Gauge,
 }
 
 /// Draws `glyph` centred in `rect` (any size; drawn at 16 points).
@@ -139,6 +140,19 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
                 p(10.0, 8.0),
                 p(12.5, 8.0),
             ]);
+        }
+        Glyph::Gauge => {
+            // A speedometer: an open arc with its needle.
+            let center = p(8.0, 9.5);
+            let arc: Vec<Pos2> = (0..=16)
+                .map(|i| {
+                    let a = PI * (0.85 + 1.3 * i as f32 / 16.0);
+                    center + vec2(a.cos(), a.sin()) * 6.5
+                })
+                .collect();
+            line(arc);
+            line(vec![center, center + vec2(0.6, -1.0).normalized() * 4.5]);
+            painter.circle_filled(center, 1.2, color);
         }
         Glyph::Maintenance => {
             painter.circle_stroke(p(8.0, 8.0), 2.5, stroke);

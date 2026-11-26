@@ -25,6 +25,7 @@ pub enum Page {
     Lighten,
     Maintenance,
     Disks,
+    Processes,
 }
 
 /// Navigation groups, in the order the sidebar shows them.
@@ -40,12 +41,15 @@ const SECTIONS: [(&str, &[Page]); 4] = [
             Page::BuildFolders,
         ],
     ),
-    ("Programs", &[Page::Programs, Page::Startup]),
+    (
+        "Programs",
+        &[Page::Programs, Page::Startup, Page::Processes],
+    ),
     ("System", &[Page::Lighten, Page::Maintenance, Page::Disks]),
 ];
 
 impl Page {
-    const ALL: [Page; 11] = [
+    const ALL: [Page; 12] = [
         Page::Overview,
         Page::Analyzer,
         Page::Duplicates,
@@ -57,6 +61,7 @@ impl Page {
         Page::Lighten,
         Page::Maintenance,
         Page::Disks,
+        Page::Processes,
     ];
 
     /// The tools behind the page; it is available when any of them works on this system.
@@ -76,6 +81,7 @@ impl Page {
                 "maintenance.journal_usage",
             ],
             Page::Disks => &["disk.health"],
+            Page::Processes => &["processes.list"],
         }
     }
 
@@ -98,6 +104,7 @@ impl Page {
             Page::Lighten => "Make Windows lighter",
             Page::Maintenance => "Maintenance",
             Page::Disks => "Disk health",
+            Page::Processes => "Running programs",
         }
     }
 
@@ -116,6 +123,7 @@ impl Page {
             Page::Lighten => Glyph::Lighten,
             Page::Maintenance => Glyph::Maintenance,
             Page::Disks => Glyph::Health,
+            Page::Processes => Glyph::Gauge,
         }
     }
 
@@ -134,6 +142,7 @@ impl Page {
             Page::Lighten => "Turn off ads, tracking and extras you do not use",
             Page::Maintenance => "The system's own maintenance tools",
             Page::Disks => "Whether your drives are failing, and keeping them optimized",
+            Page::Processes => "What slows the computer down right now",
         }
     }
 }
@@ -287,6 +296,7 @@ pub struct App {
     lighten: pages::lighten::State,
     maintenance: pages::maintenance::State,
     disks: pages::disks::State,
+    processes: pages::processes::State,
     devtools: crate::devtools::Devtools,
     logo: Option<egui::TextureHandle>,
     update: crate::update::Notice,
@@ -329,6 +339,7 @@ impl App {
             lighten: Default::default(),
             maintenance: Default::default(),
             disks: Default::default(),
+            processes: Default::default(),
             devtools: crate::devtools::Devtools::from_env(),
             logo: load_logo(ctx),
             update,
@@ -347,6 +358,7 @@ impl App {
             || self.lighten.busy()
             || self.maintenance.busy()
             || self.disks.busy()
+            || self.processes.busy()
     }
 
     /// The left column: the app's name, the pages, and the rights the app runs with.
@@ -373,10 +385,49 @@ impl App {
                 self.update.version_menu(ui, &mut self.shared);
             });
         });
-        ui.add_space(22.0);
+        // The rights and the update notice stay at the bottom; the pages scroll above them when
+        // the window is too short for all of them.
+        ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
+            ui.add_space(6.0);
+            ui.horizontal(|ui| {
+                ui.add_space(12.0);
+                if self.shared.elevated {
+                    ui.label(RichText::new(tr("Administrator")).small().color(t.text_muted));
+                } else if can_relaunch() {
+                    let restart = egui::Button::new(
+                        RichText::new(tr("Restart as administrator")).small().color(t.accent),
+                    )
+                    .frame(false);
+                    if ui
+                        .add(restart)
+                        .on_hover_text(tr(
+                            "Some cleanups and settings need administrator rights. Windows will ask for permission.",
+                        ))
+                        .clicked()
+                    {
+                        self.shared.relaunch_elevated(ui.ctx());
+                    }
+                } else {
+                    ui.label(RichText::new(tr("Standard user")).small().color(t.text_muted));
+                }
+            });
+            self.update.notice(ui, &mut self.shared);
+            ui.add_space(4.0);
+            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| self.navigation(ui));
+            });
+        });
+    }
+
+    /// The pages, in their groups.
+    fn navigation(&mut self, ui: &mut egui::Ui) {
+        let t = theme::current(ui.ctx());
+        ui.add_space(18.0);
         for (heading, pages) in SECTIONS {
             if !heading.is_empty() {
-                ui.add_space(14.0);
+                ui.add_space(10.0);
                 ui.horizontal(|ui| {
                     ui.add_space(16.0);
                     ui.label(RichText::new(tr(heading)).size(12.0).color(t.text_muted));
@@ -405,32 +456,6 @@ impl App {
                 }
             }
         }
-        ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                ui.add_space(12.0);
-                if self.shared.elevated {
-                    ui.label(RichText::new(tr("Administrator")).small().color(t.text_muted));
-                } else if can_relaunch() {
-                    let restart = egui::Button::new(
-                        RichText::new(tr("Restart as administrator")).small().color(t.accent),
-                    )
-                    .frame(false);
-                    if ui
-                        .add(restart)
-                        .on_hover_text(tr(
-                            "Some cleanups and settings need administrator rights. Windows will ask for permission.",
-                        ))
-                        .clicked()
-                    {
-                        self.shared.relaunch_elevated(ui.ctx());
-                    }
-                } else {
-                    ui.label(RichText::new(tr("Standard user")).small().color(t.text_muted));
-                }
-            });
-            self.update.notice(ui, &mut self.shared);
-        });
     }
 
     fn status_bar(&mut self, ui: &mut egui::Ui) {
@@ -522,6 +547,7 @@ impl eframe::App for App {
                     Page::Lighten => self.lighten.ui(ui, shared),
                     Page::Maintenance => self.maintenance.ui(ui, shared),
                     Page::Disks => self.disks.ui(ui, shared),
+                    Page::Processes => self.processes.ui(ui, shared),
                 }
             });
         if let Some(page) = self.shared.goto.take() {

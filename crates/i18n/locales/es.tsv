@@ -858,3 +858,23 @@ Old large files	Archivos grandes y viejos
 Files of {size} or more that nobody changed in over a year: {n}, {total} in all. The system's and programs' own files are left out. Check each before moving it to the recycle bin.	Archivos de {size} o más que nadie ha cambiado en más de un año: {n}, {total} en total. Quedan fuera los del sistema y los de los programas. Revisa cada uno antes de moverlo a la papelera.
 Files of {size} or more not changed in over a year	Archivos de {size} o más sin cambios en más de un año
 Space	Espacio
+Restore points	Puntos de restauración
+Windows keeps restore points and other copies of your drives to undo changes. Deleting all but the newest frees their space; the newest one on each drive is always kept.	Windows guarda puntos de restauración y otras copias de tus unidades para deshacer cambios. Borrar todos menos el más reciente libera su espacio; el más reciente de cada unidad se conserva siempre.
+There are no restore points.	No hay puntos de restauración.
+{count} restore points take {size}	{count} puntos de restauración ocupan {size}
+Newest: {date}, {what}	El más reciente: {date}, {what}
+Newest: {date}	El más reciente: {date}
+{drive}: Windows lets them take up to {max}	{drive}: Windows les deja ocupar hasta {max}
+Check	Comprobar
+Delete {count} old ones	Borrar {count} antiguos
+Delete all but the newest	Borrar todos menos el más reciente
+Check first how many there are.	Comprueba primero cuántos hay.
+{count} restore points deleted; they took {before}, now {after}	{count} puntos de restauración borrados; ocupaban {before}, ahora {after}
+Windows did not delete {count} restore points.	Windows no borró {count} puntos de restauración.
+Delete old restore points?	¿Borrar los puntos de restauración antiguos?
+Every restore point and shadow copy except the newest on each drive is deleted, as Windows' Disk Cleanup does. You can no longer go back to those moments. This cannot be undone.	Se borran todos los puntos de restauración y instantáneas menos el más reciente de cada unidad, como hace el Liberador de espacio de Windows. Ya no podrás volver a esos momentos. No se puede deshacer.
+kept	se conserva
+{drive}: {used} used, up to {max}	{drive}: {used} usados, hasta {max}
+{drive}: {used} used	{drive}: {used} usados
+There is only the newest restore point on each drive; it is always kept.	Solo queda el punto de restauración más reciente de cada unidad, y ese se conserva siempre.
+Deleting old restore points	Borrando puntos de restauración antiguos

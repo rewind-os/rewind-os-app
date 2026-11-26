@@ -21,6 +21,7 @@ pub mod processes;
 pub mod programs;
 pub mod projects;
 pub mod recommend;
+pub mod restore;
 pub mod safety;
 pub mod scan;
 pub mod startup;
@@ -328,6 +329,19 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "restore.list",
+        "List restore points and the other shadow copies of each drive, and the space they take",
+    )
+    .admin(AdminNeed::Yes)
+    .only(WINDOWS),
+    ToolSpec::new(
+        "restore.clean",
+        "Delete every restore point and shadow copy except the newest on each drive, as Disk Cleanup does",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(WINDOWS),
+    ToolSpec::new(
         "maintenance.hibernation",
         "Turn hibernation (and its hiberfil.sys file) on or off",
     )
@@ -483,6 +497,10 @@ pub enum Request {
     AnalyzeComponentStore,
     #[serde(rename = "maintenance.component_cleanup")]
     ComponentCleanup,
+    #[serde(rename = "restore.list")]
+    RestoreList,
+    #[serde(rename = "restore.clean")]
+    RestoreClean,
     #[serde(rename = "maintenance.hibernation")]
     Hibernation { enabled: bool },
     #[serde(rename = "maintenance.journal_usage")]
@@ -509,6 +527,8 @@ pub enum Response {
     BuildFoldersCleaned(Vec<projects::Cleaned>),
     VirtualDisks(vdisks::Report),
     Compacted(vdisks::Compacted),
+    RestorePoints(restore::Report),
+    RestoreCleaned(restore::Cleaned),
     Update(update::Status),
     UpdateInstalled(update::Installed),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
@@ -670,6 +690,8 @@ impl Engine {
                 maintenance::analyze_component_store().map(Response::ToolOutput)
             }
             Request::ComponentCleanup => maintenance::component_cleanup().map(Response::ToolOutput),
+            Request::RestoreList => restore::list().map(Response::RestorePoints),
+            Request::RestoreClean => restore::clean(task).map(Response::RestoreCleaned),
             Request::Hibernation { enabled } => {
                 maintenance::set_hibernation(enabled)?;
                 Ok(Response::Done(if enabled {
@@ -727,6 +749,8 @@ impl Request {
             Request::StartupSet { .. } => "startup.set",
             Request::AnalyzeComponentStore => "maintenance.analyze_component_store",
             Request::ComponentCleanup => "maintenance.component_cleanup",
+            Request::RestoreList => "restore.list",
+            Request::RestoreClean => "restore.clean",
             Request::Hibernation { .. } => "maintenance.hibernation",
             Request::JournalUsage => "maintenance.journal_usage",
             Request::JournalVacuum => "maintenance.journal_vacuum",

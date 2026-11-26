@@ -12,6 +12,7 @@ mod power;
 mod processes;
 mod projects;
 mod recommend;
+mod restore;
 mod safety;
 mod scan;
 mod startup;

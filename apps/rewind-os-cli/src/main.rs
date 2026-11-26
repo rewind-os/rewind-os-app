@@ -116,6 +116,9 @@ enum Command {
     /// Virtual disks of WSL and Docker Desktop.
     #[command(subcommand)]
     Vdisks(Vdisks),
+    /// Windows restore points and shadow copies (need administrator rights).
+    #[command(subcommand)]
+    Restore(Restore),
     /// Drive health, and optimizing the drives.
     #[command(subcommand)]
     Disks(Disks),
@@ -249,6 +252,17 @@ enum Vdisks {
     Compact {
         /// The distribution's name, "Docker Desktop", or the disk's path from `vdisks list`.
         disk: String,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Restore {
+    /// The restore points and shadow copies, and the space they take.
+    List,
+    /// Delete every one except the newest on each drive, as Disk Cleanup does (cannot be undone).
+    Clean {
         #[arg(long)]
         yes: bool,
     },
@@ -501,6 +515,11 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
                     tr("This is not one of the virtual disks Rewind OS found.").to_owned()
                 })?;
             Request::VdiskCompact { path: found.path }
+        }
+        Command::Restore(Restore::List) => Request::RestoreList,
+        Command::Restore(Restore::Clean { yes }) => {
+            confirm(yes)?;
+            Request::RestoreClean
         }
         Command::Power(Power::List) => Request::PowerList,
         Command::Power(Power::Settings) => Request::PowerSettings,
@@ -1260,6 +1279,68 @@ fn print_human(response: &Response, top: usize) {
             );
             if !done.output.is_empty() {
                 println!("\n{}", done.output);
+            }
+        }
+        Response::RestorePoints(report) => {
+            if report.copies.is_empty() {
+                println!("{}", tr("There are no restore points."));
+            }
+            let doomed = rewind_os_engine::restore::all_but_newest(&report.copies);
+            for c in &report.copies {
+                let keep = !doomed.iter().any(|d| d.id == c.id);
+                println!(
+                    "{}  {:<4} {}{}",
+                    local_date(c.created),
+                    c.drive,
+                    c.description.as_deref().unwrap_or("-"),
+                    if keep {
+                        format!("  ({})", tr("kept"))
+                    } else {
+                        String::new()
+                    }
+                );
+            }
+            for s in &report.storage {
+                let line = match s.max {
+                    Some(max) => trf(
+                        "{drive}: {used} used, up to {max}",
+                        &[
+                            ("drive", &s.drive),
+                            ("used", &bytes(s.used)),
+                            ("max", &bytes(max)),
+                        ],
+                    ),
+                    None => trf(
+                        "{drive}: {used} used",
+                        &[("drive", &s.drive), ("used", &bytes(s.used))],
+                    ),
+                };
+                println!("{line}");
+            }
+        }
+        Response::RestoreCleaned(done) => {
+            println!(
+                "{}",
+                trf(
+                    "{count} restore points deleted; they took {before}, now {after}",
+                    &[
+                        ("count", &count(done.deleted as u64)),
+                        ("before", &bytes(done.before)),
+                        ("after", &bytes(done.after)),
+                    ],
+                )
+            );
+            if !done.failed.is_empty() {
+                eprintln!(
+                    "{}",
+                    trf(
+                        "Windows did not delete {count} restore points.",
+                        &[("count", &count(done.failed.len() as u64))],
+                    )
+                );
+                for (id, why) in &done.failed {
+                    eprintln!("  {id}: {why}");
+                }
             }
         }
         Response::Power(report) => {

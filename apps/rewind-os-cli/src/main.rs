@@ -805,6 +805,19 @@ fn print_human(response: &Response, top: usize) {
             for f in tree.top_files.iter().take(top) {
                 println!("{:>10}  {}", bytes(f.bytes), f.path.display());
             }
+            if !tree.old_files.is_empty() {
+                println!(
+                    "\n{}",
+                    trf(
+                        "Files of {size} or more not changed in over a year",
+                        &[("size", &bytes(rewind_os_engine::scan::OLD_MIN_BYTES))]
+                    )
+                );
+                for f in tree.old_files.iter().take(top) {
+                    let date = f.modified.map(local_date).unwrap_or_default();
+                    println!("{:>10}  {date}  {}", bytes(f.bytes), f.path.display());
+                }
+            }
         }
         Response::Duplicates(report) => {
             println!(

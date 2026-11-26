@@ -160,3 +160,40 @@ fn size_on_disk_tells_sparse_files_from_written_ones() -> std::io::Result<()> {
     assert!(big.disk_bytes < big.bytes / 10);
     Ok(())
 }
+
+/// A large file (sparse, so the test writes almost nothing) last changed `days` ago.
+fn large(path: &Path, days: u64) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let file = fs::File::create(path)?;
+    file.set_len(scan::OLD_MIN_BYTES + 1024)?;
+    let when = std::time::SystemTime::now() - std::time::Duration::from_secs(days * 24 * 60 * 60);
+    file.set_modified(when)
+}
+
+#[test]
+fn old_large_files_are_the_ones_nobody_changed_for_a_year() {
+    let dir = tempfile::tempdir().unwrap();
+    large(
+        &dir.path().join("videos/2019-trip.mkv"),
+        scan::OLD_AFTER_DAYS * 2,
+    )
+    .unwrap();
+    large(&dir.path().join("videos/last-week.mkv"), 7).unwrap();
+    // A program's or a project's own files are needed where they are, however old.
+    large(
+        &dir.path().join("app/node_modules/engine/blob.bin"),
+        scan::OLD_AFTER_DAYS * 2,
+    )
+    .unwrap();
+    let tree = scan::scan(dir.path(), &Task::new()).unwrap();
+    let old: Vec<_> = tree
+        .old_files
+        .iter()
+        .filter_map(|f| f.path.file_name())
+        .collect();
+    assert_eq!(old, vec!["2019-trip.mkv"]);
+    // Every large file is still among the largest files.
+    assert_eq!(tree.top_files.len(), 3);
+}

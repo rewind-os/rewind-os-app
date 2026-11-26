@@ -854,3 +854,6 @@ Compacting the virtual disk	Compactando el disco virtual
 List the virtual disks of WSL distributions and Docker Desktop, with what they take on Windows	Lista los discos virtuales de las distribuciones de WSL y de Docker Desktop, con lo que ocupan en Windows
 Give Windows back the space a WSL or Docker virtual disk no longer uses (stops WSL; nothing inside is deleted)	Devuelve a Windows el espacio que un disco virtual de WSL o Docker ya no usa (detiene WSL; no se borra nada de dentro)
 Disk files of WSL and Docker grow and never shrink by themselves; compacting gives the space back.	Los discos de WSL y Docker crecen y nunca encogen solos; compactarlos devuelve el espacio.
+Old large files	Archivos grandes y viejos
+Files of {size} or more that nobody changed in over a year: {n}, {total} in all. The system's and programs' own files are left out. Check each before moving it to the recycle bin.	Archivos de {size} o más que nadie ha cambiado en más de un año: {n}, {total} en total. Quedan fuera los del sistema y los de los programas. Revisa cada uno antes de moverlo a la papelera.
+Files of {size} or more not changed in over a year	Archivos de {size} o más sin cambios en más de un año

@@ -791,3 +791,31 @@ This is Rewind OS itself.	Es el propio Rewind OS.
 Rewind OS runs inside it; closing it would close Rewind OS too.	Rewind OS funciona dentro de él; cerrarlo cerraría también Rewind OS.
 Measure for a second how much of the processor and memory each running program uses	Mide durante un segundo cuánto procesador y memoria usa cada programa abierto
 Close a running program (unsaved work in it can be lost; never the system's own programs or other accounts')	Cierra un programa abierto (puede perderse el trabajo sin guardar; nunca los programas del sistema ni los de otras cuentas)
+Power plan	Plan de energía
+How much the system favours speed over saving energy.	Cuánto prima el sistema la velocidad sobre el ahorro de energía.
+Power saver	Ahorro de energía
+High performance	Alto rendimiento
+Ultimate performance	Máximo rendimiento
+Custom	Personalizado
+Best power efficiency	Máxima eficiencia energética
+Better performance	Mejor rendimiento
+Best performance	Máximo rendimiento
+The system holds this plan back right now: {reason}	El sistema retiene este plan ahora mismo: {reason}
+{plan} is held back right now: {reason}	{plan} está retenido ahora mismo: {reason}
+Power mode: {mode} when plugged in	Modo de energía: {mode} enchufado
+{mode} on battery	{mode} con batería
+Change in Settings	Cambiar en Configuración
+This computer has one power plan; Windows' power mode decides how fast it runs.	Este equipo tiene un solo plan de energía; el modo de energía de Windows decide lo rápido que va.
+Power plan changed	Plan de energía cambiado
+Opened the power settings	Se abrió la configuración de energía
+This power plan is not on this computer.	Este plan de energía no existe en este equipo.
+Install power-profiles-daemon so Rewind OS can switch power profiles.	Instala power-profiles-daemon para que Rewind OS pueda cambiar el perfil de energía.
+held back	retenido
+Power mode when plugged in	Modo de energía enchufado
+Power mode on battery	Modo de energía con batería
+The power plan favours saving energy	El plan de energía prima el ahorro
+The computer runs slower to save energy. When it is plugged in, a balanced plan is usually better.	El equipo va más lento para ahorrar energía. Cuando está enchufado, suele ser mejor un plan equilibrado.
+Show the power plans and which one is in use (and Windows' power mode)	Muestra los planes de energía y cuál está en uso (y el modo de energía de Windows)
+Switch to another power plan (switch back to undo)	Cambia a otro plan de energía (vuelve al anterior para deshacerlo)
+Open Windows' power settings, where the power mode is chosen	Abre la configuración de energía de Windows, donde se elige el modo de energía
+Balanced	Equilibrado

@@ -8,6 +8,7 @@ mod history;
 mod leftovers;
 mod mft;
 mod packages;
+mod power;
 mod processes;
 mod projects;
 mod recommend;

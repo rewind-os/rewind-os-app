@@ -819,3 +819,8 @@ Show the power plans and which one is in use (and Windows' power mode)	Muestra l
 Switch to another power plan (switch back to undo)	Cambia a otro plan de energía (vuelve al anterior para deshacerlo)
 Open Windows' power settings, where the power mode is chosen	Abre la configuración de energía de Windows, donde se elige el modo de energía
 Balanced	Equilibrado
+Administrator rights are required.	Se necesitan permisos de administrador.
+Cancelled.	Cancelado.
+{tool} is not available on {os} yet.	{tool} aún no está disponible en {os}.
+Not found: {what}	No encontrado: {what}
+Unknown cleanup category: {id}	Categoría de limpieza desconocida: {id}

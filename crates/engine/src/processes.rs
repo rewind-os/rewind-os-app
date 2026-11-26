@@ -73,6 +73,18 @@ fn holders(sys: &System, me: Option<Pid>) -> Vec<Pid> {
     chain
 }
 
+/// Waits `time`, stopping early when the task is cancelled.
+fn wait(time: Duration, task: &Task) -> Result<()> {
+    let started = Instant::now();
+    while started.elapsed() < time {
+        if task.is_cancelled() {
+            return Err(crate::EngineError::Cancelled);
+        }
+        std::thread::sleep(Duration::from_millis(50).min(time));
+    }
+    Ok(())
+}
+
 fn system() -> Result<System> {
     System::new().map_err(|_| {
         rewind_os_platform::PlatformError::Unsupported("reading the running programs").into()
@@ -124,13 +136,13 @@ pub fn list(task: &Task) -> Result<Report> {
     let mut sys = system()?;
     sys.refresh_cpu_usage();
     sys.refresh_processes_specifics(ProcessesToUpdate::All, true, refresh_kind());
-    let started = Instant::now();
-    while started.elapsed() < SAMPLE {
-        if task.is_cancelled() {
-            return Err(crate::EngineError::Cancelled);
-        }
-        std::thread::sleep(Duration::from_millis(100));
-    }
+    // On Windows a process seen for the first time is measured against everything since the
+    // computer started, which makes every share tiny: take one short reading first, then the
+    // one that counts.
+    wait(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL, task)?;
+    sys.refresh_cpu_usage();
+    sys.refresh_processes_specifics(ProcessesToUpdate::All, true, refresh_kind());
+    wait(SAMPLE, task)?;
     sys.refresh_cpu_usage();
     sys.refresh_processes_specifics(ProcessesToUpdate::All, true, refresh_kind());
     sys.refresh_memory();

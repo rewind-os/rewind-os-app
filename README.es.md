@@ -119,6 +119,9 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
   sudo apt update && sudo apt install rewind-os
   ```
 
+  En Fedora, `sudo curl -fsSL -o /etc/yum.repos.d/rewind-os.repo https://rewind-os.github.io/rewind-os-app/rpm/rewind-os.repo`
+  y después `sudo dnf install rewind-os`; en openSUSE, `sudo zypper addrepo` con el mismo archivo y
+  después `sudo zypper install rewind-os`.
   O instala el paquete: `sudo apt install ./rewind-os_<versión>_amd64.deb` (Debian, Ubuntu) o
   `sudo dnf install ./rewind-os-<versión>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` y `aarch64`
   para ARM. Las bibliotecas gráficas de la ventana son recomendadas, no obligatorias: en un

@@ -201,18 +201,31 @@ impl State {
                 .as_ref()
                 .map(|p| p.display().to_string())
                 .unwrap_or_default();
-            egui::ComboBox::from_id_salt("scan_root")
-                .selected_text(selected)
-                .width(220.0)
-                .show_ui(ui, |ui| {
-                    for drive in &drives {
-                        ui.selectable_value(
-                            &mut self.root,
-                            Some(drive.clone()),
-                            drive.display().to_string(),
-                        );
-                    }
-                });
+            // Room for the two buttons beside it; a long path is cut short (whole on hover)
+            // instead of pushing them past the window.
+            let width = (ui.available_width() - 240.0).clamp(220.0, 520.0);
+            let height = ui.spacing().interact_size.y;
+            ui.allocate_ui_with_layout(
+                egui::vec2(width, height),
+                egui::Layout::left_to_right(egui::Align::Center),
+                |ui| {
+                    egui::ComboBox::from_id_salt("scan_root")
+                        .selected_text(selected.clone())
+                        .width(width)
+                        .truncate()
+                        .show_ui(ui, |ui| {
+                            for drive in &drives {
+                                ui.selectable_value(
+                                    &mut self.root,
+                                    Some(drive.clone()),
+                                    drive.display().to_string(),
+                                );
+                            }
+                        })
+                        .response
+                        .on_hover_text(selected);
+                },
+            );
             let running = self.scan.is_some();
             if ui
                 .add_enabled(!running, egui::Button::new(tr("Choose folder…")))
@@ -321,7 +334,14 @@ impl State {
                     .node(id)
                     .map(|n| n.name.to_string())
                     .unwrap_or_default();
-                if ui.selectable_label(id == self.current, name).clicked() {
+                // The root is named by its whole path; a long one keeps only its end.
+                let response = ui.selectable_label(id == self.current, shorten(&name, 60));
+                let response = if name.chars().count() > 60 {
+                    response.on_hover_text(&name)
+                } else {
+                    response
+                };
+                if response.clicked() {
                     self.current = id;
                     self.show_files = false;
                 }
@@ -784,6 +804,16 @@ impl State {
             }
         }
     }
+}
+
+/// `text` with at most `most` characters: its end, after an ellipsis, when it is longer.
+fn shorten(text: &str, most: usize) -> String {
+    let count = text.chars().count();
+    if count <= most {
+        return text.to_owned();
+    }
+    let tail: String = text.chars().skip(count - most.saturating_sub(1)).collect();
+    format!("…{tail}")
 }
 
 /// A size in a list, with the space it takes on the disk on hover.

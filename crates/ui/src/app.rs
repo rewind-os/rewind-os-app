@@ -436,7 +436,9 @@ impl App {
     /// The pages, in their groups.
     fn navigation(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
-        ui.add_space(18.0);
+        // Pills close together, so every page fits at the default window height.
+        ui.spacing_mut().item_spacing.y = 2.0;
+        ui.add_space(16.0);
         for (heading, pages) in SECTIONS {
             if !heading.is_empty() {
                 ui.add_space(10.0);
@@ -444,7 +446,7 @@ impl App {
                     ui.add_space(16.0);
                     ui.label(RichText::new(tr(heading)).size(12.0).color(t.text_muted));
                 });
-                ui.add_space(2.0);
+                ui.add_space(4.0);
             }
             for &page in pages {
                 let available = page.available();

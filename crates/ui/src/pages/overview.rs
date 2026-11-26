@@ -92,7 +92,10 @@ impl State {
                             Action::Hibernation | Action::DiskHealth | Action::PowerPlan => {
                                 tr("Open")
                             }
-                            Action::ReviewStartup | Action::Lighten => tr("Review"),
+                            Action::ReviewStartup
+                            | Action::Lighten
+                            | Action::VirtualDisks
+                            | Action::RestorePoints => tr("Review"),
                         };
                         let button = if r.level == Level::Tip {
                             widgets::row_button(ui, label, true)
@@ -163,6 +166,8 @@ impl State {
                 Action::Hibernation => shared.goto = Some(Page::Maintenance),
                 Action::DiskHealth => shared.goto = Some(Page::Disks),
                 Action::PowerPlan => shared.goto = Some(Page::Processes),
+                Action::VirtualDisks => shared.goto = Some(Page::VirtualDisks),
+                Action::RestorePoints => shared.goto = Some(Page::Maintenance),
             }
         }
     }

@@ -75,3 +75,4 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.7 A Termius-like look: navy layers, a tool band on every page, semibold names, list rows as cards, icons on coloured tiles
 - [x] R3.8 Installed and startup programs as a grid of cards, with the selected one's details in a panel on the right
 - [x] R3.9 A rail of groups (Home, Free up space, Programs, System) with only the current group's pages listed next to it; each group reopens the page last used in it
+- [x] R3.10 Recommendations on Home for virtual disks of WSL and Docker that compacting would shrink, and for restore points that take a lot of space (with administrator rights)

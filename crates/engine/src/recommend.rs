@@ -4,7 +4,10 @@
 //! [`recommend`] gathers the facts.
 
 use crate::cleanup::CategoryReport;
-use crate::{Task, cleanup, disks, duplicates, leftovers, power, startup, system, tweaks, walk};
+use crate::{
+    Task, cleanup, disks, duplicates, leftovers, power, restore, startup, system, tweaks, vdisks,
+    walk,
+};
 use rewind_os_platform::Os;
 use rewind_os_platform::paths::Known;
 use serde::Serialize;
@@ -49,6 +52,10 @@ pub enum Action {
     DiskHealth,
     /// Open the power plan (on the running programs page).
     PowerPlan,
+    /// Open the virtual disks of WSL and Docker Desktop.
+    VirtualDisks,
+    /// Open the restore points (on the maintenance page).
+    RestorePoints,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -63,6 +70,16 @@ pub struct Recommendation {
     /// Space it would free, when known.
     pub saving: Option<u64>,
     pub action: Action,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VirtualDiskFacts {
+    /// What all of them take on Windows.
+    pub total: u64,
+    /// About what compacting would give back, from the disks whose use inside is known.
+    pub reclaimable: Option<u64>,
+    /// What the disks whose use inside is not known take.
+    pub unknown: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -93,6 +110,11 @@ pub struct Facts {
     /// The power plan (or Windows' power mode when plugged in) saves energy at the cost of
     /// speed.
     pub power_saving: bool,
+    /// The virtual disks of WSL and Docker Desktop.
+    pub virtual_disks: Option<VirtualDiskFacts>,
+    /// Restore points all but the newest of which could go, and what all of them take; known
+    /// only with administrator rights.
+    pub restore_points: Option<(usize, u64)>,
 }
 
 fn size(bytes: u64) -> String {
@@ -310,6 +332,52 @@ pub fn rules(facts: &Facts) -> Vec<Recommendation> {
         });
     }
 
+    if let Some(v) = facts.virtual_disks {
+        const DETAIL: &str = "Their disk files grow as Linux writes and never shrink by themselves. Compacting returns what Linux no longer uses; nothing inside is deleted.";
+        if let Some(free) = v.reclaimable.filter(|f| *f >= 5 * GB) {
+            out.push(Recommendation {
+                id: "virtual_disks",
+                level: Level::Suggested,
+                title: "Compacting the disks of WSL and Docker gives back about {size}",
+                detail: DETAIL,
+                args: vec![("size", size(free))],
+                saving: Some(free),
+                action: Action::VirtualDisks,
+            });
+        } else if v.unknown >= 30 * GB {
+            // What is used inside is not known (Docker, or a distribution that is not
+            // running): a tip, with no promise of space.
+            out.push(Recommendation {
+                id: "virtual_disks",
+                level: Level::Tip,
+                title: "The disks of WSL and Docker use {size}",
+                detail: DETAIL,
+                args: vec![("size", size(v.total))],
+                saving: None,
+                action: Action::VirtualDisks,
+            });
+        }
+    }
+
+    if let Some((old, bytes)) = facts.restore_points
+        && old > 0
+        && bytes >= 5 * GB
+    {
+        out.push(Recommendation {
+            id: "restore_points",
+            level: if system_drive_tight {
+                Level::Suggested
+            } else {
+                Level::Tip
+            },
+            title: "Restore points use {size}",
+            detail: "Deleting all but the newest frees most of it; the newest one on each drive is kept.",
+            args: vec![("size", size(bytes))],
+            saving: None,
+            action: Action::RestorePoints,
+        });
+    }
+
     if facts.power_saving {
         out.push(Recommendation {
             id: "power_saving",
@@ -401,6 +469,33 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
                     .collect()
             })
             .unwrap_or_default(),
+        virtual_disks: tool_available("vdisk.list")
+            .then(vdisks::list)
+            .and_then(|r| r.ok())
+            .filter(|r| !r.disks.is_empty())
+            .map(|r| {
+                let known: Vec<u64> = r
+                    .disks
+                    .iter()
+                    .filter_map(vdisks::VirtualDisk::reclaimable)
+                    .collect();
+                VirtualDiskFacts {
+                    total: r.disks.iter().map(|d| d.bytes).sum(),
+                    reclaimable: (!known.is_empty()).then(|| known.iter().sum()),
+                    unknown: r
+                        .disks
+                        .iter()
+                        .filter(|d| d.used_inside.is_none())
+                        .map(|d| d.bytes)
+                        .sum(),
+                }
+            }),
+        // Only with administrator rights; without them Windows hides the restore points.
+        restore_points: (tool_available("restore.list")
+            && rewind_os_platform::elevation::is_elevated())
+        .then(restore::list)
+        .and_then(|r| r.ok())
+        .map(|r| (restore::all_but_newest(&r.copies).len(), r.used())),
     };
     rules(&facts)
 }

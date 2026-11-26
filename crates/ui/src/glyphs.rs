@@ -17,6 +17,7 @@ pub enum Glyph {
     Lighten,
     Maintenance,
     Drive,
+    Health,
 }
 
 /// Draws `glyph` centred in `rect` (any size; drawn at 16 points).
@@ -122,6 +123,22 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
             );
             painter.circle_filled(p(11.5, 8.0), 1.1, color);
             line(vec![p(4.0, 8.0), p(8.0, 8.0)]);
+        }
+        Glyph::Health => {
+            // A drive with a pulse across it.
+            rounded(
+                painter,
+                Rect::from_min_max(p(1.5, 3.5), p(14.5, 12.5)),
+                stroke,
+            );
+            line(vec![
+                p(3.5, 8.0),
+                p(6.0, 8.0),
+                p(7.25, 5.5),
+                p(8.75, 10.5),
+                p(10.0, 8.0),
+                p(12.5, 8.0),
+            ]);
         }
         Glyph::Maintenance => {
             painter.circle_stroke(p(8.0, 8.0), 2.5, stroke);

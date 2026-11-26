@@ -4,7 +4,7 @@
 //! [`recommend`] gathers the facts.
 
 use crate::cleanup::CategoryReport;
-use crate::{Task, cleanup, duplicates, leftovers, startup, system, tweaks, walk};
+use crate::{Task, cleanup, disks, duplicates, leftovers, startup, system, tweaks, walk};
 use rewind_os_platform::Os;
 use rewind_os_platform::paths::Known;
 use serde::Serialize;
@@ -45,6 +45,8 @@ pub enum Action {
     ReviewStartup,
     Lighten,
     Hibernation,
+    /// Open disk health.
+    DiskHealth,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -84,6 +86,8 @@ pub struct Facts {
     /// Folders of uninstalled programs nothing has changed in months: how many, and their size.
     pub leftovers: Option<(usize, u64)>,
     pub hibernation_file: Option<u64>,
+    /// Drives that need attention or are failing: their name and health.
+    pub disks: Vec<(String, disks::Health)>,
 }
 
 fn size(bytes: u64) -> String {
@@ -101,6 +105,31 @@ fn category_bytes(facts: &Facts, id: &str) -> u64 {
 
 pub fn rules(facts: &Facts) -> Vec<Recommendation> {
     let mut out = Vec::new();
+
+    for (name, health) in &facts.disks {
+        let (id, title, detail) = match health {
+            disks::Health::Failing => (
+                "disk_failing",
+                "{name} reports that it is failing",
+                "Copy your important files to another drive or online storage now, and plan to replace it.",
+            ),
+            disks::Health::Warning => (
+                "disk_warning",
+                "{name} needs attention",
+                "Back up your important files and look at what the drive reports.",
+            ),
+            disks::Health::Good | disks::Health::Unknown => continue,
+        };
+        out.push(Recommendation {
+            id,
+            level: Level::Important,
+            title,
+            detail,
+            args: vec![("name", name.clone())],
+            saving: None,
+            action: Action::DiskHealth,
+        });
+    }
 
     let mut system_drive_tight = false;
     for d in facts
@@ -339,6 +368,17 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
             .iter()
             .find(|f| f.kind == system::SystemFileKind::Hibernation)
             .map(|f| f.bytes),
+        disks: tool_available("disk.health")
+            .then(disks::report)
+            .and_then(|r| r.ok())
+            .map(|r| {
+                r.disks
+                    .into_iter()
+                    .filter(|d| d.health >= disks::Health::Warning)
+                    .map(|d| (d.name, d.health))
+                    .collect()
+            })
+            .unwrap_or_default(),
     };
     rules(&facts)
 }

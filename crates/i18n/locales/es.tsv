@@ -704,3 +704,56 @@ desktop ready after {time}	escritorio listo tras {time}
 of the last {n} starts	de los últimos {n} arranques
 slowed {n} starts	ralentizó {n} arranques
 {n} starts	{n} arranques
+Disk health	Salud de los discos
+Whether your drives are failing, and keeping them optimized	Si tus discos fallan, y mantenerlos optimizados
+Whether your drives report problems, and keeping them optimized.	Si tus discos avisan de problemas, y mantenerlos optimizados.
+Check again	Comprobar de nuevo
+No drives were found.	No se encontró ningún disco.
+Hard drive	Disco duro
+Drive	Disco
+Healthy	Sano
+Unknown	Desconocido
+Needs attention	Requiere atención
+Failing	Fallando
+Health	Salud
+Temperature	Temperatura
+Hot	Caliente
+Fine	Bien
+None	Ninguno
+Rated life used	Vida útil consumida
+Writes the SSD is rated for	De las escrituras que admite el SSD
+Powered on	Encendido
+about {n} days	unos {n} días
+Uncorrected errors	Errores sin corregir
+Damaged sectors	Sectores dañados
+Back up your files	Haz copia de tus archivos
+This drive does not say how it is doing.	Este disco no informa de su estado.
+The drive reports that it is failing. Copy your files to another drive now.	El disco avisa de que está fallando. Copia ya tus archivos a otro disco.
+The drive reports a problem with itself.	El disco avisa de un problema propio.
+Most of the writes it is rated for are used up.	Ha consumido casi todas las escrituras que admite.
+It could not read or write some data.	No pudo leer o escribir algunos datos.
+It has set aside damaged sectors.	Ha apartado sectores dañados.
+It runs hot, which shortens its life.	Funciona caliente, lo que acorta su vida.
+Temperature, wear and errors can only be read with administrator rights.	La temperatura, el desgaste y los errores solo se pueden leer con permisos de administrador.
+Install udisks2 so Rewind OS can read what the drives report about their health.	Instala udisks2 para que Rewind OS pueda leer lo que los discos dicen de su salud.
+Optimization	Optimización
+SSDs work best when they are told which space is free (TRIM); hard drives, when their files are in one piece. Windows does both on its own.	Los SSD funcionan mejor cuando se les indica qué espacio está libre (TRIM), y los discos duros cuando sus archivos están en una pieza. Windows hace ambas cosas por su cuenta.
+SSDs work best when they are told which space is free (TRIM). The system does it on its own with fstrim.timer.	Los SSD funcionan mejor cuando se les indica qué espacio está libre (TRIM). El sistema lo hace por su cuenta con fstrim.timer.
+On: it last ran on {date}.	Activada: la última vez fue el {date}.
+On.	Activada.
+Off: the drives are not optimized on their own.	Desactivada: los discos no se optimizan por su cuenta.
+Optimize now	Optimizar ahora
+Optimize the drives now?	¿Optimizar los discos ahora?
+Optimize	Optimizar
+Windows trims SSDs and defragments hard drives, as it does on its own. No file is deleted. On a hard drive this can take a long time; you can keep working meanwhile.	Windows aplica TRIM a los SSD y desfragmenta los discos duros, como hace por su cuenta. No se borra ningún archivo. En un disco duro puede tardar bastante; puedes seguir trabajando mientras tanto.
+The system tells each SSD which space is free (TRIM), as it does on its own. No file is deleted.	El sistema indica a cada SSD qué espacio está libre (TRIM), como hace por su cuenta. No se borra ningún archivo.
+The drives were optimized	Los discos se optimizaron
+{name} reports that it is failing	{name} avisa de que está fallando
+Copy your important files to another drive or online storage now, and plan to replace it.	Copia ya tus archivos importantes a otro disco o a la nube, y prevé cambiarlo.
+{name} needs attention	{name} requiere atención
+Back up your important files and look at what the drive reports.	Haz copia de tus archivos importantes y revisa lo que dice el disco.
+The system optimizes the drives on its own; last time on {date}.	El sistema optimiza los discos por su cuenta; la última vez el {date}.
+The system optimizes the drives on its own.	El sistema optimiza los discos por su cuenta.
+The system's regular optimization of the drives is turned off.	La optimización periódica de los discos está desactivada.
+Whether the drives report problems: health, temperature, wear and errors (on Windows the figures need administrator rights)	Si los discos avisan de problemas: salud, temperatura, desgaste y errores (en Windows las cifras necesitan permisos de administrador)
+Optimize every drive now the way the system does on its own: TRIM on SSDs, defragmentation on hard drives on Windows (can take long)	Optimiza todos los discos ahora como hace el sistema por su cuenta: TRIM en los SSD y, en Windows, desfragmentación en los discos duros (puede tardar)

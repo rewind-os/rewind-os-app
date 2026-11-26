@@ -46,6 +46,10 @@ large forgotten files and programs that start with the system for no reason.
 - **Startup speed**: how long the computer takes to start, its last starts, and what slowed them
   down (Windows' own performance log, as administrator; `systemd-analyze` on Linux), with a
   switch for the startup program behind a delay.
+- **Disk health**: whether each drive reports problems, with its temperature, wear, hours and
+  errors (Windows' own storage reports, the figures as administrator; udisks on Linux), a warning
+  on Home when one is failing, and the system's own optimization (TRIM on SSDs, defragmentation
+  of hard drives on Windows) run on request.
 - **Make Windows lighter**: turn off ads, suggestions, tracking and extras you do not use. A
   closed list of documented settings, each of which can be undone, and optional removal of
   preinstalled Store apps (News, Tips, Clipchamp…) for your account; the Store can install
@@ -64,6 +68,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
 | Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Startup speed | ✓ (as administrator) | ✓ (systemd, last start) | — |
+| Disk health and optimization | ✓ (figures as administrator) | ✓ (udisks; TRIM with the password) | — |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |

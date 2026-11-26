@@ -89,7 +89,7 @@ impl State {
                             Action::Clean { .. } => tr("Clean"),
                             Action::Analyze { .. } => tr("Analyze"),
                             Action::Duplicates { .. } | Action::Leftovers => tr("Review"),
-                            Action::Hibernation => tr("Open"),
+                            Action::Hibernation | Action::DiskHealth => tr("Open"),
                             Action::ReviewStartup | Action::Lighten => tr("Review"),
                         };
                         let button = if r.level == Level::Tip {
@@ -159,6 +159,7 @@ impl State {
                 Action::ReviewStartup => shared.goto = Some(Page::Startup),
                 Action::Lighten => shared.goto = Some(Page::Lighten),
                 Action::Hibernation => shared.goto = Some(Page::Maintenance),
+                Action::DiskHealth => shared.goto = Some(Page::Disks),
             }
         }
     }

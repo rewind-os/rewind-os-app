@@ -24,6 +24,7 @@ pub enum Page {
     Startup,
     Lighten,
     Maintenance,
+    Disks,
 }
 
 /// Navigation groups, in the order the sidebar shows them.
@@ -40,11 +41,11 @@ const SECTIONS: [(&str, &[Page]); 4] = [
         ],
     ),
     ("Programs", &[Page::Programs, Page::Startup]),
-    ("System", &[Page::Lighten, Page::Maintenance]),
+    ("System", &[Page::Lighten, Page::Maintenance, Page::Disks]),
 ];
 
 impl Page {
-    const ALL: [Page; 10] = [
+    const ALL: [Page; 11] = [
         Page::Overview,
         Page::Analyzer,
         Page::Duplicates,
@@ -55,6 +56,7 @@ impl Page {
         Page::Startup,
         Page::Lighten,
         Page::Maintenance,
+        Page::Disks,
     ];
 
     /// The tools behind the page; it is available when any of them works on this system.
@@ -73,6 +75,7 @@ impl Page {
                 "maintenance.analyze_component_store",
                 "maintenance.journal_usage",
             ],
+            Page::Disks => &["disk.health"],
         }
     }
 
@@ -94,6 +97,7 @@ impl Page {
             Page::Startup => "Startup programs",
             Page::Lighten => "Make Windows lighter",
             Page::Maintenance => "Maintenance",
+            Page::Disks => "Disk health",
         }
     }
 
@@ -111,6 +115,7 @@ impl Page {
             Page::Startup => Glyph::Startup,
             Page::Lighten => Glyph::Lighten,
             Page::Maintenance => Glyph::Maintenance,
+            Page::Disks => Glyph::Health,
         }
     }
 
@@ -128,6 +133,7 @@ impl Page {
             Page::Startup => "Choose what starts with the system",
             Page::Lighten => "Turn off ads, tracking and extras you do not use",
             Page::Maintenance => "The system's own maintenance tools",
+            Page::Disks => "Whether your drives are failing, and keeping them optimized",
         }
     }
 }
@@ -280,6 +286,7 @@ pub struct App {
     startup: pages::startup::State,
     lighten: pages::lighten::State,
     maintenance: pages::maintenance::State,
+    disks: pages::disks::State,
     devtools: crate::devtools::Devtools,
     logo: Option<egui::TextureHandle>,
     update: crate::update::Notice,
@@ -321,6 +328,7 @@ impl App {
             startup: Default::default(),
             lighten: Default::default(),
             maintenance: Default::default(),
+            disks: Default::default(),
             devtools: crate::devtools::Devtools::from_env(),
             logo: load_logo(ctx),
             update,
@@ -338,6 +346,7 @@ impl App {
             || self.startup.busy()
             || self.lighten.busy()
             || self.maintenance.busy()
+            || self.disks.busy()
     }
 
     /// The left column: the app's name, the pages, and the rights the app runs with.
@@ -512,6 +521,7 @@ impl eframe::App for App {
                     Page::Startup => self.startup.ui(ui, shared),
                     Page::Lighten => self.lighten.ui(ui, shared),
                     Page::Maintenance => self.maintenance.ui(ui, shared),
+                    Page::Disks => self.disks.ui(ui, shared),
                 }
             });
         if let Some(page) = self.shared.goto.take() {

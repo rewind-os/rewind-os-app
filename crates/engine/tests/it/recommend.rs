@@ -1,5 +1,5 @@
 use rewind_os_engine::cleanup::{self, CategoryReport};
-use rewind_os_engine::recommend::{Action, DriveFact, Facts, Level, rules};
+use rewind_os_engine::recommend::{Action, DriveFact, Facts, Level, VirtualDiskFacts, rules};
 use std::path::PathBuf;
 
 const GB: u64 = 1024 * 1024 * 1024;
@@ -125,4 +125,63 @@ fn duplicates_and_leftovers_are_advised_only_when_they_free_real_space() {
             .any(|r| matches!(&r.action, Action::Duplicates { path } if *path == downloads))
     );
     assert!(advice.iter().any(|r| r.action == Action::Leftovers));
+}
+
+fn virtual_disk_advice(
+    reclaimable: Option<u64>,
+    unknown: u64,
+) -> Vec<rewind_os_engine::recommend::Recommendation> {
+    rules(&Facts {
+        drives: vec![drive(500, 300)],
+        virtual_disks: Some(VirtualDiskFacts {
+            total: 80 * GB + unknown,
+            reclaimable,
+            unknown,
+        }),
+        ..Facts::default()
+    })
+    .into_iter()
+    .filter(|r| r.action == Action::VirtualDisks)
+    .collect()
+}
+
+#[test]
+fn virtual_disks_are_advised_when_compacting_would_give_a_lot_back() {
+    let worth = virtual_disk_advice(Some(20 * GB), 0);
+    assert_eq!(worth.len(), 1);
+    assert_eq!(worth[0].saving, Some(20 * GB));
+    assert!(
+        virtual_disk_advice(Some(GB), 0).is_empty(),
+        "little to give back"
+    );
+    // A large disk whose use inside is not known (Docker) gets a tip, with no promise, even
+    // next to a running distribution with little to give back.
+    let unknown = virtual_disk_advice(Some(GB), 40 * GB);
+    assert_eq!(unknown.len(), 1);
+    assert!(
+        unknown
+            .iter()
+            .all(|r| r.level == Level::Tip && r.saving.is_none())
+    );
+    assert!(virtual_disk_advice(None, 10 * GB).is_empty());
+}
+
+#[test]
+fn restore_points_matter_more_when_the_drive_is_tight() {
+    let advice = |free_gb, old| {
+        rules(&Facts {
+            drives: vec![drive(500, free_gb)],
+            restore_points: Some((old, 12 * GB)),
+            ..Facts::default()
+        })
+        .into_iter()
+        .find(|r| r.action == Action::RestorePoints)
+    };
+    let roomy = advice(300, 4).map(|r| r.level);
+    let tight = advice(60, 4).map(|r| r.level);
+    assert!(tight.is_some() && roomy.is_some() && tight < roomy);
+    assert!(
+        advice(300, 0).is_none(),
+        "only the newest is left, and it is kept"
+    );
 }

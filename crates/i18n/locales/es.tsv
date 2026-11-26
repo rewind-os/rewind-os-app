@@ -878,3 +878,8 @@ kept	se conserva
 {drive}: {used} used	{drive}: {used} usados
 There is only the newest restore point on each drive; it is always kept.	Solo queda el punto de restauración más reciente de cada unidad, y ese se conserva siempre.
 Deleting old restore points	Borrando puntos de restauración antiguos
+Compacting the disks of WSL and Docker gives back about {size}	Compactar los discos de WSL y Docker devuelve unos {size}
+The disks of WSL and Docker use {size}	Los discos de WSL y Docker ocupan {size}
+Their disk files grow as Linux writes and never shrink by themselves. Compacting returns what Linux no longer uses; nothing inside is deleted.	Sus archivos de disco crecen a medida que Linux escribe y nunca encogen solos. Compactarlos devuelve lo que Linux ya no usa; no se borra nada de dentro.
+Restore points use {size}	Los puntos de restauración ocupan {size}
+Deleting all but the newest frees most of it; the newest one on each drive is kept.	Borrar todos menos el más reciente libera casi todo; el más reciente de cada unidad se conserva.

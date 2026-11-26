@@ -1,4 +1,4 @@
-//! Window layout: navigation on the left, the current page in the middle, status at the
+//! Window layout: a rail of groups and the group's pages on the left, the current page in the middle, status at the
 //! bottom. Pages change the system only through engine requests.
 
 use crate::jobs::{self, Job};
@@ -29,26 +29,73 @@ pub enum Page {
     Processes,
 }
 
-/// Navigation groups, in the order the sidebar shows them.
-const SECTIONS: [(&str, &[Page]); 4] = [
-    ("", &[Page::Overview]),
-    (
-        "Free up space",
-        &[
-            Page::Analyzer,
-            Page::Duplicates,
-            Page::Cleanup,
-            Page::Leftovers,
-            Page::BuildFolders,
-            Page::VirtualDisks,
-        ],
-    ),
-    (
-        "Programs",
-        &[Page::Programs, Page::Startup, Page::Processes],
-    ),
-    ("System", &[Page::Lighten, Page::Maintenance, Page::Disks]),
-];
+/// The groups of the navigation rail, each with its pages in the order the list shows them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Group {
+    Home,
+    Space,
+    Programs,
+    System,
+}
+
+impl Group {
+    const ALL: [Group; 4] = [Group::Home, Group::Space, Group::Programs, Group::System];
+
+    fn pages(self) -> &'static [Page] {
+        match self {
+            Group::Home => &[Page::Overview],
+            Group::Space => &[
+                Page::Analyzer,
+                Page::Duplicates,
+                Page::Cleanup,
+                Page::Leftovers,
+                Page::BuildFolders,
+                Page::VirtualDisks,
+            ],
+            Group::Programs => &[Page::Programs, Page::Startup, Page::Processes],
+            Group::System => &[Page::Lighten, Page::Maintenance, Page::Disks],
+        }
+    }
+
+    /// The group's name, at the top of its list and as the rail's tooltip.
+    fn title(self) -> &'static str {
+        match self {
+            Group::Home => "Home",
+            Group::Space => "Free up space",
+            Group::Programs => "Programs",
+            Group::System => "System",
+        }
+    }
+
+    /// The short name under the rail's icon.
+    fn short(self) -> &'static str {
+        match self {
+            Group::Space => "Space",
+            other => other.title(),
+        }
+    }
+
+    fn glyph(self) -> crate::glyphs::Glyph {
+        use crate::glyphs::Glyph;
+        match self {
+            Group::Home => Glyph::Home,
+            Group::Space => Glyph::Drive,
+            Group::Programs => Glyph::Programs,
+            Group::System => Glyph::Maintenance,
+        }
+    }
+
+    fn of(page: Page) -> Group {
+        Group::ALL
+            .into_iter()
+            .find(|g| g.pages().contains(&page))
+            .unwrap_or(Group::Home)
+    }
+
+    fn index(self) -> usize {
+        self as usize
+    }
+}
 
 impl Page {
     const ALL: [Page; 13] = [
@@ -292,6 +339,8 @@ impl Shared {
 pub struct App {
     shared: Shared,
     page: Page,
+    /// The page last open in each group, so going back to a group returns to it.
+    last: [Option<Page>; 4],
     overview: pages::overview::State,
     analyzer: pages::analyzer::State,
     duplicates: pages::duplicates::State,
@@ -336,6 +385,7 @@ impl App {
                 icons: Default::default(),
             },
             page,
+            last: Default::default(),
             overview,
             analyzer: Default::default(),
             duplicates: Default::default(),
@@ -371,20 +421,41 @@ impl App {
             || self.processes.busy()
     }
 
-    /// The left column: the app's name, the pages, and the rights the app runs with.
-    fn sidebar(&mut self, ui: &mut egui::Ui) {
-        let t = theme::current(ui.ctx());
-        self.update.poll(ui.ctx(), &mut self.shared);
-        ui.add_space(6.0);
-        ui.horizontal(|ui| {
-            ui.add_space(10.0);
+    /// The rail: the logo and one button per group. Picking a group opens the page last open
+    /// in it.
+    fn rail(&mut self, ui: &mut egui::Ui) {
+        let current = Group::of(self.page);
+        ui.vertical_centered(|ui| {
             if let Some(logo) = &self.logo {
                 ui.add(
-                    egui::Image::new((logo.id(), egui::vec2(26.0, 26.0)))
-                        .corner_radius(CornerRadius::same(6))
+                    egui::Image::new((logo.id(), egui::vec2(30.0, 30.0)))
+                        .corner_radius(CornerRadius::same(7))
                         .alt_text("Rewind OS"),
                 );
             }
+            ui.add_space(18.0);
+            ui.spacing_mut().item_spacing.y = 6.0;
+            for group in Group::ALL {
+                let response =
+                    widgets::rail_item(ui, group.glyph(), tr(group.short()), group == current)
+                        .on_hover_text(tr(group.title()));
+                if response.clicked() && group != current {
+                    self.page = self.last[group.index()]
+                        .or_else(|| group.pages().iter().copied().find(|p| p.available()))
+                        .or_else(|| group.pages().first().copied())
+                        .unwrap_or(Page::Overview);
+                }
+            }
+        });
+    }
+
+    /// The list next to the rail: the app's name, the current group's pages, and the rights
+    /// the app runs with.
+    fn sidebar(&mut self, ui: &mut egui::Ui) {
+        let t = theme::current(ui.ctx());
+        self.update.poll(ui.ctx(), &mut self.shared);
+        ui.horizontal(|ui| {
+            ui.add_space(8.0);
             ui.label(
                 RichText::new("Rewind OS")
                     .size(17.0)
@@ -395,8 +466,6 @@ impl App {
                 self.update.version_menu(ui, &mut self.shared);
             });
         });
-        // The update notice and the rights stay at the bottom, in a panel of their own laid out
-        // top to bottom; the pages scroll above them when the window is too short for all.
         egui::Panel::bottom("sidebar_footer")
             .frame(egui::Frame::NONE)
             .show_separator_line(false)
@@ -433,41 +502,40 @@ impl App {
             .show(ui, |ui| self.navigation(ui));
     }
 
-    /// The pages, in their groups.
+    /// The current group's pages.
     fn navigation(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
-        // Pills close together, so every page fits at the default window height.
+        let group = Group::of(self.page);
+        ui.add_space(22.0);
+        ui.horizontal(|ui| {
+            ui.add_space(8.0);
+            ui.label(
+                RichText::new(tr(group.title()))
+                    .size(12.0)
+                    .color(t.text_muted),
+            );
+        });
+        ui.add_space(4.0);
         ui.spacing_mut().item_spacing.y = 2.0;
-        ui.add_space(16.0);
-        for (heading, pages) in SECTIONS {
-            if !heading.is_empty() {
-                ui.add_space(10.0);
-                ui.horizontal(|ui| {
-                    ui.add_space(16.0);
-                    ui.label(RichText::new(tr(heading)).size(12.0).color(t.text_muted));
-                });
-                ui.add_space(4.0);
-            }
-            for &page in pages {
-                let available = page.available();
-                let response = widgets::nav_item(
-                    ui,
-                    page.glyph(),
-                    tr(page.title()),
-                    self.page == page,
-                    available,
-                );
-                let response = if available {
-                    response.on_hover_text(tr(page.hint()))
-                } else {
-                    response.on_hover_text(rewind_os_i18n::trf(
-                        "Not available on {os} yet.",
-                        &[("os", Os::current().name())],
-                    ))
-                };
-                if response.clicked() {
-                    self.page = page;
-                }
+        for &page in group.pages() {
+            let available = page.available();
+            let response = widgets::nav_item(
+                ui,
+                page.glyph(),
+                tr(page.title()),
+                self.page == page,
+                available,
+            );
+            let response = if available {
+                response.on_hover_text(tr(page.hint()))
+            } else {
+                response.on_hover_text(rewind_os_i18n::trf(
+                    "Not available on {os} yet.",
+                    &[("os", Os::current().name())],
+                ))
+            };
+            if response.clicked() {
+                self.page = page;
             }
         }
     }
@@ -525,8 +593,18 @@ impl eframe::App for App {
                 )
                 .show(ui, |ui| self.status_bar(ui));
         }
+        egui::Panel::left("rail")
+            .exact_size(72.0)
+            .resizable(false)
+            .show_separator_line(false)
+            .frame(
+                egui::Frame::new()
+                    .fill(t.background)
+                    .inner_margin(Margin::symmetric(8, 18)),
+            )
+            .show(ui, |ui| self.rail(ui));
         egui::Panel::left("navigation")
-            .exact_size(224.0)
+            .exact_size(212.0)
             .resizable(false)
             .show_separator_line(false)
             .frame(
@@ -567,6 +645,9 @@ impl eframe::App for App {
             });
         if let Some(page) = self.shared.goto.take() {
             self.page = page;
+        }
+        if let Some(last) = self.last.get_mut(Group::of(self.page).index()) {
+            *last = Some(self.page);
         }
         let busy = self.busy();
         self.devtools.frame(&ctx, busy);

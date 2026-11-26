@@ -4,7 +4,8 @@ name: Release
 # MSI; tar.gz, .deb, .rpm, Flatpak bundle; a universal .dmg), drafts a GitHub release named
 # after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages with
 # SHA256SUMS.txt and its minisign signature, and publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
-# After a published release, the APT repository on GitHub Pages is updated (packaging/linux/apt-repo.sh).
+# After a published release, the apt, dnf and zypper repositories on GitHub Pages are updated
+# (packaging/linux/repos.sh); a dry run builds and checks them without deploying.
 # Run it by hand (workflow_dispatch) for a dry run that only builds and keeps the artifacts.
 on:
   push:
@@ -266,27 +267,27 @@ jobs:
           gh release edit "$TAG" --draft=false
           echo "Published $TAG with $now files." >> "$GITHUB_STEP_SUMMARY"
 
-  # The signed APT repository on GitHub Pages (packaging/linux/apt-repo.sh), so Debian and
-  # Ubuntu can `sudo apt install rewind-os` and update with `apt upgrade`. Only for a published
-  # release, never a pre-release or a dry run. Without the APT_SIGNING_KEY secret the
-  # repository is left as it is and the summary says so; the release itself is not held back.
-  apt:
-    name: APT repository
-    if: github.event_name == 'push' && github.ref == 'refs/heads/release' && needs.release.result == 'success' && needs.version.outputs.prerelease == 'false'
-    needs: [version, release]
+  # The signed package repositories on GitHub Pages (packaging/linux/repos.sh): apt for Debian
+  # and Ubuntu, dnf for Fedora, zypper for openSUSE, so Linux installs Rewind OS with its own
+  # package manager and updates it with the rest of the system. Every run builds them from this
+  # run's packages and installs from them in clean containers (packaging/linux/check-repos.sh);
+  # only a published release (not a pre-release, not a dry run) deploys them. Without the
+  # APT_SIGNING_KEY secret nothing is built or deployed and the summary says so; the release is
+  # not held back.
+  repos:
+    name: Linux repositories
+    if: >-
+      !cancelled() && needs.linux.result == 'success' && needs.version.outputs.prerelease == 'false'
+      && (github.event_name == 'workflow_dispatch' || needs.release.result == 'success')
+    needs: [version, linux, release]
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    outputs:
+      ready: ${{ steps.build.outputs.ready }}
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ github.repository }}
-      TAG: v${{ needs.version.outputs.version }}
+      REPO_URL: https://rewind-os.github.io/rewind-os-app
     steps:
       - name: Harden runner
         uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
@@ -295,31 +296,50 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Download the published .deb packages
-        run: |
-          set -euo pipefail
-          gh release download "$TAG" -p 'rewind-os_*.deb' -p SHA256SUMS.txt -D debs
-          (cd debs && sha256sum --check --ignore-missing SHA256SUMS.txt)
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-linux-*
+          path: packages
+          merge-multiple: true
       - id: build
-        name: Build and sign the repository
+        name: Build and sign the repositories
         env:
           APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
         run: |
           set -euo pipefail
           if [ -z "${APT_SIGNING_KEY:-}" ]; then
-            echo "::warning::The APT_SIGNING_KEY secret is missing: the APT repository was not updated. See packaging/README.md."
-            echo "APT repository not updated: no APT_SIGNING_KEY secret." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::The APT_SIGNING_KEY secret is missing: the package repositories were not updated. See packaging/README.md."
+            echo "Package repositories not updated: no APT_SIGNING_KEY secret." >> "$GITHUB_STEP_SUMMARY"
             echo "ready=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          ./packaging/linux/apt-repo.sh debs site
+          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends createrepo-c rpm
+          APT_REPO_URL="$REPO_URL" ./packaging/linux/repos.sh packages site
           echo "ready=true" >> "$GITHUB_OUTPUT"
-      - if: steps.build.outputs.ready == 'true'
+      - name: Install from them with apt, dnf and zypper
+        if: steps.build.outputs.ready == 'true'
+        run: ./packaging/linux/check-repos.sh site "$REPO_URL"
+      - if: steps.build.outputs.ready == 'true' && github.event_name == 'push'
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site
+      - if: steps.build.outputs.ready == 'true' && github.event_name != 'push'
+        run: |
+          echo "Dry run: the package repositories were built and installed from, not deployed." >> "$GITHUB_STEP_SUMMARY"
+
+  pages:
+    name: Deploy the package repositories
+    if: github.event_name == 'push' && needs.repos.outputs.ready == 'true'
+    needs: [version, repos]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
-        if: steps.build.outputs.ready == 'true'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-      - if: steps.build.outputs.ready == 'true'
-        run: echo "APT repository updated with $TAG at ${{ steps.deploy.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"
+      - run: echo "Package repositories updated with v${{ needs.version.outputs.version }} at ${{ steps.deploy.outputs.page_url }}" >> "$GITHUB_STEP_SUMMARY"

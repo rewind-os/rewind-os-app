@@ -5,7 +5,8 @@
 - `macos/package.sh`: a universal app (Apple silicon and Intel) in a .dmg, signed ad hoc. Signing
   with an Apple Developer ID and notarizing need a paid Apple Developer account; until then macOS
   asks to confirm the app the first time it opens.
-- `linux/apt-repo.sh`: the signed APT repository on GitHub Pages, from a release's .deb packages.
+- `linux/repos.sh`: the signed apt, dnf and zypper repositories on GitHub Pages, from a release's
+  .deb and .rpm packages; `linux/check-repos.sh` installs from them in clean containers.
 - `minisign.pub`: the public key that signs every release.
 
 ## Release signature
@@ -40,22 +41,32 @@ the copy on disk. If it is lost, installed apps cannot trust new releases until 
 with the old key has shipped a new public key, so do not lose it. If it leaks, publish a release
 with a new key at once and say so in its notes.
 
-## APT repository
+## Package repositories (apt, dnf, zypper)
 
-After a release is published (not a pre-release or a dry run), the release workflow's
-`APT repository` job puts its .deb packages in a signed APT repository and deploys it to GitHub
-Pages at <https://rewind-os.github.io/rewind-os-app/>. Debian and Ubuntu then install and
-update Rewind OS with apt:
+After a release is published (not a pre-release or a dry run), the release workflow puts its
+.deb and .rpm packages in signed repositories and deploys them to GitHub Pages at
+<https://rewind-os.github.io/rewind-os-app/>, so Linux installs and updates Rewind OS with its own
+package manager:
 
 ```sh
+# Debian, Ubuntu
 curl -fsSL https://rewind-os.github.io/rewind-os-app/rewind-os.gpg | sudo tee /usr/share/keyrings/rewind-os.gpg >/dev/null
 echo "deb [signed-by=/usr/share/keyrings/rewind-os.gpg] https://rewind-os.github.io/rewind-os-app stable main" | sudo tee /etc/apt/sources.list.d/rewind-os.list
 sudo apt update && sudo apt install rewind-os
+# Fedora
+sudo curl -fsSL -o /etc/yum.repos.d/rewind-os.repo https://rewind-os.github.io/rewind-os-app/rpm/rewind-os.repo
+sudo dnf install rewind-os
+# openSUSE
+sudo zypper addrepo https://rewind-os.github.io/rewind-os-app/rpm/rewind-os.repo
+sudo zypper install rewind-os
 ```
 
-The repository holds the newest version only. Its `InRelease` and `Release.gpg` are signed with
-a GPG key kept in the `APT_SIGNING_KEY` secret; without it the job leaves the repository as it is
-and says so in the run summary, and the release is not held back.
+The repositories hold the newest version only. One GPG key, kept in the `APT_SIGNING_KEY`
+secret, signs the APT `InRelease` and `Release.gpg`, every .rpm and the RPM `repomd.xml`. Every
+run of the workflow, dry runs included, builds them and installs from them in clean Debian 12,
+Ubuntu 24.04, Fedora and openSUSE Tumbleweed containers (`linux/check-repos.sh`); only a
+published release deploys them. Without the secret nothing is built or deployed, the run
+summary says so, and the release is not held back.
 
 Setting it up (once):
 

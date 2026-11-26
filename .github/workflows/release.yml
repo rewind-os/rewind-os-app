@@ -163,11 +163,13 @@ jobs:
         with:
           toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
+      # The runner's image (its macOS and Xcode) is part of the cache key: a cache from an older
+      # image can hold build scripts that no longer link.
+      - name: Name the runner image
+        run: echo "RUNNER_IMAGE=${ImageOS:-macos}-${ImageVersion:-unknown}" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          # The image is part of the key: a cache from an older Xcode can hold build scripts
-          # that no longer link.
-          key: release-macos-universal-${{ env.ImageOS }}
+          key: release-macos-universal-${{ env.RUNNER_IMAGE }}
       - name: Build, sign ad hoc, package
         run: ./packaging/macos/package.sh
       - name: Say how the app is signed

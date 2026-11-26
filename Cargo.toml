@@ -32,6 +32,9 @@ winreg = "0.56"
 winapi-util = "0.1"
 filesize = "0.2"
 clap = { version = "4", features = ["derive"] }
+# Colours in the CLI; clap already brings both.
+anstream = "1"
+anstyle = "1"
 eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "accesskit", "wayland", "x11"] }
 egui = "0.37"
 rfd = "0.18"

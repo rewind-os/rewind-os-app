@@ -174,7 +174,9 @@ fn large(path: &Path, days: u64) -> std::io::Result<()> {
 
 #[test]
 fn old_large_files_are_the_ones_nobody_changed_for_a_year() {
-    let dir = tempfile::tempdir().unwrap();
+    // Not the system's temporary folder: AppData on Windows and /var on macOS are program and
+    // system folders, which are rightly never offered.
+    let dir = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).unwrap();
     large(
         &dir.path().join("videos/2019-trip.mkv"),
         scan::OLD_AFTER_DAYS * 2,

@@ -102,6 +102,12 @@ enum Command {
         #[arg(long)]
         yes: bool,
     },
+    /// Move empty folders `scan` listed to the recycle bin; each is checked again first.
+    TrashEmpty {
+        paths: Vec<PathBuf>,
+        #[arg(long)]
+        yes: bool,
+    },
     /// Programs that start with Windows.
     #[command(subcommand)]
     Startup(Startup),
@@ -590,6 +596,10 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             confirm(yes)?;
             Request::FilesTrash { paths }
         }
+        Command::TrashEmpty { paths, yes } => {
+            confirm(yes)?;
+            Request::EmptyFoldersTrash { paths }
+        }
         Command::Startup(Startup::List) => Request::StartupList,
         Command::Startup(Startup::Enable { id, yes }) => {
             confirm(yes)?;
@@ -835,6 +845,18 @@ fn print_human(response: &Response, top: usize) {
                 for f in tree.old_files.iter().take(top) {
                     let date = f.modified.map(local_date).unwrap_or_default();
                     println!("{:>10}  {date}  {}", bytes(f.bytes), f.path.display());
+                }
+            }
+            if !tree.empty_folders.is_empty() {
+                println!(
+                    "\n{}",
+                    trf(
+                        "{n} empty folders (rewind-os-cli trash-empty <path>… --yes)",
+                        &[("n", &count(tree.empty_folders.len() as u64))]
+                    )
+                );
+                for p in tree.empty_folders.iter().take(top) {
+                    println!("  {}", p.display());
                 }
             }
         }

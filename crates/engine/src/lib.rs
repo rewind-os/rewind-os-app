@@ -8,6 +8,7 @@ pub mod cleanup;
 pub mod disks;
 pub mod duplicates;
 pub mod elevated;
+pub mod empty;
 pub mod format;
 pub mod history;
 pub mod icons;
@@ -265,6 +266,11 @@ pub const TOOLS: &[ToolSpec] = &[
     ToolSpec::new("files.trash", "Move files or folders to the recycle bin")
         .admin(AdminNeed::Partly)
         .changes(),
+    ToolSpec::new(
+        "files.trash_empty",
+        "Move empty folders a disk scan found to the recycle bin, each only if it is still empty",
+    )
+    .changes(),
     ToolSpec::new("files.reveal", "Show a file or folder in the file manager"),
     ToolSpec::new(
         "processes.list",
@@ -465,6 +471,9 @@ pub enum Request {
     RegistryLeftovers,
     #[serde(rename = "files.trash")]
     FilesTrash { paths: Vec<PathBuf> },
+    /// Empty folders the scan found; each is checked again and left alone if no longer empty.
+    #[serde(rename = "files.trash_empty")]
+    EmptyFoldersTrash { paths: Vec<PathBuf> },
     #[serde(rename = "files.reveal")]
     FilesReveal { path: PathBuf },
     #[serde(rename = "boot.report")]
@@ -594,6 +603,10 @@ impl Engine {
                 Ok(Response::Done("An elevated copy was started"))
             }
             Request::DiskScan { root } => scan::scan(&root, task).map(|mut tree| {
+                if !tree.cancelled {
+                    task.set_stage("Looking for empty folders");
+                    tree.empty_folders = empty::find(&tree);
+                }
                 if let Some(dir) = history::folder() {
                     tree.history = history::record(&tree, &dir, chrono::Utc::now());
                 }
@@ -624,6 +637,9 @@ impl Engine {
                 Ok(Response::RegistryLeftovers(leftovers::find_registry(task)))
             }
             Request::FilesTrash { paths } => Ok(Response::Trashed(trash(&paths, task))),
+            Request::EmptyFoldersTrash { paths } => {
+                Ok(Response::Trashed(empty::trash(&paths, task)))
+            }
             Request::DevFind { root } => {
                 let root = root
                     .or_else(projects::default_root)
@@ -728,6 +744,7 @@ impl Request {
             Request::LeftoversFind => "leftovers.find",
             Request::RegistryLeftovers => "leftovers.registry",
             Request::FilesTrash { .. } => "files.trash",
+            Request::EmptyFoldersTrash { .. } => "files.trash_empty",
             Request::DevFind { .. } => "dev.find",
             Request::DevClean { .. } => "dev.clean",
             Request::VdiskList => "vdisk.list",
@@ -759,7 +776,7 @@ impl Request {
 }
 
 /// Moves paths to the recycle bin, measuring each first so the report says what moved.
-fn trash(paths: &[PathBuf], task: &Task) -> Vec<TrashResult> {
+pub(crate) fn trash(paths: &[PathBuf], task: &Task) -> Vec<TrashResult> {
     task.set_stage("Moving to the recycle bin");
     paths
         .iter()

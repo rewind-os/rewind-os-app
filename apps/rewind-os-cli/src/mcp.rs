@@ -4,7 +4,7 @@
 //! Limits, so an assistant can never do more than the person allowed:
 //! - Tools that read a path only accept paths inside a `--automation-read-root` (or a write
 //!   root). Without roots, they are refused.
-//! - `files.trash` and `dev.clean` only accept paths inside a `--automation-write-root`, and
+//! - `files.trash`, `files.trash_empty` and `dev.clean` only accept paths inside a `--automation-write-root`, and
 //!   the engine's safety guard still checks every path.
 //! - Other tools that change the computer (cleanup, startup, settings, apps, uninstall,
 //!   maintenance) are offered only with `--allow-system-changes`.
@@ -33,7 +33,7 @@ const READS_PATHS: &[&str] = &[
     "files.reveal",
 ];
 /// Tools whose arguments name paths to remove.
-const WRITES_PATHS: &[&str] = &["files.trash", "dev.clean"];
+const WRITES_PATHS: &[&str] = &["files.trash", "files.trash_empty", "dev.clean"];
 
 /// MCP tool names allow letters, digits, `_` and `-`: `disk.scan` is offered as `disk_scan`.
 pub fn mcp_name(id: &str) -> String {
@@ -88,7 +88,7 @@ impl Policy {
                 self.read_roots.iter().chain(&self.write_roots).collect(),
                 "--automation-read-root",
             ),
-            "files.trash" | "dev.clean" => (
+            "files.trash" | "files.trash_empty" | "dev.clean" => (
                 paths("paths"),
                 self.write_roots.iter().collect(),
                 "--automation-write-root",
@@ -128,7 +128,9 @@ fn input_schema(id: &str) -> Value {
             json!({ "root": string, "min_bytes": { "type": "integer", "minimum": 1 } }),
             &["root"],
         ),
-        "files.trash" | "dev.clean" => object(json!({ "paths": strings }), &["paths"]),
+        "files.trash" | "files.trash_empty" | "dev.clean" => {
+            object(json!({ "paths": strings }), &["paths"])
+        }
         "dev.find" => object(json!({ "root": string }), &["root"]),
         "files.reveal" => object(json!({ "path": string }), &["path"]),
         "cleanup.run" => object(json!({ "categories": strings }), &["categories"]),

@@ -26,8 +26,10 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   carpetas que más han crecido o menguado desde el último escaneo de la misma carpeta (un resumen
   breve de tamaños de carpetas se guarda en este equipo, en la carpeta de datos de la app).
   «Archivos grandes y viejos» lista los de 50 MB o más que nadie ha cambiado en más de un año,
-  sin los del sistema ni los de los programas. Cualquier elemento se puede mostrar en el gestor de
-  archivos o mover a la papelera.
+  sin los del sistema ni los de los programas. «Carpetas vacías» lista las carpetas sin nada dentro
+  (o solo con otras carpetas vacías), sin las ocultas ni las del sistema, los programas o los
+  proyectos, y comprueba cada una otra vez antes de quitarla. Cualquier elemento se puede mostrar
+  en el gestor de archivos o mover a la papelera.
 - **Archivos duplicados**: archivos con exactamente el mismo contenido (tamaño, después el primer
   bloque y después un hash BLAKE3 completo). Los enlaces duros no cuentan como copias y los
   archivos que solo están en la nube no se descargan. Siempre queda una copia de cada archivo; las

@@ -883,3 +883,12 @@ The disks of WSL and Docker use {size}	Los discos de WSL y Docker ocupan {size}
 Their disk files grow as Linux writes and never shrink by themselves. Compacting returns what Linux no longer uses; nothing inside is deleted.	Sus archivos de disco crecen a medida que Linux escribe y nunca encogen solos. Compactarlos devuelve lo que Linux ya no usa; no se borra nada de dentro.
 Restore points use {size}	Los puntos de restauración ocupan {size}
 Deleting all but the newest frees most of it; the newest one on each drive is kept.	Borrar todos menos el más reciente libera casi todo; el más reciente de cada unidad se conserva.
+Empty folders	Carpetas vacías
+Empty folders, or holding only empty folders: {n}. Hidden folders and the system's, programs' and projects' own are left out; each is checked again before it goes.	Carpetas vacías, o que solo contienen carpetas vacías: {n}. Quedan fuera las ocultas y las del sistema, los programas y los proyectos; cada una se vuelve a comprobar antes de quitarla.
+Only the first {n} are shown; scan a smaller folder to see the rest.	Solo se muestran las primeras {n}; analiza una carpeta más pequeña para ver el resto.
+Move {n} to the recycle bin	Mover {n} a la papelera
+Moved {n} empty folders to the recycle bin.	{n} carpetas vacías movidas a la papelera.
+{n} empty folders will be moved to the recycle bin. You can restore them from there.	Se moverán {n} carpetas vacías a la papelera. Podrás restaurarlas desde allí.
+{n} empty folders (rewind-os-cli trash-empty <path>… --yes)	{n} carpetas vacías (rewind-os-cli trash-empty <ruta>… --yes)
+Something was added to this folder since the scan; it was left alone.	Se ha añadido algo a esta carpeta desde el análisis; se ha dejado como estaba.
+Looking for empty folders	Buscando carpetas vacías

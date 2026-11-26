@@ -38,6 +38,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.21 Virtual disks of WSL and Docker Desktop: what each `.vhdx` takes on Windows against what Linux uses inside, and compacting it (fstrim, `wsl --shutdown`, diskpart `compact vdisk`) as administrator after asking
 - [x] R1.22 Old large files: files of 50 MB or more not changed in over a year, found during the scan, without the system's or programs' own files
 - [x] R1.23 Restore points: how many and what they take (CIM, in any language), and deleting all but the newest on each drive, as Disk Cleanup does, after asking
+- [x] R1.24 Empty folders: found during the scan and checked on the disk (links count as content), without hidden, system, program or project folders; to the recycle bin, each checked again first
 - [x] R1.14 What changed since the last scan of a folder: the folders that grew or shrank most, as deep as the change goes (summaries kept on this computer)
 
 ## R2 — Rewind OS on every system

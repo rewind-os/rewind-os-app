@@ -20,6 +20,7 @@ enum View {
     Folders,
     LargestFiles,
     OldFiles,
+    EmptyFolders,
     FileTypes,
     Changes,
 }
@@ -40,6 +41,8 @@ pub struct State {
     /// Paths moved to the recycle bin since the last scan; shown struck through.
     trashed: HashSet<PathBuf>,
     pending_trash: Option<Vec<(PathBuf, u64)>>,
+    /// The pending items are empty folders: each is checked again before it goes.
+    pending_empty: bool,
     trash_job: Option<Job>,
 }
 
@@ -72,6 +75,7 @@ impl State {
                     Some("folders") => self.view = View::Folders,
                     Some("files") => self.view = View::LargestFiles,
                     Some("old") => self.view = View::OldFiles,
+                    Some("empty") => self.view = View::EmptyFolders,
                     Some("types") => self.view = View::FileTypes,
                     Some("changes") => self.view = View::Changes,
                     _ => {}
@@ -92,19 +96,28 @@ impl State {
             match outcome {
                 Ok(Response::Trashed(results)) => {
                     let mut moved = 0;
+                    let mut items = 0;
                     let mut failed = 0;
                     for r in results {
                         if r.error.is_none() {
                             moved += r.bytes;
+                            items += 1;
                             self.trashed.insert(r.path);
                         } else {
                             failed += 1;
                         }
                     }
-                    let mut text = trf(
-                        "Moved {size} to the recycle bin. Space is freed when the recycle bin is emptied.",
-                        &[("size", &bytes(moved))],
-                    );
+                    let mut text = if moved == 0 && items > 0 {
+                        trf(
+                            "Moved {n} empty folders to the recycle bin.",
+                            &[("n", &count(items))],
+                        )
+                    } else {
+                        trf(
+                            "Moved {size} to the recycle bin. Space is freed when the recycle bin is emptied.",
+                            &[("size", &bytes(moved))],
+                        )
+                    };
                     if failed > 0 {
                         text.push(' ');
                         text.push_str(&trf(
@@ -156,6 +169,7 @@ impl State {
             ui.selectable_value(&mut self.view, View::Folders, tr("Folders"));
             ui.selectable_value(&mut self.view, View::LargestFiles, tr("Largest files"));
             ui.selectable_value(&mut self.view, View::OldFiles, tr("Old large files"));
+            ui.selectable_value(&mut self.view, View::EmptyFolders, tr("Empty folders"));
             ui.selectable_value(&mut self.view, View::FileTypes, tr("File types"));
             ui.selectable_value(&mut self.view, View::Changes, tr("What changed"));
         });
@@ -164,6 +178,7 @@ impl State {
             View::Folders => self.folders(ui, shared, &tree),
             View::LargestFiles => self.largest_files(ui, shared, &tree),
             View::OldFiles => self.old_files(ui, shared, &tree),
+            View::EmptyFolders => self.empty_folders(ui, shared, &tree),
             View::FileTypes => file_types(ui, &tree),
             View::Changes => self.changes(ui, &tree),
         }
@@ -635,12 +650,102 @@ impl State {
         }
     }
 
+    /// Folders with nothing in them, or only other empty folders.
+    fn empty_folders(&mut self, ui: &mut egui::Ui, shared: &mut Shared, tree: &ScanTree) {
+        let t = theme::current(ui.ctx());
+        let left: Vec<&PathBuf> = tree
+            .empty_folders
+            .iter()
+            .filter(|p| !self.trashed.contains(*p))
+            .collect();
+        ui.label(
+            RichText::new(trf(
+                "Empty folders, or holding only empty folders: {n}. Hidden folders and the system's, programs' and projects' own are left out; each is checked again before it goes.",
+                &[("n", &count(tree.empty_folders.len() as u64))],
+            ))
+            .color(t.text_muted),
+        );
+        if tree.empty_folders.len() >= rewind_os_engine::empty::MOST {
+            ui.label(
+                RichText::new(trf(
+                    "Only the first {n} are shown; scan a smaller folder to see the rest.",
+                    &[("n", &count(rewind_os_engine::empty::MOST as u64))],
+                ))
+                .color(t.warn),
+            );
+        }
+        if tree.empty_folders.is_empty() {
+            return;
+        }
+        ui.add_space(4.0);
+        if widgets::primary_button(
+            ui,
+            &trf(
+                "Move {n} to the recycle bin",
+                &[("n", &count(left.len() as u64))],
+            ),
+            !left.is_empty() && self.trash_job.is_none(),
+        )
+        .clicked()
+        {
+            self.pending_trash = Some(left.iter().map(|p| ((*p).clone(), 0)).collect());
+            self.pending_empty = true;
+        }
+        ui.add_space(4.0);
+        let row_height = 38.0;
+        let mut pick = None;
+        egui::ScrollArea::vertical()
+            .id_salt("empty_folders")
+            .auto_shrink([false, true])
+            .show_rows(ui, row_height, tree.empty_folders.len(), |ui, range| {
+                for (index, path) in tree
+                    .empty_folders
+                    .iter()
+                    .enumerate()
+                    .skip(range.start)
+                    .take(range.len())
+                {
+                    let gone = self.trashed.contains(path);
+                    widgets::list_row(ui, index, row_height, |ui| {
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let (show, trash) = widgets::file_actions(ui, path, gone);
+                            if show {
+                                reveal(shared, path.clone());
+                            }
+                            if trash {
+                                pick = Some(path.clone());
+                            }
+                            ui.with_layout(
+                                egui::Layout::left_to_right(egui::Align::Center),
+                                |ui| {
+                                    let mut text = RichText::new(path.display().to_string());
+                                    if gone {
+                                        text = text.strikethrough().color(t.text_muted);
+                                    }
+                                    ui.add(egui::Label::new(text).truncate());
+                                },
+                            );
+                        });
+                    });
+                }
+            });
+        if let Some(path) = pick {
+            self.pending_trash = Some(vec![(path, 0)]);
+            self.pending_empty = true;
+        }
+    }
+
     fn confirm_trash(&mut self, ctx: &egui::Context, shared: &mut Shared) {
         let Some(items) = &self.pending_trash else {
             return;
         };
         let total: u64 = items.iter().map(|(_, b)| b).sum();
-        let body = if items.len() == 1 {
+        let body = if self.pending_empty {
+            trf(
+                "{n} empty folders will be moved to the recycle bin. You can restore them from there.",
+                &[("n", &count(items.len() as u64))],
+            )
+        } else if items.len() == 1 {
             trf(
                 "{path} ({size}) will be moved to the recycle bin. You can restore it from there.",
                 &[
@@ -662,15 +767,20 @@ impl State {
             tr("Move to recycle bin"),
         ) {
             Choice::Open => {}
-            Choice::Cancelled => self.pending_trash = None,
+            Choice::Cancelled => {
+                self.pending_trash = None;
+                self.pending_empty = false;
+            }
             Choice::Confirmed => {
                 let paths = items.iter().map(|(p, _)| p.clone()).collect();
-                self.trash_job = Some(Job::start(
-                    ctx,
-                    &shared.engine,
-                    Request::FilesTrash { paths },
-                ));
+                let request = if self.pending_empty {
+                    Request::EmptyFoldersTrash { paths }
+                } else {
+                    Request::FilesTrash { paths }
+                };
+                self.trash_job = Some(Job::start(ctx, &shared.engine, request));
                 self.pending_trash = None;
+                self.pending_empty = false;
             }
         }
     }

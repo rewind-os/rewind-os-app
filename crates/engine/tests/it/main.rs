@@ -4,6 +4,7 @@ mod boot;
 mod cleanup;
 mod disks;
 mod duplicates;
+mod empty;
 mod history;
 mod leftovers;
 mod mft;

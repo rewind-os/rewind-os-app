@@ -315,7 +315,7 @@ pub fn nav_item(
     enabled: bool,
 ) -> Response {
     let t = theme::current(ui.ctx());
-    let size = egui::vec2(ui.available_width(), 36.0);
+    let size = egui::vec2(ui.available_width(), 34.0);
     let sense = if enabled {
         Sense::click()
     } else {

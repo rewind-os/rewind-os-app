@@ -63,7 +63,7 @@ impl State {
             ui,
             tr("Virtual disks"),
             tr(
-                "WSL and Docker Desktop keep Linux in disk files that grow and never shrink by themselves. Compacting one gives Windows back the space Linux no longer uses.",
+                "Disk files of WSL and Docker grow and never shrink by themselves; compacting gives the space back.",
             ),
             |ui| {
                 if ui

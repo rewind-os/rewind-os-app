@@ -1216,6 +1216,9 @@ fn print_human(response: &Response, top: usize) {
                         "{used} used inside, about {free} to give back",
                         &[("used", &bytes(used)), ("free", &bytes(free))],
                     ),
+                    _ if d.owner == rewind_os_engine::vdisks::Owner::Docker => {
+                        tr("what Docker uses inside is not known").to_owned()
+                    }
                     _ => tr("start it to see what it uses inside").to_owned(),
                 };
                 println!("{:>10}  {:<20} {inside}", bytes(d.bytes), d.name);

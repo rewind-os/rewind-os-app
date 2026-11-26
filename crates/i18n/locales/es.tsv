@@ -830,7 +830,6 @@ See what's new	Ver las novedades
 Update	Actualizar
 Virtual disks	Discos virtuales
 WSL and Docker disks that kept space Windows can have back	Discos de WSL y Docker que se quedaron espacio que Windows puede recuperar
-WSL and Docker Desktop keep Linux in disk files that grow and never shrink by themselves. Compacting one gives Windows back the space Linux no longer uses.	WSL y Docker Desktop guardan Linux en archivos de disco que crecen y nunca encogen solos. Compactar uno devuelve a Windows el espacio que Linux ya no usa.
 No virtual disks of WSL or Docker Desktop were found.	No se encontró ningún disco virtual de WSL ni de Docker Desktop.
 Compact	Compactar
 Gives Windows back the space Linux no longer uses. Stops WSL while it runs.	Devuelve a Windows el espacio que Linux ya no usa. Detiene WSL mientras tanto.
@@ -854,3 +853,4 @@ Stopping WSL	Deteniendo WSL
 Compacting the virtual disk	Compactando el disco virtual
 List the virtual disks of WSL distributions and Docker Desktop, with what they take on Windows	Lista los discos virtuales de las distribuciones de WSL y de Docker Desktop, con lo que ocupan en Windows
 Give Windows back the space a WSL or Docker virtual disk no longer uses (stops WSL; nothing inside is deleted)	Devuelve a Windows el espacio que un disco virtual de WSL o Docker ya no usa (detiene WSL; no se borra nada de dentro)
+Disk files of WSL and Docker grow and never shrink by themselves; compacting gives the space back.	Los discos de WSL y Docker crecen y nunca encogen solos; compactarlos devuelve el espacio.

@@ -107,6 +107,9 @@ enum Command {
     Startup(Startup),
     /// How long the computer takes to start, and what slowed it down.
     Boot,
+    /// Drive health, and optimizing the drives.
+    #[command(subcommand)]
+    Disks(Disks),
     /// Windows maintenance tools (need administrator rights).
     #[command(subcommand)]
     Maintenance(Maintenance),
@@ -205,6 +208,17 @@ enum Startup {
     },
     Disable {
         id: String,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Disks {
+    /// Whether the drives report problems: health, temperature, wear and errors.
+    Health,
+    /// Optimize every drive now, as the system does on its own (TRIM or defragmentation).
+    Optimize {
         #[arg(long)]
         yes: bool,
     },
@@ -381,6 +395,11 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::DevClean { paths }
         }
         Command::Boot => Request::BootReport,
+        Command::Disks(Disks::Health) => Request::DiskHealth,
+        Command::Disks(Disks::Optimize { yes }) => {
+            confirm(yes)?;
+            Request::DiskOptimize
+        }
         Command::Update(Update::Check) => Request::UpdateCheck { now: true },
         Command::Update(Update::On) => Request::UpdateAuto { enabled: true },
         Command::Update(Update::Off) => Request::UpdateAuto { enabled: false },
@@ -1014,6 +1033,66 @@ fn print_human(response: &Response, top: usize) {
                         }
                     );
                 }
+            }
+        }
+        Response::DiskHealth(report) => {
+            if report.disks.is_empty() {
+                println!("{}", tr("No drives were found."));
+            }
+            for d in &report.disks {
+                let mut kind = tr(d.media.label()).to_owned();
+                if !d.bus.is_empty() {
+                    kind.push_str(&format!(" {}", d.bus));
+                }
+                println!(
+                    "{}  ({kind}, {}{})",
+                    d.name,
+                    bytes(d.size),
+                    if d.volumes.is_empty() {
+                        String::new()
+                    } else {
+                        format!(", {}", d.volumes.join(" "))
+                    }
+                );
+                println!("  {:<22} {}", tr("Health"), tr(d.health.label()));
+                if let Some(c) = d.temperature_c {
+                    println!("  {:<22} {c} °C", tr("Temperature"));
+                }
+                if let Some(p) = d.used_life {
+                    println!("  {:<22} {p} %", tr("Rated life used"));
+                }
+                if let Some(h) = d.power_on_hours {
+                    println!("  {:<22} {} h", tr("Powered on"), count(h));
+                }
+                if let Some(n) = d.errors {
+                    println!("  {:<22} {}", tr("Uncorrected errors"), count(n));
+                }
+                if let Some(n) = d.bad_sectors {
+                    println!("  {:<22} {}", tr("Damaged sectors"), count(n));
+                }
+                for p in &d.problems {
+                    println!("  ! {}", tr(p.label()));
+                }
+            }
+            if let Some(why) = report.missing {
+                println!("\n{}", tr(why));
+            }
+            match report.schedule.enabled {
+                Some(true) => println!(
+                    "\n{}",
+                    match report.schedule.last {
+                        Some(at) => trf(
+                            "The system optimizes the drives on its own; last time on {date}.",
+                            &[("date", &local_date(at))]
+                        ),
+                        None => tr("The system optimizes the drives on its own.").to_owned(),
+                    }
+                ),
+                Some(false) => println!(
+                    "\n{}",
+                    tr("The system's regular optimization of the drives is turned off.")
+                ),
+                None => {}
             }
         }
         Response::Startup(entries) => {

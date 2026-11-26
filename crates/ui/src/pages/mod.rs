@@ -1,6 +1,7 @@
 pub mod analyzer;
 pub mod build_folders;
 pub mod cleanup;
+pub mod disks;
 pub mod duplicates;
 pub mod leftovers;
 pub mod lighten;

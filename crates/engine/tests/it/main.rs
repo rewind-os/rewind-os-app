@@ -2,6 +2,7 @@
 
 mod boot;
 mod cleanup;
+mod disks;
 mod duplicates;
 mod history;
 mod leftovers;

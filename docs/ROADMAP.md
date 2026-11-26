@@ -32,6 +32,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.15 Build folders of software projects (`node_modules`, `target`, virtual environments, Gradle/Maven/.NET/Flutter/CMake output), recognised by the file that proves them
 - [x] R1.16 Updates: signed releases (minisign signature of `SHA256SUMS.txt`), a notice in the app when a new version is out, and one-click install for the MSI and the portable builds
 - [x] R1.17 Startup speed: how long the computer takes to start and what slowed it down (Windows' own performance log, `systemd-analyze` on Linux), with a switch for the startup programs behind it
+- [x] R1.18 Disk health: what each drive reports about itself (health, temperature, wear, hours, errors) from Windows' storage reports or udisks, a warning on Home when one is failing, and the system's own optimization (`defrag /O`, `fstrim`) on request
 - [x] R1.14 What changed since the last scan of a folder: the folders that grew or shrank most, as deep as the change goes (summaries kept on this computer)
 
 ## R2 — Rewind OS on every system

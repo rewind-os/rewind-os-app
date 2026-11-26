@@ -14,6 +14,7 @@ use std::path::PathBuf;
 /// The requests that may run with administrator rights.
 pub const ALLOWED: &[&str] = &[
     "cleanup.run",
+    "disk.optimize",
     "maintenance.journal_usage",
     "maintenance.journal_vacuum",
 ];

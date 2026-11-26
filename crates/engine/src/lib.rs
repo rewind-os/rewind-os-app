@@ -5,6 +5,7 @@
 pub mod apps;
 pub mod boot;
 pub mod cleanup;
+pub mod disks;
 pub mod duplicates;
 pub mod elevated;
 pub mod format;
@@ -231,6 +232,19 @@ pub const TOOLS: &[ToolSpec] = &[
         "How long the computer takes to start, and what slowed it down (on Windows it needs administrator rights)",
     )
     .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "disk.health",
+        "Whether the drives report problems: health, temperature, wear and errors (on Windows the figures need administrator rights)",
+    )
+    .admin(AdminNeed::Partly)
+    .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "disk.optimize",
+        "Optimize every drive now the way the system does on its own: TRIM on SSDs, defragmentation on hard drives on Windows (can take long)",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(WINDOWS_LINUX),
     ToolSpec::new("startup.set", "Enable or disable a startup program")
         .admin(AdminNeed::Partly)
         .changes(),
@@ -370,6 +384,10 @@ pub enum Request {
     FilesReveal { path: PathBuf },
     #[serde(rename = "boot.report")]
     BootReport,
+    #[serde(rename = "disk.health")]
+    DiskHealth,
+    #[serde(rename = "disk.optimize")]
+    DiskOptimize,
     #[serde(rename = "startup.list")]
     StartupList,
     #[serde(rename = "startup.set")]
@@ -412,6 +430,7 @@ pub enum Response {
     Trashed(Vec<TrashResult>),
     Startup(Vec<startup::StartupEntry>),
     Boot(boot::Report),
+    DiskHealth(disks::Report),
     /// Output of an external Windows tool, shown as is.
     ToolOutput(String),
     /// Finished; the message (English key) says what happened.
@@ -530,6 +549,8 @@ impl Engine {
             }
             Request::StartupList => Ok(Response::Startup(startup::list())),
             Request::BootReport => boot::report().map(Response::Boot),
+            Request::DiskHealth => disks::report().map(Response::DiskHealth),
+            Request::DiskOptimize => disks::optimize().map(Response::ToolOutput),
             Request::StartupSet { id, enabled } => {
                 startup::set_enabled(&id, enabled)?;
                 Ok(Response::Done(if enabled {
@@ -587,6 +608,8 @@ impl Request {
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",
             Request::BootReport => "boot.report",
+            Request::DiskHealth => "disk.health",
+            Request::DiskOptimize => "disk.optimize",
             Request::StartupSet { .. } => "startup.set",
             Request::AnalyzeComponentStore => "maintenance.analyze_component_store",
             Request::ComponentCleanup => "maintenance.component_cleanup",

@@ -172,7 +172,9 @@ impl State {
                     card(ui, |ui| {
                         ui.set_width(ui.available_width());
                         for (index, status) in rows.iter().enumerate() {
-                            widgets::list_row(ui, index, 60.0, |ui| {
+                            // Tall enough for the name, its badge and the description, with
+                            // room above and below, so the highlight covers the whole row.
+                            widgets::list_row(ui, index, 64.0, |ui| {
                                 ui.with_layout(
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
@@ -207,6 +209,7 @@ impl State {
                                         ui.with_layout(
                                             egui::Layout::top_down(egui::Align::Min),
                                             |ui| {
+                                                ui.spacing_mut().item_spacing.y = 2.0;
                                                 ui.add_space(8.0);
                                                 ui.horizontal(|ui| {
                                                     ui.label(

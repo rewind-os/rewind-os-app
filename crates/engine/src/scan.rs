@@ -75,6 +75,9 @@ pub struct ScanTree {
     /// Files of at least [`OLD_MIN_BYTES`] not changed for [`OLD_AFTER_DAYS`], largest first:
     /// only ones a person may remove (not the system's, not a program's own files).
     pub old_files: Vec<FileEntry>,
+    /// The highest empty folders a person may remove, checked on the disk; set by the engine
+    /// after the scan (`crate::empty::find`), empty for a stopped scan.
+    pub empty_folders: Vec<PathBuf>,
     pub extensions: Vec<ExtensionStat>,
     /// Folders that could not be read (usually access denied).
     pub unreadable_dirs: u64,
@@ -175,6 +178,7 @@ pub fn serialize_summary<S: Serializer>(
         largest_folders: Vec<Child>,
         largest_files: &'a [FileEntry],
         old_files: &'a [FileEntry],
+        empty_folders: &'a [PathBuf],
         extensions: &'a [ExtensionStat],
         changes: &'a Option<crate::history::Comparison>,
     }
@@ -202,6 +206,7 @@ pub fn serialize_summary<S: Serializer>(
             .collect(),
         largest_files: &tree.top_files[..tree.top_files.len().min(100)],
         old_files: &tree.old_files[..tree.old_files.len().min(100)],
+        empty_folders: &tree.empty_folders[..tree.empty_folders.len().min(100)],
         extensions: &tree.extensions,
         changes: &tree.history,
     };
@@ -393,6 +398,7 @@ impl<'a> Context<'a> {
             nodes,
             top_files,
             old_files,
+            empty_folders: Vec::new(),
             extensions,
             unreadable_dirs: self.unreadable.into_inner(),
             elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),

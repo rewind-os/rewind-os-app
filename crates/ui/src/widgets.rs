@@ -471,9 +471,12 @@ pub fn reason(text: &str) -> String {
 
 /// An engine error as text for people: refusals are translated.
 pub fn error_text(err: &rewind_os_engine::EngineError) -> String {
-    match err {
-        rewind_os_engine::EngineError::Refused(why) => reason(why),
-        other => other.to_string(),
+    match err.message() {
+        Some((key, args)) => {
+            let args: Vec<(&str, &str)> = args.iter().map(|(k, v)| (*k, v.as_str())).collect();
+            rewind_os_i18n::trf(key, &args)
+        }
+        None => err.to_string(),
     }
 }
 

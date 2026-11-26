@@ -321,9 +321,13 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(err) => {
-            let text = match &err {
-                rewind_os_engine::EngineError::Refused(why) => rewind_os_i18n::tr_text(why),
-                other => other.to_string(),
+            let text = match err.message() {
+                Some((key, args)) => {
+                    let args: Vec<(&str, &str)> =
+                        args.iter().map(|(k, v)| (*k, v.as_str())).collect();
+                    trf(key, &args)
+                }
+                None => err.to_string(),
             };
             eprintln!("{}: {text}", tr("Error"));
             ExitCode::FAILURE

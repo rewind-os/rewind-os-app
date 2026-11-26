@@ -65,6 +65,30 @@ pub enum EngineError {
     },
 }
 
+impl EngineError {
+    /// The error as English text with `{name}` placeholders and their values, for the front
+    /// ends to translate with `rewind_os_i18n::trf`. `None` for errors that carry a system's
+    /// own output, which is shown as is.
+    pub fn message(&self) -> Option<(&'static str, Vec<(&'static str, String)>)> {
+        Some(match self {
+            EngineError::NeedsAdmin | EngineError::Platform(PlatformError::NeedsAdmin) => {
+                ("Administrator rights are required.", Vec::new())
+            }
+            EngineError::Cancelled => ("Cancelled.", Vec::new()),
+            EngineError::Refused(why) => (why, Vec::new()),
+            EngineError::Unsupported { tool, os } => (
+                "{tool} is not available on {os} yet.",
+                vec![("tool", (*tool).to_owned()), ("os", (*os).to_owned())],
+            ),
+            EngineError::NotFound(what) => ("Not found: {what}", vec![("what", what.clone())]),
+            EngineError::UnknownCategory(id) => {
+                ("Unknown cleanup category: {id}", vec![("id", id.clone())])
+            }
+            _ => return None,
+        })
+    }
+}
+
 /// The answer to `files.reveal` when the path is gone and its nearest folder was opened.
 pub const REVEALED_NEAREST: &str =
     "It is no longer there; opened the nearest folder that still exists";

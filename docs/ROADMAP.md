@@ -55,7 +55,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.18 macOS: leftovers of removed apps in `~/Library/Application Support` and `~/Library/Containers`
 - [x] R2.11 macOS: LaunchAgents on and off through launchd's own record (`launchctl disable`), never Apple's
 - [ ] R2.20 macOS: login items ("Open at Login"), which need permission to control System Events
-- [ ] R2.12 macOS release: `.app` bundle, `.icns`, signing and notarization, `.dmg`
+- [x] R2.12 macOS release: a universal `.app` (Apple silicon and Intel) with its `.icns`, signed ad hoc, in a `.dmg`
+- [ ] R2.21 macOS: sign with an Apple Developer ID and notarize, so the app opens without a confirmation (needs a paid Apple Developer account)
 - [x] R2.13 Linux: `.deb` and `.rpm` packages next to the tar.gz
 - [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)
 - [x] R2.14 Linux and macOS: administrator rights for one action at a time (pkexec / authorization dialog), never a root window

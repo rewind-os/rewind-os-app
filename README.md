@@ -83,7 +83,6 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Maintenance | component store, hibernation | journal | — |
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.
-macOS builds are checked in CI but not released yet.
 
 ## Download
 
@@ -102,6 +101,11 @@ Ready-made builds are on the [releases page](../../releases); check them against
   `aarch64` for ARM.
   Or install the Flatpak bundle: `flatpak install --user ./rewind-os-<version>-linux-<arch>.flatpak`
   (it needs the host filesystem to see the disk, and runs the system's own tools on the host).
+- **macOS** 11 or newer, Apple silicon and Intel: open
+  `rewind-os-<version>-macos-universal.dmg` and drag Rewind OS to Applications. The app is not
+  signed with an Apple Developer ID yet, so the first time macOS asks to confirm it: Control-click
+  the app and choose Open (or System Settings → Privacy & Security → Open Anyway). The
+  command-line tool is inside the app: `/Applications/Rewind OS.app/Contents/MacOS/rewind-os-cli`.
 
 ### New versions
 

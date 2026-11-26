@@ -180,7 +180,9 @@ rewind-os-cli mcp --automation-write-root ~/Downloads
 rewind-os-cli mcp --allow-system-changes
 ```
 
-`--json` prints the engine's response for scripts. `--lang es` switches the language.
+`--json` prints the engine's response for scripts. `--lang es` switches the language. In a
+terminal, headings, sizes, warnings and errors are coloured; output to a pipe or a file, and
+`NO_COLOR=1`, have no colours.
 
 ## Development
 

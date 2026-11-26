@@ -2,7 +2,9 @@
 //! `--yes`; `--json` prints the engine's response for scripts and agents.
 
 mod mcp;
+mod paint;
 
+use anstream::{eprintln, println};
 use clap::{Parser, Subcommand};
 use rewind_os_engine::format::{bytes, count, local_date, signed_bytes};
 use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
@@ -333,7 +335,7 @@ fn main() -> ExitCode {
         Ok(Some(request)) => request,
         Ok(None) => return ExitCode::SUCCESS,
         Err(message) => {
-            eprintln!("{message}");
+            eprintln!("{}", paint::warn(message));
             return ExitCode::from(2);
         }
     };
@@ -365,7 +367,7 @@ fn main() -> ExitCode {
                 }
                 None => err.to_string(),
             };
-            eprintln!("{}: {text}", tr("Error"));
+            eprintln!("{}: {text}", paint::error(tr("Error")));
             ExitCode::FAILURE
         }
     }
@@ -751,8 +753,8 @@ fn print_human(response: &Response, top: usize) {
             if let Some(root) = tree.root_node() {
                 println!(
                     "{}: {} ({}) · {} · {} ms",
-                    tree.root.display(),
-                    bytes(root.bytes),
+                    paint::heading(tree.root.display()),
+                    paint::size(bytes(root.bytes)),
                     trf("{size} on disk", &[("size", &bytes(root.disk_bytes))]),
                     trf("{n} files", &[("n", &count(root.files))]),
                     tree.elapsed_ms
@@ -762,15 +764,18 @@ fn print_human(response: &Response, top: usize) {
                 println!("{}", tr("Read from the master file table"));
             }
             if tree.cancelled {
-                println!("{}", tr("The scan was stopped; sizes are incomplete."));
+                println!(
+                    "{}",
+                    paint::warn(tr("The scan was stopped; sizes are incomplete."))
+                );
             }
             if tree.unreadable_dirs > 0 {
                 println!(
                     "{}",
-                    trf(
+                    paint::warn(trf(
                         "{n} folders could not be read (administrator rights may help).",
                         &[("n", &count(tree.unreadable_dirs))]
-                    )
+                    ))
                 );
             }
             if tree.hard_linked_bytes > 0 {
@@ -808,11 +813,11 @@ fn print_human(response: &Response, top: usize) {
                         if list.is_empty() {
                             continue;
                         }
-                        println!("\n{title}");
+                        println!("\n{}", paint::heading(title));
                         for change in list {
                             println!(
-                                "{:>12}  {}",
-                                signed_bytes(change.delta()),
+                                "{}  {}",
+                                paint::size(format!("{:>12}", signed_bytes(change.delta()))),
                                 change.path.display()
                             );
                         }
@@ -823,28 +828,41 @@ fn print_human(response: &Response, top: usize) {
                 }
                 None => {}
             }
-            println!("\n{}", tr("Largest folders"));
+            println!("\n{}", paint::heading(tr("Largest folders")));
             for (id, node) in tree
                 .children(rewind_os_engine::scan::ScanTree::ROOT)
                 .take(top)
             {
-                println!("{:>10}  {}", bytes(node.bytes), tree.path(id).display());
+                println!(
+                    "{}  {}",
+                    paint::size(format!("{:>10}", bytes(node.bytes))),
+                    tree.path(id).display()
+                );
             }
-            println!("\n{}", tr("Largest files"));
+            println!("\n{}", paint::heading(tr("Largest files")));
             for f in tree.top_files.iter().take(top) {
-                println!("{:>10}  {}", bytes(f.bytes), f.path.display());
+                println!(
+                    "{}  {}",
+                    paint::size(format!("{:>10}", bytes(f.bytes))),
+                    f.path.display()
+                );
             }
             if !tree.old_files.is_empty() {
                 println!(
                     "\n{}",
-                    trf(
+                    paint::heading(trf(
                         "Files of {size} or more not changed in over a year",
                         &[("size", &bytes(rewind_os_engine::scan::OLD_MIN_BYTES))]
-                    )
+                    ))
                 );
                 for f in tree.old_files.iter().take(top) {
                     let date = f.modified.map(local_date).unwrap_or_default();
-                    println!("{:>10}  {date}  {}", bytes(f.bytes), f.path.display());
+                    println!(
+                        "{}  {}  {}",
+                        paint::size(format!("{:>10}", bytes(f.bytes))),
+                        paint::muted(date),
+                        f.path.display()
+                    );
                 }
             }
             if !tree.empty_folders.is_empty() {
@@ -874,25 +892,27 @@ fn print_human(response: &Response, top: usize) {
             if report.cancelled {
                 println!(
                     "{}",
-                    tr("The search was stopped; some duplicates may be missing.")
+                    paint::warn(tr(
+                        "The search was stopped; some duplicates may be missing."
+                    ))
                 );
             }
             if report.unreadable > 0 {
                 println!(
                     "{}",
-                    trf(
+                    paint::warn(trf(
                         "{n} files or folders could not be read.",
                         &[("n", &count(report.unreadable))]
-                    )
+                    ))
                 );
             }
             if report.cloud_skipped > 0 {
                 println!(
                     "{}",
-                    trf(
+                    paint::warn(trf(
                         "{n} files that are only in the cloud were not compared.",
                         &[("n", &count(report.cloud_skipped))]
-                    )
+                    ))
                 );
             }
             if report.program_folders_skipped > 0 {
@@ -917,7 +937,11 @@ fn print_human(response: &Response, top: usize) {
         }
         Response::Files(files) => {
             for f in files {
-                println!("{:>10}  {}", bytes(f.bytes), f.path.display());
+                println!(
+                    "{}  {}",
+                    paint::size(format!("{:>10}", bytes(f.bytes))),
+                    f.path.display()
+                );
             }
         }
         Response::CleanupAnalysis(reports) => {
@@ -943,7 +967,11 @@ fn print_human(response: &Response, top: usize) {
                     tr(r.category.name)
                 );
             }
-            println!("\n{}: {}", tr("Total"), bytes(total));
+            println!(
+                "\n{}: {}",
+                paint::heading(tr("Total")),
+                paint::size(bytes(total))
+            );
             println!("* {}", tr("included by --defaults"));
         }
         Response::CleanupDone(results) => {
@@ -965,7 +993,11 @@ fn print_human(response: &Response, top: usize) {
                 }
                 println!("{line}");
             }
-            println!("\n{}: {}", tr("Freed"), bytes(freed));
+            println!(
+                "\n{}: {}",
+                paint::heading(tr("Freed")),
+                paint::size(bytes(freed))
+            );
         }
         Response::Programs(programs) => {
             for p in programs {
@@ -985,8 +1017,8 @@ fn print_human(response: &Response, top: usize) {
             }
             for l in found {
                 println!(
-                    "{:>10}  {:<8} {}",
-                    bytes(l.bytes),
+                    "{}  {:<8} {}",
+                    paint::size(format!("{:>10}", bytes(l.bytes))),
                     format!("{:?}", l.confidence),
                     l.path.display()
                 );
@@ -1002,9 +1034,9 @@ fn print_human(response: &Response, top: usize) {
             if !keys.is_empty() {
                 println!(
                     "\n{}",
-                    tr(
+                    paint::heading(tr(
                         "Report only: Rewind OS never removes registry keys. Export a key in Registry Editor before removing it by hand."
-                    )
+                    ))
                 );
             }
         }
@@ -1039,12 +1071,16 @@ fn print_human(response: &Response, top: usize) {
         Response::Trashed(results) => {
             for r in results {
                 match &r.error {
-                    None => println!("{:>10}  {}", bytes(r.bytes), r.path.display()),
+                    None => println!(
+                        "{}  {}",
+                        paint::size(format!("{:>10}", bytes(r.bytes))),
+                        r.path.display()
+                    ),
                     Some(err) => println!(
                         "{:>10}  {}  {}: {}",
                         "-",
                         r.path.display(),
-                        tr("Error"),
+                        paint::error(tr("Error")),
                         rewind_os_i18n::tr_text(err)
                     ),
                 }
@@ -1067,16 +1103,16 @@ fn print_human(response: &Response, top: usize) {
             if report.cancelled {
                 println!(
                     "{}",
-                    tr("The search was stopped; some folders may be missing.")
+                    paint::warn(tr("The search was stopped; some folders may be missing."))
                 );
             }
             if report.unreadable > 0 {
                 println!(
                     "{}",
-                    trf(
+                    paint::warn(trf(
                         "{n} folders could not be read.",
                         &[("n", &count(report.unreadable))]
-                    )
+                    ))
                 );
             }
             for f in report.folders.iter().take(top) {
@@ -1085,8 +1121,8 @@ fn print_human(response: &Response, top: usize) {
                     .map(rewind_os_engine::format::local_date)
                     .unwrap_or_default();
                 println!(
-                    "{:>10}  {:<20} {:<10}  {}",
-                    bytes(f.bytes),
+                    "{}  {:<20} {:<10}  {}",
+                    paint::size(format!("{:>10}", bytes(f.bytes))),
                     tr(f.kind.label()),
                     used,
                     f.path.display()
@@ -1103,12 +1139,16 @@ fn print_human(response: &Response, top: usize) {
                         rewind_os_i18n::tr_text(why)
                     ),
                     None if r.failed > 0 => println!(
-                        "{:>10}  {}  {}",
-                        bytes(r.bytes),
+                        "{}  {}  {}",
+                        paint::size(format!("{:>10}", bytes(r.bytes))),
                         r.path.display(),
                         trf("{n} files in use were kept.", &[("n", &count(r.failed))])
                     ),
-                    None => println!("{:>10}  {}", bytes(r.bytes), r.path.display()),
+                    None => println!(
+                        "{}  {}",
+                        paint::size(format!("{:>10}", bytes(r.bytes))),
+                        r.path.display()
+                    ),
                 }
             }
         }
@@ -1185,7 +1225,7 @@ fn print_human(response: &Response, top: usize) {
                 None => println!("{}", tr("The system has no record of its starts yet.")),
             }
             if report.boots.len() > 1 {
-                println!("\n{}", tr("Recent starts"));
+                println!("\n{}", paint::heading(tr("Recent starts")));
                 for b in &report.boots {
                     let date = b.at.map(local_date).unwrap_or_default();
                     println!("{:>12}  {date}", duration_ms(b.total_ms));
@@ -1275,15 +1315,19 @@ fn print_human(response: &Response, top: usize) {
                     }
                     _ => tr("start it to see what it uses inside").to_owned(),
                 };
-                println!("{:>10}  {:<20} {inside}", bytes(d.bytes), d.name);
+                println!(
+                    "{}  {:<20} {inside}",
+                    paint::size(format!("{:>10}", bytes(d.bytes))),
+                    d.name
+                );
                 println!("            {}", d.path.display());
             }
             if report.docker_running {
                 println!(
                     "\n{}",
-                    tr(
+                    paint::heading(tr(
                         "Quit Docker Desktop first: it keeps WSL running, and the disk must not be in use."
-                    )
+                    ))
                 );
             }
         }
@@ -1445,7 +1489,7 @@ fn print_human(response: &Response, top: usize) {
                 }
             }
             if let Some(why) = report.missing {
-                println!("\n{}", tr(why));
+                println!("\n{}", paint::heading(tr(why)));
             }
             match report.schedule.enabled {
                 Some(true) => println!(
@@ -1460,7 +1504,9 @@ fn print_human(response: &Response, top: usize) {
                 ),
                 Some(false) => println!(
                     "\n{}",
-                    tr("The system's regular optimization of the drives is turned off.")
+                    paint::heading(tr(
+                        "The system's regular optimization of the drives is turned off."
+                    ))
                 ),
                 None => {}
             }
@@ -1475,18 +1521,21 @@ fn print_human(response: &Response, top: usize) {
         Response::Done(message) => println!("{}", tr(message)),
         Response::Recommendations(list) => {
             if list.is_empty() {
-                println!("{}", tr("Nothing to do: this computer is in good shape."));
+                println!(
+                    "{}",
+                    paint::good(tr("Nothing to do: this computer is in good shape."))
+                );
             }
             for r in list {
                 let args: Vec<(&str, &str)> =
                     r.args.iter().map(|(k, v)| (*k, v.as_str())).collect();
                 let level = match r.level {
-                    rewind_os_engine::recommend::Level::Important => "!",
-                    rewind_os_engine::recommend::Level::Suggested => "*",
-                    rewind_os_engine::recommend::Level::Tip => "-",
+                    rewind_os_engine::recommend::Level::Important => paint::error("!"),
+                    rewind_os_engine::recommend::Level::Suggested => paint::size("*"),
+                    rewind_os_engine::recommend::Level::Tip => paint::muted("-"),
                 };
-                println!("{level} {}", trf(r.title, &args));
-                println!("  {}", tr(r.detail));
+                println!("{level} {}", paint::heading(trf(r.title, &args)));
+                println!("  {}", paint::muted(tr(r.detail)));
             }
         }
         Response::Tweaks(list) => {

@@ -2908,6 +2908,8 @@ dependencies = [
 name = "rewind-os-cli"
 version = "0.22.1"
 dependencies = [
+ "anstream",
+ "anstyle",
  "clap",
  "rewind-os-engine",
  "rewind-os-i18n",

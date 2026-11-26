@@ -110,6 +110,9 @@ enum Command {
     /// Running programs: what each uses of the processor and memory, and closing one.
     #[command(subcommand)]
     Processes(Processes),
+    /// The power plan.
+    #[command(subcommand)]
+    Power(Power),
     /// Drive health, and optimizing the drives.
     #[command(subcommand)]
     Disks(Disks),
@@ -233,6 +236,20 @@ enum Processes {
         #[arg(long)]
         yes: bool,
     },
+}
+
+#[derive(Subcommand)]
+enum Power {
+    /// The power plans and which one is in use.
+    List,
+    /// Switch plan: its id from `power list`, or saver, balanced or performance.
+    Set {
+        plan: String,
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Open Windows' power settings, where the power mode is chosen.
+    Settings,
 }
 
 #[derive(Subcommand)]
@@ -442,6 +459,32 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
                 name: program.name,
                 pids: program.pids,
                 force,
+            }
+        }
+        Command::Power(Power::List) => Request::PowerList,
+        Command::Power(Power::Settings) => Request::PowerSettings,
+        Command::Power(Power::Set { plan, yes }) => {
+            confirm(yes)?;
+            let listed = Engine::new()
+                .run(Request::PowerList, &Task::new())
+                .map_err(|e| e.to_string())?;
+            let Response::Power(report) = listed else {
+                return Err(tr("This power plan is not on this computer.").to_owned());
+            };
+            let wanted = plan.to_ascii_lowercase();
+            let kind = match wanted.as_str() {
+                "saver" | "power-saver" => Some(rewind_os_engine::power::Kind::Saver),
+                "balanced" => Some(rewind_os_engine::power::Kind::Balanced),
+                "performance" | "high" => Some(rewind_os_engine::power::Kind::Performance),
+                _ => None,
+            };
+            let found = report
+                .plans
+                .iter()
+                .find(|p| p.id == wanted || Some(p.kind) == kind)
+                .ok_or_else(|| tr("This power plan is not on this computer.").to_owned())?;
+            Request::PowerSet {
+                id: found.id.clone(),
             }
         }
         Command::Disks(Disks::Health) => Request::DiskHealth,
@@ -1117,6 +1160,31 @@ fn print_human(response: &Response, top: usize) {
                         format!("  ({})", notes.join(", "))
                     }
                 );
+            }
+        }
+        Response::Power(report) => {
+            for p in &report.plans {
+                let name = if p.kind == rewind_os_engine::power::Kind::Custom {
+                    p.name.clone()
+                } else {
+                    tr(p.kind.label()).to_owned()
+                };
+                let mut line =
+                    format!("{} {:<24} {}", if p.active { "*" } else { " " }, name, p.id);
+                if let Some(why) = &p.degraded {
+                    line.push_str(&format!("  ({}: {why})", tr("held back")));
+                }
+                println!("{line}");
+            }
+            if let Some(mode) = report.mode_plugged_in {
+                println!(
+                    "\n{}: {}",
+                    tr("Power mode when plugged in"),
+                    tr(mode.label())
+                );
+            }
+            if let Some(mode) = report.mode_on_battery {
+                println!("{}: {}", tr("Power mode on battery"), tr(mode.label()));
             }
         }
         Response::ProcessClosed(done) => {

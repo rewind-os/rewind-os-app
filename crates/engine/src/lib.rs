@@ -16,6 +16,7 @@ pub mod macapps;
 pub mod maintenance;
 pub mod mft;
 pub mod packages;
+pub mod power;
 pub mod processes;
 pub mod programs;
 pub mod projects;
@@ -238,6 +239,22 @@ pub const TOOLS: &[ToolSpec] = &[
     )
     .changes()
     .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "power.list",
+        "Show the power plans and which one is in use (and Windows' power mode)",
+    )
+    .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "power.set",
+        "Switch to another power plan (switch back to undo)",
+    )
+    .changes()
+    .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "power.settings",
+        "Open Windows' power settings, where the power mode is chosen",
+    )
+    .only(WINDOWS),
     ToolSpec::new("startup.list", "List programs that start with the system"),
     ToolSpec::new(
         "boot.report",
@@ -410,6 +427,12 @@ pub enum Request {
         #[serde(default)]
         force: bool,
     },
+    #[serde(rename = "power.list")]
+    PowerList,
+    #[serde(rename = "power.set")]
+    PowerSet { id: String },
+    #[serde(rename = "power.settings")]
+    PowerSettings,
     #[serde(rename = "startup.list")]
     StartupList,
     #[serde(rename = "startup.set")]
@@ -452,6 +475,7 @@ pub enum Response {
     Trashed(Vec<TrashResult>),
     Startup(Vec<startup::StartupEntry>),
     Processes(processes::Report),
+    Power(power::Report),
     ProcessClosed(processes::Closed),
     Boot(boot::Report),
     DiskHealth(disks::Report),
@@ -573,6 +597,15 @@ impl Engine {
             }
             Request::StartupList => Ok(Response::Startup(startup::list())),
             Request::ProcessesList => processes::list(task).map(Response::Processes),
+            Request::PowerList => power::report().map(Response::Power),
+            Request::PowerSet { id } => {
+                power::set(&id)?;
+                Ok(Response::Done("Power plan changed"))
+            }
+            Request::PowerSettings => {
+                power::open_settings()?;
+                Ok(Response::Done("Opened the power settings"))
+            }
             Request::ProcessesClose { name, pids, force } => {
                 processes::close(&name, &pids, force, task).map(Response::ProcessClosed)
             }
@@ -636,6 +669,9 @@ impl Request {
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",
             Request::ProcessesList => "processes.list",
+            Request::PowerList => "power.list",
+            Request::PowerSet { .. } => "power.set",
+            Request::PowerSettings => "power.settings",
             Request::ProcessesClose { .. } => "processes.close",
             Request::BootReport => "boot.report",
             Request::DiskHealth => "disk.health",

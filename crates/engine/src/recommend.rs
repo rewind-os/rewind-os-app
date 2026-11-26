@@ -4,7 +4,7 @@
 //! [`recommend`] gathers the facts.
 
 use crate::cleanup::CategoryReport;
-use crate::{Task, cleanup, disks, duplicates, leftovers, startup, system, tweaks, walk};
+use crate::{Task, cleanup, disks, duplicates, leftovers, power, startup, system, tweaks, walk};
 use rewind_os_platform::Os;
 use rewind_os_platform::paths::Known;
 use serde::Serialize;
@@ -47,6 +47,8 @@ pub enum Action {
     Hibernation,
     /// Open disk health.
     DiskHealth,
+    /// Open the power plan (on the running programs page).
+    PowerPlan,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -88,6 +90,9 @@ pub struct Facts {
     pub hibernation_file: Option<u64>,
     /// Drives that need attention or are failing: their name and health.
     pub disks: Vec<(String, disks::Health)>,
+    /// The power plan (or Windows' power mode when plugged in) saves energy at the cost of
+    /// speed.
+    pub power_saving: bool,
 }
 
 fn size(bytes: u64) -> String {
@@ -305,6 +310,18 @@ pub fn rules(facts: &Facts) -> Vec<Recommendation> {
         });
     }
 
+    if facts.power_saving {
+        out.push(Recommendation {
+            id: "power_saving",
+            level: Level::Tip,
+            title: "The power plan favours saving energy",
+            detail: "The computer runs slower to save energy. When it is plugged in, a balanced plan is usually better.",
+            args: Vec::new(),
+            saving: None,
+            action: Action::PowerPlan,
+        });
+    }
+
     out.sort_by(|a, b| a.level.cmp(&b.level).then(b.saving.cmp(&a.saving)));
     out
 }
@@ -368,6 +385,11 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
             .iter()
             .find(|f| f.kind == system::SystemFileKind::Hibernation)
             .map(|f| f.bytes),
+        power_saving: tool_available("power.list")
+            && power::report().is_ok_and(|r| {
+                r.active().is_some_and(|p| p.kind == power::Kind::Saver)
+                    || r.mode_plugged_in == Some(power::Mode::BestEfficiency)
+            }),
         disks: tool_available("disk.health")
             .then(disks::report)
             .and_then(|r| r.ok())

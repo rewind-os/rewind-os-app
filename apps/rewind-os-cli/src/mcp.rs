@@ -142,6 +142,7 @@ fn input_schema(id: &str) -> Value {
             &["id", "applied"],
         ),
         "apps.remove" => object(json!({ "ids": strings }), &["ids"]),
+        "power.set" => object(json!({ "id": string }), &["id"]),
         "processes.close" => object(
             json!({
                 "name": string,

@@ -49,7 +49,8 @@ large forgotten files and programs that start with the system for no reason.
 - **Running programs**: what each program takes of the processor and memory right now (its
   processes counted together), closing one after asking (forcing only when it does not close),
   and a switch for the ones that start with the system. The system's own programs, other
-  accounts' programs and Rewind OS itself are never closed.
+  accounts' programs and Rewind OS itself are never closed. The power plan is switched on the
+  same page (Windows' power mode is shown, and changed in Settings).
 - **Disk health**: whether each drive reports problems, with its temperature, wear, hours and
   errors (Windows' own storage reports, the figures as administrator; udisks on Linux), a warning
   on Home when one is failing, and the system's own optimization (TRIM on SSDs, defragmentation
@@ -73,6 +74,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Startup speed | ✓ (as administrator) | ✓ (systemd, last start) | — |
 | Running programs | ✓ | ✓ | — |
+| Power plan | ✓ | ✓ (power-profiles-daemon) | — |
 | Disk health and optimization | ✓ (figures as administrator) | ✓ (udisks; TRIM with the password) | — |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |

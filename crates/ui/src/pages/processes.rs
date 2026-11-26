@@ -1,6 +1,6 @@
 //! Running programs: what each takes of the processor and memory right now
 //! (`processes.list`), closing one (`processes.close`), and keeping one from starting with the
-//! system (`startup.set`).
+//! system (`startup.set`), and the power plan (`power.list`, `power.set`).
 
 use crate::app::Shared;
 use crate::charts;
@@ -9,6 +9,7 @@ use crate::theme;
 use crate::widgets::{self, Choice, page_header_with};
 use egui::RichText;
 use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::power;
 use rewind_os_engine::processes::{Program, Report};
 use rewind_os_engine::{Request, Response};
 use rewind_os_i18n::{tr, trf};
@@ -29,11 +30,18 @@ pub struct State {
     stuck: Option<Program>,
     /// Startup entries turned off from here.
     turned_off: Vec<String>,
+    power_job: Option<Job>,
+    power: Option<Result<power::Report, String>>,
+    /// Switching plan or opening the power settings.
+    power_action: Option<Job>,
 }
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.job.is_some() || self.action.is_some()
+        self.job.is_some()
+            || self.action.is_some()
+            || self.power_job.is_some()
+            || self.power_action.is_some()
     }
 
     fn measure(&mut self) {
@@ -79,6 +87,7 @@ impl State {
             None => {}
         }
 
+        self.poll_power(&ctx, shared);
         let measuring = self.job.is_some();
         page_header_with(
             ui,
@@ -111,11 +120,16 @@ impl State {
         };
         let mut close = None;
         let mut turn_off = None;
+        let mut power_request = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 figures(ui, report);
                 ui.add_space(t.gap);
+                if rewind_os_engine::tool("power.list").is_some_and(|tool| tool.available()) {
+                    power_request = power_card(ui, &self.power, self.power_action.is_none());
+                    ui.add_space(t.gap);
+                }
                 if let Some(program) = &self.stuck {
                     widgets::card(ui, |ui| {
                         ui.set_width(ui.available_width());
@@ -205,6 +219,9 @@ impl State {
                     ui.add_space(6.0);
                 }
             });
+        if let Some(request) = power_request {
+            self.power_action = Some(Job::start(&ctx, &shared.engine, request));
+        }
         if let Some(id) = turn_off {
             self.turned_off.push(id.clone());
             let request = shared.with_rights(Request::StartupSet { id, enabled: false });
@@ -245,6 +262,28 @@ impl State {
         }
     }
 
+    fn poll_power(&mut self, ctx: &egui::Context, shared: &mut Shared) {
+        let available = rewind_os_engine::tool("power.list").is_some_and(|t| t.available());
+        if available && self.power.is_none() && self.power_job.is_none() {
+            self.power_job = Some(Job::start(ctx, &shared.engine, Request::PowerList));
+        }
+        match jobs::finished(&mut self.power_job, ctx) {
+            Some(Ok(Response::Power(report))) => self.power = Some(Ok(report)),
+            Some(Ok(_)) => {}
+            Some(Err(err)) => self.power = Some(Err(err)),
+            None => {}
+        }
+        match jobs::finished(&mut self.power_action, ctx) {
+            Some(Ok(Response::Done(message))) => {
+                shared.info(tr(message));
+                self.power = None;
+            }
+            Some(Ok(_)) => {}
+            Some(Err(err)) => shared.error(err),
+            None => {}
+        }
+    }
+
     /// The listed program with this name that may be closed.
     fn program(&self, name: &str) -> Option<Program> {
         let Some(Ok(report)) = &self.report else {
@@ -256,6 +295,116 @@ impl State {
             .find(|p| p.name == name && p.refusal.is_none())
             .cloned()
     }
+}
+
+/// The power plans to pick from, and Windows' power mode with the way to change it. Returns
+/// what the user asked for.
+fn power_card(
+    ui: &mut egui::Ui,
+    power: &Option<Result<power::Report, String>>,
+    idle: bool,
+) -> Option<Request> {
+    let t = theme::current(ui.ctx());
+    let mut request = None;
+    widgets::card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(
+            RichText::new(tr("Power plan"))
+                .strong()
+                .family(theme::bold()),
+        );
+        ui.label(
+            RichText::new(tr("How much the system favours speed over saving energy."))
+                .color(t.text_muted),
+        );
+        ui.add_space(6.0);
+        let report = match power {
+            None => {
+                ui.spinner();
+                return;
+            }
+            Some(Err(err)) => {
+                ui.label(RichText::new(err).color(t.text_muted));
+                return;
+            }
+            Some(Ok(report)) => report,
+        };
+        ui.horizontal_wrapped(|ui| {
+            for plan in &report.plans {
+                let name = if plan.kind == power::Kind::Custom {
+                    plan.name.clone()
+                } else {
+                    tr(plan.kind.label()).to_owned()
+                };
+                let button = ui.add_enabled(
+                    idle || plan.active,
+                    egui::Button::selectable(plan.active, name),
+                );
+                let button = match &plan.degraded {
+                    Some(why) => button.on_hover_text(trf(
+                        "The system holds this plan back right now: {reason}",
+                        &[("reason", why)],
+                    )),
+                    None => button,
+                };
+                if button.clicked() && !plan.active {
+                    request = Some(Request::PowerSet {
+                        id: plan.id.clone(),
+                    });
+                }
+            }
+        });
+        for plan in report.plans.iter().filter(|p| p.degraded.is_some()) {
+            let name = if plan.kind == power::Kind::Custom {
+                plan.name.clone()
+            } else {
+                tr(plan.kind.label()).to_owned()
+            };
+            ui.label(
+                RichText::new(trf(
+                    "{plan} is held back right now: {reason}",
+                    &[
+                        ("plan", &name),
+                        ("reason", plan.degraded.as_deref().unwrap_or_default()),
+                    ],
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+        }
+        if let Some(plugged) = report.mode_plugged_in {
+            ui.add_space(6.0);
+            let mut line = trf(
+                "Power mode: {mode} when plugged in",
+                &[("mode", tr(plugged.label()))],
+            );
+            if let Some(battery) = report.mode_on_battery {
+                line.push_str(&format!(
+                    ", {}",
+                    trf("{mode} on battery", &[("mode", tr(battery.label()))])
+                ));
+            }
+            ui.horizontal_wrapped(|ui| {
+                ui.label(line);
+                if ui
+                    .add_enabled(idle, egui::Button::new(tr("Change in Settings")))
+                    .clicked()
+                {
+                    request = Some(Request::PowerSettings);
+                }
+            });
+            if report.plans.len() <= 1 {
+                ui.label(
+                    RichText::new(tr(
+                        "This computer has one power plan; Windows' power mode decides how fast it runs.",
+                    ))
+                    .small()
+                    .color(t.text_muted),
+                );
+            }
+        }
+    });
+    request
 }
 
 /// A word for why a program is not closed, for its badge; hovering its button says more.

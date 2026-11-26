@@ -105,6 +105,14 @@ Ready-made builds are on the [releases page](../../releases); check them against
 - **Linux** x64 and ARM64 (glibc 2.35 or newer: Debian 12, Ubuntu 22.04, Fedora 36 and later):
   unpack `rewind-os-<version>-linux-<arch>.tar.gz` and run
   `bin/rewind-os`. Copy its `share/` folder into `~/.local/share` for the launcher entry and icon.
+  On Debian and Ubuntu, add the APT repository once and `sudo apt upgrade` keeps it up to date:
+
+  ```sh
+  curl -fsSL https://rewind-os.github.io/rewind-os-app/rewind-os.gpg | sudo tee /usr/share/keyrings/rewind-os.gpg >/dev/null
+  echo "deb [signed-by=/usr/share/keyrings/rewind-os.gpg] https://rewind-os.github.io/rewind-os-app stable main" | sudo tee /etc/apt/sources.list.d/rewind-os.list
+  sudo apt update && sudo apt install rewind-os
+  ```
+
   Or install the package: `sudo apt install ./rewind-os_<version>_amd64.deb` (Debian, Ubuntu)
   or `sudo dnf install ./rewind-os-<version>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` and
   `aarch64` for ARM. The window's graphics libraries are recommended, not required, so a

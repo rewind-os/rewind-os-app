@@ -111,6 +111,14 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
 - **Linux** x64 y ARM64 (glibc 2.35 o posterior: Debian 12, Ubuntu 22.04, Fedora 36 y
   posteriores): descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta
   `bin/rewind-os`. Copia su carpeta `share/` en `~/.local/share` para tener el lanzador y el icono.
+  En Debian y Ubuntu, añade una vez el repositorio APT y `sudo apt upgrade` lo mantiene al día:
+
+  ```sh
+  curl -fsSL https://rewind-os.github.io/rewind-os-app/rewind-os.gpg | sudo tee /usr/share/keyrings/rewind-os.gpg >/dev/null
+  echo "deb [signed-by=/usr/share/keyrings/rewind-os.gpg] https://rewind-os.github.io/rewind-os-app stable main" | sudo tee /etc/apt/sources.list.d/rewind-os.list
+  sudo apt update && sudo apt install rewind-os
+  ```
+
   O instala el paquete: `sudo apt install ./rewind-os_<versión>_amd64.deb` (Debian, Ubuntu) o
   `sudo dnf install ./rewind-os-<versión>-1.x86_64.rpm` (Fedora, openSUSE); `arm64` y `aarch64`
   para ARM. Las bibliotecas gráficas de la ventana son recomendadas, no obligatorias: en un

@@ -147,7 +147,7 @@ enum Dev {
 enum Update {
     /// Ask GitHub now whether a newer version is out.
     Check,
-    /// Let the desktop app check once a day by itself (the default).
+    /// Let the desktop app check each time it starts (the default).
     On,
     /// Stop the desktop app from checking by itself.
     Off,
@@ -1046,7 +1046,7 @@ fn print_human(response: &Response, top: usize) {
             if !status.auto {
                 println!(
                     "{}",
-                    tr("The daily check is off; turn it on with: rewind-os-cli update on")
+                    tr("The check at start is off; turn it on with: rewind-os-cli update on")
                 );
             }
         }

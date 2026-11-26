@@ -209,11 +209,11 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes(),
     ToolSpec::new(
         "update.check",
-        "Check whether a newer version of Rewind OS is out (asks GitHub at most once a day unless told to check now; nothing about this computer is sent)",
+        "Check whether a newer version of Rewind OS is out (the app asks GitHub each time it starts unless that is turned off; nothing about this computer is sent)",
     ),
     ToolSpec::new(
         "update.auto",
-        "Turn the daily check for a newer version on or off",
+        "Turn the check for a newer version at start on or off",
     ),
     ToolSpec::new(
         "update.install",
@@ -403,7 +403,7 @@ pub enum Request {
     },
     #[serde(rename = "dev.clean")]
     DevClean { paths: Vec<PathBuf> },
-    /// `now` asks GitHub even when the daily check is off or not due.
+    /// `now` asks GitHub even when the check at start is off, and reports a failure.
     #[serde(rename = "update.check")]
     UpdateCheck {
         #[serde(default)]
@@ -600,7 +600,7 @@ impl Engine {
             Request::UpdateAuto { enabled } => {
                 update::set_auto(enabled)?;
                 Ok(Response::Done(if enabled {
-                    "Rewind OS will check for a new version once a day"
+                    "Rewind OS will check for a new version each time it starts"
                 } else {
                     "Rewind OS will not check for new versions by itself"
                 }))

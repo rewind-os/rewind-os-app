@@ -19,6 +19,7 @@ pub enum Glyph {
     Drive,
     Health,
     Gauge,
+    Download,
 }
 
 /// Draws `glyph` centred in `rect` (any size; drawn at 16 points).
@@ -139,6 +140,17 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
                 p(8.75, 10.5),
                 p(10.0, 8.0),
                 p(12.5, 8.0),
+            ]);
+        }
+        Glyph::Download => {
+            // An arrow down into a tray.
+            line(vec![p(8.0, 2.0), p(8.0, 10.0)]);
+            line(vec![p(4.75, 6.75), p(8.0, 10.0), p(11.25, 6.75)]);
+            line(vec![
+                p(2.5, 10.5),
+                p(2.5, 13.5),
+                p(13.5, 13.5),
+                p(13.5, 10.5),
             ]);
         }
         Glyph::Gauge => {

@@ -20,6 +20,7 @@ pub enum Page {
     Cleanup,
     Leftovers,
     BuildFolders,
+    VirtualDisks,
     Programs,
     Startup,
     Lighten,
@@ -39,6 +40,7 @@ const SECTIONS: [(&str, &[Page]); 4] = [
             Page::Cleanup,
             Page::Leftovers,
             Page::BuildFolders,
+            Page::VirtualDisks,
         ],
     ),
     (
@@ -49,13 +51,14 @@ const SECTIONS: [(&str, &[Page]); 4] = [
 ];
 
 impl Page {
-    const ALL: [Page; 12] = [
+    const ALL: [Page; 13] = [
         Page::Overview,
         Page::Analyzer,
         Page::Duplicates,
         Page::Cleanup,
         Page::Leftovers,
         Page::BuildFolders,
+        Page::VirtualDisks,
         Page::Programs,
         Page::Startup,
         Page::Lighten,
@@ -73,6 +76,7 @@ impl Page {
             Page::Cleanup => &["cleanup.analyze"],
             Page::Leftovers => &["leftovers.find"],
             Page::BuildFolders => &["dev.find"],
+            Page::VirtualDisks => &["vdisk.list"],
             Page::Programs => &["programs.list"],
             Page::Startup => &["startup.list"],
             Page::Lighten => &["tweaks.list"],
@@ -99,6 +103,7 @@ impl Page {
             Page::Cleanup => "Junk cleanup",
             Page::Leftovers => "Program leftovers",
             Page::BuildFolders => "Build folders",
+            Page::VirtualDisks => "Virtual disks",
             Page::Programs => "Installed programs",
             Page::Startup => "Startup programs",
             Page::Lighten => "Make Windows lighter",
@@ -118,6 +123,7 @@ impl Page {
             Page::Cleanup => Glyph::Cleanup,
             Page::Leftovers => Glyph::Leftovers,
             Page::BuildFolders => Glyph::BuildFolders,
+            Page::VirtualDisks => Glyph::Stack,
             Page::Programs => Glyph::Programs,
             Page::Startup => Glyph::Startup,
             Page::Lighten => Glyph::Lighten,
@@ -137,6 +143,7 @@ impl Page {
             Page::BuildFolders => {
                 "node_modules, target and other folders your projects can rebuild"
             }
+            Page::VirtualDisks => "WSL and Docker disks that kept space Windows can have back",
             Page::Programs => "Uninstall what you no longer use",
             Page::Startup => "Choose what starts with the system",
             Page::Lighten => "Turn off ads, tracking and extras you do not use",
@@ -291,6 +298,7 @@ pub struct App {
     cleanup: pages::cleanup::State,
     leftovers: pages::leftovers::State,
     build_folders: pages::build_folders::State,
+    vdisks: pages::vdisks::State,
     programs: pages::programs::State,
     startup: pages::startup::State,
     lighten: pages::lighten::State,
@@ -334,6 +342,7 @@ impl App {
             cleanup: Default::default(),
             leftovers: Default::default(),
             build_folders: Default::default(),
+            vdisks: Default::default(),
             programs: Default::default(),
             startup: Default::default(),
             lighten: Default::default(),
@@ -353,6 +362,7 @@ impl App {
             || self.cleanup.busy()
             || self.leftovers.busy()
             || self.build_folders.busy()
+            || self.vdisks.busy()
             || self.programs.busy()
             || self.startup.busy()
             || self.lighten.busy()
@@ -544,6 +554,7 @@ impl eframe::App for App {
                     Page::Cleanup => self.cleanup.ui(ui, shared),
                     Page::Leftovers => self.leftovers.ui(ui, shared),
                     Page::BuildFolders => self.build_folders.ui(ui, shared),
+                    Page::VirtualDisks => self.vdisks.ui(ui, shared),
                     Page::Programs => self.programs.ui(ui, shared),
                     Page::Startup => self.startup.ui(ui, shared),
                     Page::Lighten => self.lighten.ui(ui, shared),

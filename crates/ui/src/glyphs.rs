@@ -20,6 +20,7 @@ pub enum Glyph {
     Health,
     Gauge,
     Download,
+    Stack,
 }
 
 /// Draws `glyph` centred in `rect` (any size; drawn at 16 points).
@@ -141,6 +142,21 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
                 p(10.0, 8.0),
                 p(12.5, 8.0),
             ]);
+        }
+        Glyph::Stack => {
+            // Two disks in a stack: a drive file holding a drive.
+            rounded(
+                painter,
+                Rect::from_min_max(p(4.5, 2.0), p(14.0, 9.5)),
+                stroke,
+            );
+            line(vec![
+                p(2.0, 6.5),
+                p(2.0, 14.0),
+                p(11.5, 14.0),
+                p(11.5, 12.0),
+            ]);
+            painter.circle_filled(p(11.25, 5.75), 1.0, color);
         }
         Glyph::Download => {
             // An arrow down into a tray.

@@ -11,3 +11,4 @@ pub mod processes;
 pub mod programs;
 pub mod startup;
 pub mod startup_speed;
+pub mod vdisks;

@@ -35,6 +35,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.18 Disk health: what each drive reports about itself (health, temperature, wear, hours, errors) from Windows' storage reports or udisks, a warning on Home when one is failing, and the system's own optimization (`defrag /O`, `fstrim`) on request
 - [x] R1.19 Running programs: processor and memory per program (processes grouped), closing one after asking (forcing only if it does not close), never the system's own, other accounts' or the app's; a switch for those that start with the system
 - [x] R1.20 Power plan: switch between the system's plans (`powercfg`, `powerprofilesctl`), Windows' power mode shown with a way to its Settings page, and a tip on Home when the plan saves energy at the cost of speed
+- [x] R1.21 Virtual disks of WSL and Docker Desktop: what each `.vhdx` takes on Windows against what Linux uses inside, and compacting it (fstrim, `wsl --shutdown`, diskpart `compact vdisk`) as administrator after asking
 - [x] R1.14 What changed since the last scan of a folder: the folders that grew or shrank most, as deep as the change goes (summaries kept on this computer)
 
 ## R2 — Rewind OS on every system

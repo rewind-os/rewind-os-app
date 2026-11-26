@@ -143,6 +143,7 @@ fn input_schema(id: &str) -> Value {
         ),
         "apps.remove" => object(json!({ "ids": strings }), &["ids"]),
         "power.set" => object(json!({ "id": string }), &["id"]),
+        "vdisk.compact" => object(json!({ "path": string }), &["path"]),
         "processes.close" => object(
             json!({
                 "name": string,

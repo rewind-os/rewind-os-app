@@ -98,3 +98,23 @@ pub fn run_checked(program: &str, args: &[&str]) -> Result<Finished> {
 fn decode(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
+
+/// Asks process `pid` to close, as closing its window would (`taskkill` on Windows, `SIGTERM`
+/// elsewhere); with `force`, ends it at once and any unsaved work in it is lost. Whether it
+/// really closed is for the caller to check.
+pub fn close(pid: u32, force: bool) -> Result<Finished> {
+    let pid = pid.to_string();
+    if cfg!(windows) {
+        let program = crate::web::system_program("taskkill");
+        let mut args = vec!["/PID", pid.as_str(), "/T"];
+        if force {
+            args.push("/F");
+        }
+        run(&program, &args)
+    } else {
+        run(
+            "kill",
+            &[if force { "-KILL" } else { "-TERM" }, pid.as_str()],
+        )
+    }
+}

@@ -428,6 +428,143 @@ impl Guard {
     }
 }
 
+/// English reasons a running program is not closed; translate with `rewind_os_i18n::tr`.
+pub const SYSTEM_PROCESS: &str =
+    "The system needs this to keep running. Closing it could freeze or restart the computer.";
+pub const OTHER_ACCOUNT: &str = "It runs for the system or another account.";
+pub const THIS_APP: &str = "This is Rewind OS itself.";
+pub const HOLDS_APP: &str = "Rewind OS runs inside it; closing it would close Rewind OS too.";
+
+/// Programs the system or the desktop needs, by file name in lowercase. Closing one could
+/// freeze the computer, sign the user out or leave no taskbar.
+const WINDOWS_PROCESSES: &[&str] = &[
+    "system",
+    "system idle process",
+    "idle",
+    "registry",
+    "secure system",
+    "memory compression",
+    "smss.exe",
+    "csrss.exe",
+    "wininit.exe",
+    "winlogon.exe",
+    "services.exe",
+    "lsass.exe",
+    "lsaiso.exe",
+    "svchost.exe",
+    "dwm.exe",
+    "explorer.exe",
+    "fontdrvhost.exe",
+    "sihost.exe",
+    "ctfmon.exe",
+    "taskhostw.exe",
+    "runtimebroker.exe",
+    "dllhost.exe",
+    "conhost.exe",
+    "audiodg.exe",
+    "spoolsv.exe",
+    "wudfhost.exe",
+    "msmpeng.exe",
+    "nissrv.exe",
+    "mpdefendercoreservice.exe",
+    "securityhealthservice.exe",
+    "securityhealthsystray.exe",
+    "smartscreen.exe",
+    "startmenuexperiencehost.exe",
+    "shellexperiencehost.exe",
+    "shellhost.exe",
+    "searchhost.exe",
+    "textinputhost.exe",
+    "applicationframehost.exe",
+    "lockapp.exe",
+    "userinit.exe",
+    "logonui.exe",
+];
+
+const UNIX_PROCESSES: &[&str] = &[
+    "init",
+    "systemd",
+    "kthreadd",
+    "launchd",
+    "kernel_task",
+    "windowserver",
+    "loginwindow",
+    "dock",
+    "finder",
+    "systemuiserver",
+    "xorg",
+    "xwayland",
+    "x",
+    "gnome-shell",
+    "gnome-session-binary",
+    "gnome-session",
+    "plasmashell",
+    "kwin_x11",
+    "kwin_wayland",
+    "ksmserver",
+    "mutter",
+    "cinnamon",
+    "cinnamon-session",
+    "xfce4-session",
+    "xfwm4",
+    "xfce4-panel",
+    "mate-session",
+    "marco",
+    "budgie-wm",
+    "sway",
+    "hyprland",
+    "weston",
+    "labwc",
+    "wayfire",
+    "dbus-daemon",
+    "dbus-broker",
+    "dbus-broker-launch",
+    "pipewire",
+    "pipewire-pulse",
+    "wireplumber",
+    "pulseaudio",
+    "polkitd",
+    "gdm",
+    "gdm3",
+    "sddm",
+    "lightdm",
+    "login",
+    "agetty",
+    "sshd",
+    "networkmanager",
+    "xdg-desktop-portal",
+];
+
+/// Prefixes of the same on Linux: `systemd-logind`, `xdg-desktop-portal-gnome`, `at-spi2-…`.
+const UNIX_PROCESS_PREFIXES: &[&str] = &[
+    "systemd-",
+    "xdg-desktop-portal-",
+    "at-spi",
+    "gnome-session-",
+];
+
+/// Why the program with file name `name` must not be closed on `os`, or `None` when it may.
+pub fn process_refusal_on(os: Os, name: &str) -> Option<&'static str> {
+    let name = name.trim().to_lowercase();
+    let ours = name.trim_end_matches(".exe");
+    if ours == "rewind-os" || ours == "rewind-os-cli" {
+        return Some(THIS_APP);
+    }
+    let system = match os {
+        Os::Windows => WINDOWS_PROCESSES.contains(&name.as_str()),
+        Os::Linux | Os::MacOs => {
+            UNIX_PROCESSES.contains(&name.as_str())
+                || UNIX_PROCESS_PREFIXES.iter().any(|p| name.starts_with(p))
+        }
+    };
+    system.then_some(SYSTEM_PROCESS)
+}
+
+/// Why the program with file name `name` must not be closed on this computer.
+pub fn process_refusal(name: &str) -> Option<&'static str> {
+    process_refusal_on(Os::current(), name)
+}
+
 /// Why `path` may not be removed by hand on this computer, or `None` when it may.
 pub fn removal_refusal(path: &Path) -> Option<&'static str> {
     Guard::current().removal_refusal(path)

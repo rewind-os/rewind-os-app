@@ -757,3 +757,37 @@ The system optimizes the drives on its own.	El sistema optimiza los discos por s
 The system's regular optimization of the drives is turned off.	La optimización periódica de los discos está desactivada.
 Whether the drives report problems: health, temperature, wear and errors (on Windows the figures need administrator rights)	Si los discos avisan de problemas: salud, temperatura, desgaste y errores (en Windows las cifras necesitan permisos de administrador)
 Optimize every drive now the way the system does on its own: TRIM on SSDs, defragmentation on hard drives on Windows (can take long)	Optimiza todos los discos ahora como hace el sistema por su cuenta: TRIM en los SSD y, en Windows, desfragmentación en los discos duros (puede tardar)
+Running programs	Programas abiertos
+What slows the computer down right now	Qué ralentiza el equipo ahora mismo
+What is using the processor and memory right now.	Qué está usando el procesador y la memoria ahora mismo.
+Measure again	Medir de nuevo
+Watching what each program uses…	Observando qué usa cada programa…
+Measuring what each program uses	Midiendo qué usa cada programa
+Closing	Cerrando
+Processor in use	Procesador en uso
+Over the last second	En el último segundo
+of {total}	de {total}
+Programs running	Programas en marcha
+{n} processes	{n} procesos
+Heaviest programs	Programas que más consumen
+Starts with the system	Arranca con el sistema
+starts with the system	arranca con el sistema
+not closed by Rewind OS	Rewind OS no lo cierra
+Other account	Otra cuenta
+Asks it to close, as closing its window would.	Le pide que se cierre, como al cerrar su ventana.
+Close {name}?	¿Cerrar {name}?
+It is asked to close as if you closed its window. If it has unsaved work, it may ask you to save it first.	Se le pide que se cierre como si cerraras su ventana. Si tiene trabajo sin guardar, puede pedirte que lo guardes antes.
+Force {name} to close?	¿Forzar el cierre de {name}?
+It ends at once, and any unsaved work in it is lost.	Se cierra en el acto y se pierde el trabajo sin guardar.
+Force close	Forzar cierre
+{name} was closed.	{name} se cerró.
+{name} did not close: it may be asking to save your work.	{name} no se cerró: puede que esté pidiendo guardar tu trabajo.
+{name} did not close: it may be asking to save your work. Look for its window, or force it to close.	{name} no se cerró: puede que esté pidiendo guardar tu trabajo. Busca su ventana o fuerza el cierre.
+{name} did not close: it may be asking to save your work, or it only ends when forced (--force).	{name} no se cerró: puede que esté pidiendo guardar tu trabajo, o que solo termine si se fuerza (--force).
+No running program has that name.	No hay ningún programa abierto con ese nombre.
+The system needs this to keep running. Closing it could freeze or restart the computer.	El sistema lo necesita para seguir funcionando. Cerrarlo podría bloquear o reiniciar el equipo.
+It runs for the system or another account.	Funciona para el sistema o para otra cuenta.
+This is Rewind OS itself.	Es el propio Rewind OS.
+Rewind OS runs inside it; closing it would close Rewind OS too.	Rewind OS funciona dentro de él; cerrarlo cerraría también Rewind OS.
+Measure for a second how much of the processor and memory each running program uses	Mide durante un segundo cuánto procesador y memoria usa cada programa abierto
+Close a running program (unsaved work in it can be lost; never the system's own programs or other accounts')	Cierra un programa abierto (puede perderse el trabajo sin guardar; nunca los programas del sistema ni los de otras cuentas)

@@ -16,6 +16,7 @@ pub mod macapps;
 pub mod maintenance;
 pub mod mft;
 pub mod packages;
+pub mod processes;
 pub mod programs;
 pub mod projects;
 pub mod recommend;
@@ -226,6 +227,17 @@ pub const TOOLS: &[ToolSpec] = &[
         .admin(AdminNeed::Partly)
         .changes(),
     ToolSpec::new("files.reveal", "Show a file or folder in the file manager"),
+    ToolSpec::new(
+        "processes.list",
+        "Measure for a second how much of the processor and memory each running program uses",
+    )
+    .only(WINDOWS_LINUX),
+    ToolSpec::new(
+        "processes.close",
+        "Close a running program (unsaved work in it can be lost; never the system's own programs or other accounts')",
+    )
+    .changes()
+    .only(WINDOWS_LINUX),
     ToolSpec::new("startup.list", "List programs that start with the system"),
     ToolSpec::new(
         "boot.report",
@@ -388,6 +400,16 @@ pub enum Request {
     DiskHealth,
     #[serde(rename = "disk.optimize")]
     DiskOptimize,
+    #[serde(rename = "processes.list")]
+    ProcessesList,
+    /// `name` and `pids` as `processes.list` gave them; `force` ends it at once.
+    #[serde(rename = "processes.close")]
+    ProcessesClose {
+        name: String,
+        pids: Vec<u32>,
+        #[serde(default)]
+        force: bool,
+    },
     #[serde(rename = "startup.list")]
     StartupList,
     #[serde(rename = "startup.set")]
@@ -429,6 +451,8 @@ pub enum Response {
     RegistryLeftovers(Vec<leftovers::RegistryLeftover>),
     Trashed(Vec<TrashResult>),
     Startup(Vec<startup::StartupEntry>),
+    Processes(processes::Report),
+    ProcessClosed(processes::Closed),
     Boot(boot::Report),
     DiskHealth(disks::Report),
     /// Output of an external Windows tool, shown as is.
@@ -548,6 +572,10 @@ impl Engine {
                 }))
             }
             Request::StartupList => Ok(Response::Startup(startup::list())),
+            Request::ProcessesList => processes::list(task).map(Response::Processes),
+            Request::ProcessesClose { name, pids, force } => {
+                processes::close(&name, &pids, force, task).map(Response::ProcessClosed)
+            }
             Request::BootReport => boot::report().map(Response::Boot),
             Request::DiskHealth => disks::report().map(Response::DiskHealth),
             Request::DiskOptimize => disks::optimize().map(Response::ToolOutput),
@@ -607,6 +635,8 @@ impl Request {
             Request::UpdateNotes => "update.notes",
             Request::FilesReveal { .. } => "files.reveal",
             Request::StartupList => "startup.list",
+            Request::ProcessesList => "processes.list",
+            Request::ProcessesClose { .. } => "processes.close",
             Request::BootReport => "boot.report",
             Request::DiskHealth => "disk.health",
             Request::DiskOptimize => "disk.optimize",

@@ -1,7 +1,7 @@
 //! Hooks for checking the interface without a person at the screen. Only active when the
 //! environment asks for them:
 //!
-//! - `REWIND_OS_PAGE=<overview|analyzer|duplicates|cleanup|leftovers|buildfolders|programs|startup|lighten|maintenance|disks>`
+//! - `REWIND_OS_PAGE=<overview|analyzer|duplicates|cleanup|leftovers|buildfolders|programs|startup|lighten|maintenance|disks|processes>`
 //!   opens that page first.
 //! - `REWIND_OS_THEME=<light|dark>` shows that theme instead of following the system.
 //! - `REWIND_OS_SCAN=<path>` starts a disk scan of `path` (a search on the duplicates and build

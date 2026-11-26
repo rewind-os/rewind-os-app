@@ -142,6 +142,14 @@ fn input_schema(id: &str) -> Value {
             &["id", "applied"],
         ),
         "apps.remove" => object(json!({ "ids": strings }), &["ids"]),
+        "processes.close" => object(
+            json!({
+                "name": string,
+                "pids": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+                "force": boolean
+            }),
+            &["name", "pids"],
+        ),
         "maintenance.hibernation" => object(json!({ "enabled": boolean }), &["enabled"]),
         _ => object(json!({}), &[]),
     }

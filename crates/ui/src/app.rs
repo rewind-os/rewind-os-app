@@ -385,40 +385,42 @@ impl App {
                 self.update.version_menu(ui, &mut self.shared);
             });
         });
-        // The rights and the update notice stay at the bottom; the pages scroll above them when
-        // the window is too short for all of them.
-        ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
-            ui.add_space(6.0);
-            ui.horizontal(|ui| {
-                ui.add_space(12.0);
-                if self.shared.elevated {
-                    ui.label(RichText::new(tr("Administrator")).small().color(t.text_muted));
-                } else if can_relaunch() {
-                    let restart = egui::Button::new(
-                        RichText::new(tr("Restart as administrator")).small().color(t.accent),
-                    )
-                    .frame(false);
-                    if ui
-                        .add(restart)
-                        .on_hover_text(tr(
-                            "Some cleanups and settings need administrator rights. Windows will ask for permission.",
-                        ))
-                        .clicked()
-                    {
-                        self.shared.relaunch_elevated(ui.ctx());
+        // The update notice and the rights stay at the bottom, in a panel of their own laid out
+        // top to bottom; the pages scroll above them when the window is too short for all.
+        egui::Panel::bottom("sidebar_footer")
+            .frame(egui::Frame::NONE)
+            .show_separator_line(false)
+            .resizable(false)
+            .show(ui, |ui| {
+                self.update.notice(ui, &mut self.shared);
+                ui.add_space(10.0);
+                ui.horizontal(|ui| {
+                    ui.add_space(12.0);
+                    if self.shared.elevated {
+                        ui.label(RichText::new(tr("Administrator")).small().color(t.text_muted));
+                    } else if can_relaunch() {
+                        let restart = egui::Button::new(
+                            RichText::new(tr("Restart as administrator")).small().color(t.accent),
+                        )
+                        .frame(false);
+                        if ui
+                            .add(restart)
+                            .on_hover_text(tr(
+                                "Some cleanups and settings need administrator rights. Windows will ask for permission.",
+                            ))
+                            .clicked()
+                        {
+                            self.shared.relaunch_elevated(ui.ctx());
+                        }
+                    } else {
+                        ui.label(RichText::new(tr("Standard user")).small().color(t.text_muted));
                     }
-                } else {
-                    ui.label(RichText::new(tr("Standard user")).small().color(t.text_muted));
-                }
+                });
+                ui.add_space(6.0);
             });
-            self.update.notice(ui, &mut self.shared);
-            ui.add_space(4.0);
-            ui.with_layout(egui::Layout::top_down(egui::Align::LEFT), |ui| {
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| self.navigation(ui));
-            });
-        });
+        egui::ScrollArea::vertical()
+            .auto_shrink([false; 2])
+            .show(ui, |ui| self.navigation(ui));
     }
 
     /// The pages, in their groups.

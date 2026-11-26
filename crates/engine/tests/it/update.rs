@@ -1,5 +1,4 @@
-use chrono::{Duration, TimeZone, Utc};
-use rewind_os_engine::update::{RELEASES_PAGE, due, is_newer, parse_latest};
+use rewind_os_engine::update::{RELEASES_PAGE, is_newer, parse_latest};
 
 #[test]
 fn versions_compare_by_number_not_by_text() {
@@ -70,28 +69,6 @@ fn drafts_pre_releases_and_odd_tags_are_not_offered() {
     assert!(parse_latest(&answer("v0.13.0", &url, false, true)).is_none());
     assert!(parse_latest(&answer("nightly", &url, false, false)).is_none());
     assert!(parse_latest("not json").is_none());
-}
-
-#[test]
-fn the_daily_check_asks_again_after_a_day_only_when_on() {
-    let now = Utc
-        .with_ymd_and_hms(2026, 11, 25, 12, 0, 0)
-        .single()
-        .expect("a date");
-    assert!(due(true, None, now));
-    assert!(!due(true, Some(now - Duration::hours(2)), now));
-    assert!(due(true, Some(now - Duration::hours(25)), now));
-    assert!(!due(false, None, now));
-    assert!(!due(false, Some(now - Duration::days(30)), now));
-}
-
-#[test]
-fn an_answer_from_the_future_does_not_stop_the_daily_check() {
-    let now = Utc
-        .with_ymd_and_hms(2026, 11, 25, 12, 0, 0)
-        .single()
-        .expect("a date");
-    assert!(due(true, Some(now + Duration::days(3)), now));
 }
 
 use rewind_os_engine::Os;

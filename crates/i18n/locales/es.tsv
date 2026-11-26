@@ -635,20 +635,20 @@ When it runs	Cuándo se ejecuta
 Registered in	Registrado en
 Command	Comando
 At sign-in	Al iniciar sesión
-Check whether a newer version of Rewind OS is out (asks GitHub at most once a day unless told to check now; nothing about this computer is sent)	Comprobar si hay una versión nueva de Rewind OS (pregunta a GitHub como mucho una vez al día salvo que se pida ahora; no se envía nada sobre este equipo)
-Turn the daily check for a newer version on or off	Activar o desactivar la comprobación diaria de versiones nuevas
+Check whether a newer version of Rewind OS is out (the app asks GitHub each time it starts unless that is turned off; nothing about this computer is sent)	Comprobar si hay una versión nueva de Rewind OS (la app pregunta a GitHub cada vez que arranca, salvo que lo desactives; no se envía nada sobre este equipo)
+Turn the check for a newer version at start on or off	Activar o desactivar la comprobación de versiones nuevas al arrancar
 Open the page of the newer version, with its notes and downloads, in the web browser	Abrir en el navegador la página de la versión nueva, con sus novedades y descargas
-Rewind OS will check for a new version once a day	Rewind OS comprobará una vez al día si hay una versión nueva
+Rewind OS will check for a new version each time it starts	Rewind OS comprobará si hay una versión nueva cada vez que arranque
 Rewind OS will not check for new versions by itself	Rewind OS no comprobará por su cuenta si hay versiones nuevas
 Opened in the web browser	Abierto en el navegador
 Rewind OS {latest} is out (this is {current}): {url}	Ya está disponible Rewind OS {latest} (esta es la {current}): {url}
 Rewind OS {current} is the newest version.	Rewind OS {current} es la versión más reciente.
 Rewind OS has not checked for new versions yet.	Rewind OS aún no ha comprobado si hay versiones nuevas.
-The daily check is off; turn it on with: rewind-os-cli update on	La comprobación diaria está desactivada; actívala con: rewind-os-cli update on
+The check at start is off; turn it on with: rewind-os-cli update on	La comprobación al arrancar está desactivada; actívala con: rewind-os-cli update on
 Could not check for a new version: {error}	No se pudo comprobar si hay una versión nueva: {error}
 Version {version} is out	Ya está la versión {version}
 Rewind OS {version}	Rewind OS {version}
-Check for a new version once a day	Comprobar una vez al día si hay una versión nueva
+Check for a new version when Rewind OS starts	Comprobar si hay una versión nueva al arrancar Rewind OS
 Check now	Comprobar ahora
 Version and new versions	Versión y versiones nuevas
 Download the newer version, check that the Rewind OS project signed it, and install it (the MSI or a portable copy)	Descargar la versión nueva, comprobar que la firmó el proyecto Rewind OS e instalarla (el MSI o una copia portable)
@@ -824,3 +824,7 @@ Cancelled.	Cancelado.
 {tool} is not available on {os} yet.	{tool} aún no está disponible en {os}.
 Not found: {what}	No encontrado: {what}
 Unknown cleanup category: {id}	Categoría de limpieza desconocida: {id}
+New version	Versión nueva
+{version} · you have {current}	{version} · tienes {current}
+See what's new	Ver las novedades
+Update	Actualizar

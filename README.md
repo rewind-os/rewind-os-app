@@ -105,12 +105,13 @@ Ready-made builds are on the [releases page](../../releases); check them against
 
 ### New versions
 
-Once a day the app asks GitHub whether a newer version is out and, if so, says so at the foot of
-the navigation. The request carries only the app's name and version. Turn it off from the
+Each time it starts, the app asks GitHub whether a newer version is out and, if so, shows a card
+at the foot of the navigation. Without a connection it keeps what it knew. The request carries
+only the app's name and version. Turn it off from the
 version number next to the app's name, or with `rewind-os-cli update off`;
 `rewind-os-cli update check` asks at once.
 
-The MSI and the portable builds update themselves with one click ("Update to …", or
+The MSI and the portable builds update themselves with one click ("Update", or
 `rewind-os-cli update install --yes`): the app downloads the new version, installs it only when
 its checksum is in the release's signed `SHA256SUMS.txt`, and opens again. The .deb, .rpm and
 Flatpak are updated by the system's package manager or Flatpak.

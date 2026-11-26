@@ -1,7 +1,7 @@
 //! New versions: a button at the foot of the navigation when a newer release is out, and the
-//! version number, whose menu turns the daily check on or off and checks at once. The check
-//! itself is the engine's (`update.check`): at most once a day, and only the app's version goes
-//! out. A failed daily check stays quiet; one asked for by hand says what went wrong.
+//! version number, whose menu turns the check at start on or off and checks at once. The check
+//! itself is the engine's (`update.check`): each time the app starts, and only the app's version
+//! goes out. A failed check at start stays quiet; one asked for by hand says what went wrong.
 //!
 //! A copy that can update itself (the MSI, a portable copy) offers "Update to …": after a
 //! confirmation the engine downloads the new version, checks its signature and installs it
@@ -29,7 +29,7 @@ pub struct Notice {
 }
 
 impl Notice {
-    /// Starts the daily check (it asks GitHub only when it is on and due).
+    /// Starts the check at start (it asks GitHub only when it is on).
     pub fn new(ctx: &egui::Context, engine: &Arc<Engine>) -> Self {
         // What the last update left behind (the replaced programs, the download).
         update::tidy();
@@ -119,26 +119,9 @@ impl Notice {
             .as_ref()
             .and_then(|s| (s.way == Way::Manual).then_some(s.manual))
             .map(|why| why.unwrap_or(update::UNKNOWN_PLACE));
-        ui.add_space(8.0);
-        if let Some(job) = &self.install {
-            let stage = job.task.snapshot().stage;
-            ui.horizontal(|ui| {
-                ui.spinner();
-                ui.label(
-                    RichText::new(if stage.is_empty() {
-                        tr("Updating")
-                    } else {
-                        tr(stage)
-                    })
-                    .small()
-                    .color(t.text_muted),
-                );
-            });
-            return;
-        }
-        let (text, hover) = match manual {
+        let (button_text, hover) = match manual {
             Some(why) => (
-                trf("Version {version} is out", &[("version", &version)]),
+                tr("See what's new"),
                 format!(
                     "{} {}",
                     tr(why),
@@ -146,23 +129,67 @@ impl Notice {
                 ),
             ),
             None => (
-                trf("Update to {version}", &[("version", &version)]),
+                tr("Update"),
                 trf(
                     "You have {current}. Downloads the new version, checks its signature and installs it.",
                     &[("current", update::CURRENT)],
                 ),
             ),
         };
-        let button = ui.add_sized(
-            egui::vec2(ui.available_width(), 32.0),
-            egui::Button::new(
-                RichText::new(text)
-                    .color(theme::current(ui.ctx()).on_accent)
-                    .family(theme::bold()),
-            )
-            .fill(theme::current(ui.ctx()).accent_fill),
-        );
-        if button.on_hover_text(hover).clicked() {
+        let mut clicked = false;
+        ui.add_space(8.0);
+        // A card in the colour of the current page's pill, as wide as the navigation's items:
+        // what is new, then the one thing to do about it.
+        egui::Frame::new()
+            .fill(t.surface_raised)
+            .corner_radius(egui::CornerRadius::same(t.radius))
+            .inner_margin(egui::Margin::same(12))
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal(|ui| {
+                    widgets::icon_tile(ui, crate::glyphs::Glyph::Download, t.accent_fill, 28.0);
+                    ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
+                        ui.label(RichText::new(tr("New version")).family(theme::bold()));
+                        ui.label(
+                            RichText::new(trf(
+                                "{version} · you have {current}",
+                                &[("version", &version), ("current", update::CURRENT)],
+                            ))
+                            .small()
+                            .color(t.text_muted),
+                        );
+                    });
+                });
+                ui.add_space(10.0);
+                if let Some(job) = &self.install {
+                    let stage = job.task.snapshot().stage;
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label(
+                            RichText::new(if stage.is_empty() {
+                                tr("Updating")
+                            } else {
+                                tr(stage)
+                            })
+                            .small()
+                            .color(t.text_muted),
+                        );
+                    });
+                    return;
+                }
+                let button = ui.add_sized(
+                    egui::vec2(ui.available_width(), 30.0),
+                    egui::Button::new(
+                        RichText::new(button_text)
+                            .color(t.on_accent)
+                            .family(theme::bold()),
+                    )
+                    .fill(t.accent_fill),
+                );
+                clicked = button.on_hover_text(hover).clicked();
+            });
+        if clicked {
             if manual.is_some() {
                 run(shared, Request::UpdateNotes);
             } else {
@@ -214,7 +241,7 @@ impl Notice {
         }
     }
 
-    /// The version number; its menu turns the daily check on or off and checks at once.
+    /// The version number; its menu turns the check at start on or off and checks at once.
     pub fn version_menu(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
         let t = theme::current(ui.ctx());
         let label = RichText::new(format!("v{}", update::CURRENT))
@@ -228,7 +255,10 @@ impl Notice {
             );
             let mut auto = self.status.as_ref().is_none_or(|s| s.auto);
             if ui
-                .checkbox(&mut auto, tr("Check for a new version once a day"))
+                .checkbox(
+                    &mut auto,
+                    tr("Check for a new version when Rewind OS starts"),
+                )
                 .changed()
             {
                 run(shared, Request::UpdateAuto { enabled: auto });

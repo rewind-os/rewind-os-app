@@ -1,9 +1,10 @@
 //! Whether a newer version of Rewind OS is out.
 //!
-//! The app asks GitHub for the latest published release, at most once a day unless asked to
-//! check now, and keeps the answer in its own data folder (`rewind-os/update.json`). The request
-//! carries the app's name and version and nothing about the computer. The daily check can be
-//! turned off; a check asked for by hand still works then.
+//! The app asks GitHub for the latest published release each time it starts, and keeps the
+//! answer in its own data folder (`rewind-os/update.json`), so a start without a connection still
+//! knows about a version it saw before. The request carries the app's name and version and
+//! nothing about the computer. The check at start can be turned off; a check asked for by hand
+//! still works then.
 //!
 //! Installing a newer version (`update.install`) trusts only what the project signed: the
 //! release's `SHA256SUMS.txt` must carry a minisign signature by the key in
@@ -27,8 +28,6 @@ pub const CURRENT: &str = env!("CARGO_PKG_VERSION");
 const LATEST_URL: &str = "https://api.github.com/repos/rewind-os/rewind-os-app/releases/latest";
 /// Release pages the app opens; an answer pointing anywhere else is not trusted.
 pub const RELEASES_PAGE: &str = "https://github.com/rewind-os/rewind-os-app/releases/";
-/// How long an answer is kept before the daily check asks again.
-const RECHECK_HOURS: i64 = 24;
 /// Larger answers are refused (the real one is a few tens of kilobytes).
 const MAX_ANSWER_BYTES: u64 = 4 * 1024 * 1024;
 /// Where a release's files are downloaded from.
@@ -78,7 +77,7 @@ pub struct Status {
     pub newer: bool,
     /// When the app last asked.
     pub checked: Option<DateTime<Utc>>,
-    /// The app asks once a day by itself.
+    /// The app asks by itself each time it starts.
     pub auto: bool,
     /// How this copy can take a new version.
     pub way: Way,
@@ -177,36 +176,39 @@ impl Stored {
     }
 }
 
-/// Whether the daily check should ask again: it is on, and the last answer is a day old (or
-/// from the future, when the clock was wrong).
-pub fn due(auto: bool, checked: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
-    auto && checked.is_none_or(|at| at > now || now - at >= chrono::Duration::hours(RECHECK_HOURS))
+/// The latest published release, from GitHub.
+fn fetch() -> Result<Release, EngineError> {
+    let answer = rewind_os_platform::web::get_text(
+        LATEST_URL,
+        &format!("rewind-os/{CURRENT}"),
+        MAX_ANSWER_BYTES,
+    )?;
+    parse_latest(&answer).ok_or_else(|| EngineError::NotFound("a published release".to_owned()))
 }
 
-/// What the app knows about new versions, asking GitHub first when `now` is set or the daily
-/// check is due. Without either, nothing leaves the computer.
+/// What the app knows about new versions. GitHub is asked when `now` is set (a check asked for
+/// by hand, whose failure is reported) or when the check at start is on (whose failure falls
+/// back quietly to the last answer kept). With neither, nothing leaves the computer.
 pub fn check(now: bool) -> Result<Status, EngineError> {
     let mut stored = load();
-    let at = Utc::now();
-    if now || due(stored.auto, stored.checked, at) {
-        let answer = rewind_os_platform::web::get_text(
-            LATEST_URL,
-            &format!("rewind-os/{CURRENT}"),
-            MAX_ANSWER_BYTES,
-        )?;
-        let release = parse_latest(&answer)
-            .ok_or_else(|| EngineError::NotFound("a published release".to_owned()))?;
-        stored.latest = Some(release);
-        stored.checked = Some(at);
-        // When the answer cannot be kept, the next start simply asks again.
-        if save(&stored).is_err() {
-            stored.checked = None;
+    if !now && !stored.auto {
+        return Ok(stored.status());
+    }
+    match fetch() {
+        Ok(release) => {
+            stored.latest = Some(release);
+            stored.checked = Some(Utc::now());
+            // An answer that cannot be kept is still shown; the next start asks again anyway.
+            let _ = save(&stored);
         }
+        Err(err) if now => return Err(err),
+        // Offline or GitHub unreachable at start: what was known before still counts.
+        Err(_) => {}
     }
     Ok(stored.status())
 }
 
-/// Turns the daily check on or off.
+/// Turns the check at start on or off.
 pub fn set_auto(enabled: bool) -> Result<(), EngineError> {
     let mut stored = load();
     stored.auto = enabled;

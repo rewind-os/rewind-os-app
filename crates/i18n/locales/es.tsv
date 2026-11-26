@@ -828,3 +828,29 @@ New version	Versión nueva
 {version} · you have {current}	{version} · tienes {current}
 See what's new	Ver las novedades
 Update	Actualizar
+Virtual disks	Discos virtuales
+WSL and Docker disks that kept space Windows can have back	Discos de WSL y Docker que se quedaron espacio que Windows puede recuperar
+WSL and Docker Desktop keep Linux in disk files that grow and never shrink by themselves. Compacting one gives Windows back the space Linux no longer uses.	WSL y Docker Desktop guardan Linux en archivos de disco que crecen y nunca encogen solos. Compactar uno devuelve a Windows el espacio que Linux ya no usa.
+No virtual disks of WSL or Docker Desktop were found.	No se encontró ningún disco virtual de WSL ni de Docker Desktop.
+Compact	Compactar
+Gives Windows back the space Linux no longer uses. Stops WSL while it runs.	Devuelve a Windows el espacio que Linux ya no usa. Detiene WSL mientras tanto.
+about {free} to give back	unos {free} para devolver
+what Docker uses inside is not known	no se sabe cuánto usa Docker por dentro
+start it to see what it uses inside	arráncala para ver cuánto usa por dentro
+{used} used inside, about {free} to give back	{used} usados por dentro, unos {free} para devolver
+Compact the disk of {name}?	¿Compactar el disco de {name}?
+Every Linux program and WSL window closes, Linux is told which space it freed, and the disk file is compacted. Nothing inside it is deleted. It can take several minutes.	Se cierran todos los programas de Linux y las ventanas de WSL, se le indica a Linux qué espacio liberó y se compacta el archivo del disco. No se borra nada de dentro. Puede tardar varios minutos.
+WSL stops while the disk file is compacted. Nothing inside it is deleted: images, containers and volumes stay. It can take several minutes.	WSL se detiene mientras se compacta el archivo del disco. No se borra nada de dentro: imágenes, contenedores y volúmenes se quedan. Puede tardar varios minutos.
+{name}: {before} → {after}	{name}: {before} → {after}
+Of WSL and Docker Desktop	De WSL y Docker Desktop
+Space they take	Espacio que ocupan
+On this computer's drive	En el disco de este equipo
+About, where Linux is running	Aproximado, donde Linux está en marcha
+This is not one of the virtual disks Rewind OS found.	Este no es uno de los discos virtuales que encontró Rewind OS.
+Quit Docker Desktop first: it keeps WSL running, and the disk must not be in use.	Cierra antes Docker Desktop: mantiene WSL en marcha, y el disco no puede estar en uso.
+WSL did not stop, so the disk is still in use. Close the Linux programs and try again.	WSL no se detuvo, así que el disco sigue en uso. Cierra los programas de Linux y vuelve a intentarlo.
+Telling the disk which space Linux freed	Indicando al disco qué espacio liberó Linux
+Stopping WSL	Deteniendo WSL
+Compacting the virtual disk	Compactando el disco virtual
+List the virtual disks of WSL distributions and Docker Desktop, with what they take on Windows	Lista los discos virtuales de las distribuciones de WSL y de Docker Desktop, con lo que ocupan en Windows
+Give Windows back the space a WSL or Docker virtual disk no longer uses (stops WSL; nothing inside is deleted)	Devuelve a Windows el espacio que un disco virtual de WSL o Docker ya no usa (detiene WSL; no se borra nada de dentro)

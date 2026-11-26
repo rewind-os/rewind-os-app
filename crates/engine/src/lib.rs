@@ -28,6 +28,7 @@ pub mod system;
 pub mod task;
 pub mod tweaks;
 pub mod update;
+pub mod vdisks;
 mod walk;
 
 use serde::{Deserialize, Serialize};
@@ -207,6 +208,18 @@ pub const TOOLS: &[ToolSpec] = &[
         "Delete chosen build folders of software projects; each project's own tool makes them again",
     )
     .changes(),
+    ToolSpec::new(
+        "vdisk.list",
+        "List the virtual disks of WSL distributions and Docker Desktop, with what they take on Windows",
+    )
+    .only(WINDOWS),
+    ToolSpec::new(
+        "vdisk.compact",
+        "Give Windows back the space a WSL or Docker virtual disk no longer uses (stops WSL; nothing inside is deleted)",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(WINDOWS),
     ToolSpec::new(
         "update.check",
         "Check whether a newer version of Rewind OS is out (the app asks GitHub each time it starts unless that is turned off; nothing about this computer is sent)",
@@ -403,6 +416,11 @@ pub enum Request {
     },
     #[serde(rename = "dev.clean")]
     DevClean { paths: Vec<PathBuf> },
+    #[serde(rename = "vdisk.list")]
+    VdiskList,
+    /// `path` as `vdisk.list` gave it.
+    #[serde(rename = "vdisk.compact")]
+    VdiskCompact { path: PathBuf },
     /// `now` asks GitHub even when the check at start is off, and reports a failure.
     #[serde(rename = "update.check")]
     UpdateCheck {
@@ -489,6 +507,8 @@ pub enum Response {
     Duplicates(duplicates::DuplicateReport),
     BuildFolders(projects::Report),
     BuildFoldersCleaned(Vec<projects::Cleaned>),
+    VirtualDisks(vdisks::Report),
+    Compacted(vdisks::Compacted),
     Update(update::Status),
     UpdateInstalled(update::Installed),
     CleanupAnalysis(Vec<cleanup::CategoryReport>),
@@ -596,6 +616,8 @@ impl Engine {
                 &projects::Places::current(),
                 task,
             ))),
+            Request::VdiskList => vdisks::list().map(Response::VirtualDisks),
+            Request::VdiskCompact { path } => vdisks::compact(&path, task).map(Response::Compacted),
             Request::UpdateCheck { now } => update::check(now).map(Response::Update),
             Request::UpdateAuto { enabled } => {
                 update::set_auto(enabled)?;
@@ -686,6 +708,8 @@ impl Request {
             Request::FilesTrash { .. } => "files.trash",
             Request::DevFind { .. } => "dev.find",
             Request::DevClean { .. } => "dev.clean",
+            Request::VdiskList => "vdisk.list",
+            Request::VdiskCompact { .. } => "vdisk.compact",
             Request::UpdateCheck { .. } => "update.check",
             Request::UpdateAuto { .. } => "update.auto",
             Request::UpdateInstall { .. } => "update.install",

@@ -33,6 +33,10 @@ large forgotten files and programs that start with the system for no reason.
   beside the file that proves what it is (`package.json` with its lockfile, `Cargo.toml` with
   Cargo's cache tag), never inside hidden folders, app data or programs. Deleted for good, since
   each project makes them again (`npm install`, `cargo build`).
+- **Virtual disks** (Windows): the disk files of WSL distributions and Docker Desktop, which grow
+  and never shrink by themselves. Each shows what it takes on Windows and, while its distribution
+  runs, what Linux uses inside. Compacting one (as administrator, after asking) trims it from
+  inside, stops WSL and runs diskpart's `compact vdisk`; nothing inside is deleted.
 - **Junk cleanup**: temporary files, update downloads, crash reports, browser and app caches,
   package manager caches, old installers in Downloads, the recycle bin. Each category says how
   safe it is and whether it needs administrator rights.
@@ -71,6 +75,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 |---|:-:|:-:|:-:|
 | Overview, disk analyzer, duplicate files, build folders | ✓ | ✓ | ✓ |
 | Junk cleanup, recycle bin | ✓ | ✓ | ✓ |
+| Virtual disks of WSL and Docker | ✓ (compacting as administrator) | — | — |
 | Startup programs | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Startup speed | ✓ (as administrator) | ✓ (systemd, last start) | — |
 | Running programs | ✓ | ✓ | — |

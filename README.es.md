@@ -36,6 +36,11 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   `Cargo.toml` con la etiqueta de caché de Cargo), nunca dentro de carpetas ocultas, datos de apps
   o programas. Se borran del todo, porque cada proyecto las vuelve a crear (`npm install`,
   `cargo build`).
+- **Discos virtuales** (Windows): los archivos de disco de las distribuciones de WSL y de Docker
+  Desktop, que crecen y nunca encogen solos. Cada uno muestra lo que ocupa en Windows y, mientras
+  su distribución está en marcha, lo que usa Linux por dentro. Compactar uno (como administrador y
+  tras preguntar) lo recorta desde dentro, detiene WSL y ejecuta `compact vdisk` de diskpart; no
+  se borra nada de dentro.
 - **Limpieza de basura**: temporales, descargas de actualizaciones, informes de bloqueos, cachés
   de navegadores y apps, cachés de gestores de paquetes, instaladores antiguos en Descargas y la
   papelera. Cada categoría indica lo segura que es y si necesita permisos de administrador.
@@ -75,6 +80,7 @@ administrador cuando una tarea lo necesita.
 |---|:-:|:-:|:-:|
 | Resumen, analizador de disco, archivos duplicados, carpetas de compilación | ✓ | ✓ | ✓ |
 | Limpieza, papelera | ✓ | ✓ | ✓ |
+| Discos virtuales de WSL y Docker | ✓ (compactar como administrador) | — | — |
 | Programas de inicio | ✓ | ✓ (XDG autostart) | ✓ (LaunchAgents) |
 | Velocidad de arranque | ✓ (como administrador) | ✓ (systemd, último arranque) | — |
 | Programas abiertos | ✓ | ✓ | — |

@@ -113,6 +113,9 @@ enum Command {
     /// The power plan.
     #[command(subcommand)]
     Power(Power),
+    /// Virtual disks of WSL and Docker Desktop.
+    #[command(subcommand)]
+    Vdisks(Vdisks),
     /// Drive health, and optimizing the drives.
     #[command(subcommand)]
     Disks(Disks),
@@ -233,6 +236,19 @@ enum Processes {
         /// End it at once instead of asking it to close.
         #[arg(long)]
         force: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Vdisks {
+    /// The virtual disks and what they take on Windows.
+    List,
+    /// Give Windows back the space a disk no longer uses (stops WSL; needs administrator rights).
+    Compact {
+        /// The distribution's name, "Docker Desktop", or the disk's path from `vdisks list`.
+        disk: String,
         #[arg(long)]
         yes: bool,
     },
@@ -464,6 +480,27 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
                 pids: program.pids,
                 force,
             }
+        }
+        Command::Vdisks(Vdisks::List) => Request::VdiskList,
+        Command::Vdisks(Vdisks::Compact { disk, yes }) => {
+            confirm(yes)?;
+            let listed = Engine::new()
+                .run(Request::VdiskList, &Task::new())
+                .map_err(|e| e.to_string())?;
+            let Response::VirtualDisks(report) = listed else {
+                return Err(tr("This is not one of the virtual disks Rewind OS found.").to_owned());
+            };
+            let found = report
+                .disks
+                .into_iter()
+                .find(|d| {
+                    d.name.eq_ignore_ascii_case(&disk)
+                        || d.path.to_string_lossy().eq_ignore_ascii_case(&disk)
+                })
+                .ok_or_else(|| {
+                    tr("This is not one of the virtual disks Rewind OS found.").to_owned()
+                })?;
+            Request::VdiskCompact { path: found.path }
         }
         Command::Power(Power::List) => Request::PowerList,
         Command::Power(Power::Settings) => Request::PowerSettings,
@@ -1164,6 +1201,49 @@ fn print_human(response: &Response, top: usize) {
                         format!("  ({})", notes.join(", "))
                     }
                 );
+            }
+        }
+        Response::VirtualDisks(report) => {
+            if report.disks.is_empty() {
+                println!(
+                    "{}",
+                    tr("No virtual disks of WSL or Docker Desktop were found.")
+                );
+            }
+            for d in &report.disks {
+                let inside = match (d.used_inside, d.reclaimable()) {
+                    (Some(used), Some(free)) => trf(
+                        "{used} used inside, about {free} to give back",
+                        &[("used", &bytes(used)), ("free", &bytes(free))],
+                    ),
+                    _ => tr("start it to see what it uses inside").to_owned(),
+                };
+                println!("{:>10}  {:<20} {inside}", bytes(d.bytes), d.name);
+                println!("            {}", d.path.display());
+            }
+            if report.docker_running {
+                println!(
+                    "\n{}",
+                    tr(
+                        "Quit Docker Desktop first: it keeps WSL running, and the disk must not be in use."
+                    )
+                );
+            }
+        }
+        Response::Compacted(done) => {
+            println!(
+                "{}",
+                trf(
+                    "{name}: {before} → {after}",
+                    &[
+                        ("name", &done.name),
+                        ("before", &bytes(done.before)),
+                        ("after", &bytes(done.after))
+                    ]
+                )
+            );
+            if !done.output.is_empty() {
+                println!("\n{}", done.output);
             }
         }
         Response::Power(report) => {

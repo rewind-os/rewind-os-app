@@ -105,7 +105,8 @@ cargo deny check licenses bans sources
 - The version lives only in `[workspace.package] version` in `Cargo.toml`. A suffix
   (`0.2.0-rc.1`) makes a pre-release.
 - Pushing to the `release` branch runs `.github/workflows/release.yml`: it builds Windows and
-  Linux, x64 and arm64, with `packaging/windows/package.ps1` and `packaging/linux/package.sh`, drafts the GitHub release `v<version>` with every package
+  Linux, x64 and arm64, and a universal macOS app, with `packaging/windows/package.ps1`,
+  `packaging/linux/package.sh` and `packaging/macos/package.sh`, drafts the GitHub release `v<version>` with every package
   and `SHA256SUMS.txt`, and publishes it only when every build passed and no file is missing
   compared with the previous release. Running the workflow by hand is a dry run (artifacts only).
 - Publishing a release cannot be undone by a new commit: ask the maintainer before pushing to

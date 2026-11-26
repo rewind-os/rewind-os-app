@@ -1,7 +1,7 @@
 name: Release
 
-# Pushing to the `release` branch builds the Windows and Linux packages (portable zip and MSI;
-# tar.gz, .deb, .rpm, Flatpak bundle), drafts a GitHub release named
+# Pushing to the `release` branch builds the Windows, Linux and macOS packages (portable zip and
+# MSI; tar.gz, .deb, .rpm, Flatpak bundle; a universal .dmg), drafts a GitHub release named
 # after [workspace.package] version in Cargo.toml (tag v<version>), uploads the packages with
 # SHA256SUMS.txt and its minisign signature, and publishes it when every build passed. A version with a suffix (0.2.0-rc.1) is a pre-release.
 # Run it by hand (workflow_dispatch) for a dry run that only builds and keeps the artifacts.
@@ -142,10 +142,45 @@ jobs:
           path: dist/release/*
           if-no-files-found: error
 
+  macos:
+    name: macOS universal
+    needs: version
+    # Apple silicon; the Intel half is cross-compiled on the same runner.
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      REWIND_OS_VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: step-security/dtolnay-rust-toolchain@8dd607977d06adf4ed49b190381e74c17a9dd25f # v1.0.0
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: release-macos-universal-macos-14
+      - name: Build, sign ad hoc, package
+        run: ./packaging/macos/package.sh
+      - name: Say how the app is signed
+        run: >-
+          echo "The macOS app is signed ad hoc, not with an Apple Developer ID, and not notarized:
+          macOS asks to confirm it the first time it opens." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-macos-universal
+          path: dist/release/*
+          if-no-files-found: error
+
   release:
     name: GitHub release
     if: github.event_name == 'push' && github.ref == 'refs/heads/release' && !cancelled() && !contains(needs.*.result, 'failure')
-    needs: [version, windows, linux]
+    needs: [version, windows, linux, macos]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

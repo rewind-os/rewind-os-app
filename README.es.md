@@ -87,7 +87,7 @@ administrador cuando una tarea lo necesita.
 | Mantenimiento | almacén de componentes, hibernación | journal | — |
 
 Una herramienta que aún no está disponible lo dice, en la app y en la CLI; nunca finge
-funcionar. Las versiones para macOS se comprueban en CI pero aún no se publican.
+funcionar.
 
 ## Descargar
 
@@ -107,6 +107,11 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
   O instala el Flatpak: `flatpak install --user ./rewind-os-<versión>-linux-<arq>.flatpak` (necesita
   acceso al sistema de archivos para ver el disco y ejecuta las herramientas del sistema fuera del
   sandbox).
+- **macOS** 11 o posterior, Apple Silicon e Intel: abre `rewind-os-<versión>-macos-universal.dmg`
+  y arrastra Rewind OS a Aplicaciones. La app aún no está firmada con un Developer ID de Apple, así
+  que la primera vez macOS pide confirmarla: haz clic con Control en la app y elige Abrir (o
+  Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente). La herramienta de línea de
+  comandos está dentro de la app: `/Applications/Rewind OS.app/Contents/MacOS/rewind-os-cli`.
 
 ### Versiones nuevas
 

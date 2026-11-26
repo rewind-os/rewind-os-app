@@ -2,6 +2,9 @@
 
 - `windows/package.ps1`: the portable zip and the MSI, for x64 and ARM64.
 - `linux/package.sh` and `linux/flatpak.sh`: the tar.gz, .deb, .rpm and Flatpak bundle.
+- `macos/package.sh`: a universal app (Apple silicon and Intel) in a .dmg, signed ad hoc. Signing
+  with an Apple Developer ID and notarizing need a paid Apple Developer account; until then macOS
+  asks to confirm the app the first time it opens.
 - `minisign.pub`: the public key that signs every release.
 
 ## Release signature

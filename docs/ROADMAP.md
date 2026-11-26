@@ -63,6 +63,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [ ] R2.21 macOS: sign with an Apple Developer ID and notarize, so the app opens without a confirmation (needs a paid Apple Developer account)
 - [x] R2.13 Linux: `.deb` and `.rpm` packages next to the tar.gz
 - [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)
+- [ ] R2.22 Linux: a signed APT repository on GitHub Pages, updated by every release, so `sudo apt install rewind-os` and `apt upgrade` work (needs the APT_SIGNING_KEY secret and Pages set up once)
 - [x] R2.14 Linux and macOS: administrator rights for one action at a time (pkexec / authorization dialog), never a root window
 
 ## R3 — Easier and lighter

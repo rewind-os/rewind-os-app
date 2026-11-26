@@ -89,8 +89,11 @@ DESCRIPTION="Rewind OS shows what uses disk space and removes what is not needed
 files, caches, leftovers of uninstalled programs, duplicate and large forgotten files, and
 unneeded startup programs. Every removal goes through a safety guard."
 HOMEPAGE="https://github.com/rewind-os/rewind-os-app"
-# The GUI loads OpenGL, xkbcommon and the display libraries at run time.
-DEB_DEPENDS="libc6 (>= $GLIBC_NEEDED), libgl1, libxkbcommon0, libwayland-client0 | libx11-6"
+# Neither program links more than the C library. The window loads OpenGL, xkbcommon and the
+# display libraries when it opens, so they are recommended rather than required: installed by
+# default on a desktop, and left out on a computer without one, where only rewind-os-cli is used.
+DEB_DEPENDS="libc6 (>= $GLIBC_NEEDED)"
+DEB_RECOMMENDS="libgl1, libxkbcommon0, libwayland-client0 | libx11-6, pkexec | policykit-1"
 
 case "$ARCH" in
   x64) DEB_ARCH=amd64; RPM_ARCH=x86_64 ;;
@@ -110,7 +113,7 @@ mkdir -p "$DEB_ROOT/DEBIAN"
   echo "Maintainer: Rewind OS maintainers <rewind-os@users.noreply.github.com>"
   echo "Installed-Size: $(du -sk "$ROOTFS" | cut -f1)"
   echo "Depends: $DEB_DEPENDS"
-  echo "Recommends: pkexec | policykit-1"
+  echo "Recommends: $DEB_RECOMMENDS"
   echo "Section: utils"
   echo "Priority: optional"
   echo "Homepage: $HOMEPAGE"
@@ -137,8 +140,7 @@ Release: 1
 Summary: $SUMMARY
 License: MIT OR Apache-2.0
 URL: $HOMEPAGE
-Requires: libglvnd-glx, libxkbcommon
-Recommends: polkit
+Recommends: libglvnd-glx, libxkbcommon, polkit
 AutoReqProv: no
 
 %description

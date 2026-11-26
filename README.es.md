@@ -69,8 +69,8 @@ archivos grandes olvidados y programas que arrancan con el sistema sin motivo.
   cerrada de ajustes documentados, cada uno se puede deshacer, y quitar de forma opcional apps
   preinstaladas de la Store (Noticias, Consejos, Clipchamp…) de tu cuenta; la Store puede volver
   a instalarlas.
-- **Mantenimiento**: las herramientas del propio sistema (almacén de componentes e hibernación en
-  Windows, el journal en Linux).
+- **Mantenimiento**: las herramientas del propio sistema (almacén de componentes, hibernación y
+  puntos de restauración antiguos en Windows, el journal en Linux).
 
 No se borra nada sin preguntar. Los archivos que un programa tiene abiertos se omiten y se
 informa de ellos. La app arranca como usuario normal y, en Windows, ofrece reiniciarse como
@@ -92,7 +92,7 @@ administrador cuando una tarea lo necesita.
 | Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, a la Papelera) |
 | Restos de programas | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |
 | Aligerar Windows | ✓ | — | — |
-| Mantenimiento | almacén de componentes, hibernación | journal | — |
+| Mantenimiento | almacén de componentes, hibernación, puntos de restauración | journal | — |
 
 Una herramienta que aún no está disponible lo dice, en la app y en la CLI; nunca finge
 funcionar.

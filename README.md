@@ -65,8 +65,8 @@ large forgotten files and programs that start with the system for no reason.
   closed list of documented settings, each of which can be undone, and optional removal of
   preinstalled Store apps (News, Tips, Clipchamp…) for your account; the Store can install
   them again.
-- **Maintenance**: the system's own tools (component store and hibernation on Windows, the
-  journal on Linux).
+- **Maintenance**: the system's own tools (component store, hibernation and old restore
+  points on Windows, the journal on Linux).
 
 Nothing is deleted without asking. Files a program has open are skipped and reported. The app
 starts as a normal user and, on Windows, offers to restart as administrator when a task needs it.
@@ -87,7 +87,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |
 | Make Windows lighter | ✓ | — | — |
-| Maintenance | component store, hibernation | journal | — |
+| Maintenance | component store, hibernation, restore points | journal | — |
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.
 

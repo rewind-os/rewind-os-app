@@ -18,6 +18,10 @@ use std::time::{Instant, SystemTime};
 
 /// How many of the largest files a scan keeps.
 pub const TOP_FILES: usize = 500;
+/// Old large files: at least this large…
+pub const OLD_MIN_BYTES: u64 = 50 * 1024 * 1024;
+/// …and not changed for this many days.
+pub const OLD_AFTER_DAYS: u64 = 365;
 /// How deep below a drive's root a scan still reads the master file table.
 const FILE_TABLE_DEPTH: usize = 1;
 /// How many extensions a scan reports.
@@ -68,6 +72,9 @@ pub struct ScanTree {
     pub root: PathBuf,
     nodes: Vec<DirNode>,
     pub top_files: Vec<FileEntry>,
+    /// Files of at least [`OLD_MIN_BYTES`] not changed for [`OLD_AFTER_DAYS`], largest first:
+    /// only ones a person may remove (not the system's, not a program's own files).
+    pub old_files: Vec<FileEntry>,
     pub extensions: Vec<ExtensionStat>,
     /// Folders that could not be read (usually access denied).
     pub unreadable_dirs: u64,
@@ -167,6 +174,7 @@ pub fn serialize_summary<S: Serializer>(
         elapsed_ms: u64,
         largest_folders: Vec<Child>,
         largest_files: &'a [FileEntry],
+        old_files: &'a [FileEntry],
         extensions: &'a [ExtensionStat],
         changes: &'a Option<crate::history::Comparison>,
     }
@@ -193,6 +201,7 @@ pub fn serialize_summary<S: Serializer>(
             })
             .collect(),
         largest_files: &tree.top_files[..tree.top_files.len().min(100)],
+        old_files: &tree.old_files[..tree.old_files.len().min(100)],
         extensions: &tree.extensions,
         changes: &tree.history,
     };
@@ -243,6 +252,25 @@ impl TopFiles {
     }
 }
 
+impl TopFiles {
+    /// The files kept, largest first.
+    fn into_sorted(self) -> Vec<FileEntry> {
+        let mut files: Vec<FileEntry> = self
+            .heap
+            .into_inner()
+            .into_iter()
+            .map(|Reverse((bytes, path, modified, disk_bytes))| FileEntry {
+                path,
+                bytes,
+                disk_bytes,
+                modified: modified.map(DateTime::<Utc>::from),
+            })
+            .collect();
+        files.sort_by_key(|e| Reverse(e.bytes));
+        files
+    }
+}
+
 /// One file's figures.
 struct Sizes {
     bytes: u64,
@@ -253,6 +281,9 @@ struct Sizes {
 struct Context<'a> {
     task: &'a Task,
     top: TopFiles,
+    old: TopFiles,
+    /// Files last changed before this are old.
+    old_before: Option<SystemTime>,
     extensions: Mutex<HashMap<String, (u64, u64)>>,
     unreadable: AtomicU64,
     /// Hard-linked files already counted.
@@ -268,6 +299,13 @@ impl<'a> Context<'a> {
                 heap: Mutex::new(BinaryHeap::new()),
                 floor: AtomicU64::new(0),
             },
+            old: TopFiles {
+                heap: Mutex::new(BinaryHeap::new()),
+                floor: AtomicU64::new(0),
+            },
+            old_before: SystemTime::now().checked_sub(std::time::Duration::from_secs(
+                OLD_AFTER_DAYS * 24 * 60 * 60,
+            )),
             extensions: Mutex::new(HashMap::new()),
             unreadable: AtomicU64::new(0),
             linked: Mutex::new(HashSet::new()),
@@ -301,7 +339,21 @@ impl<'a> Context<'a> {
         let slot = local_ext.entry(ext).or_default();
         slot.0 += 1;
         slot.1 += bytes;
-        self.top.offer(bytes, path, modified, disk);
+        let old = bytes >= OLD_MIN_BYTES
+            && self
+                .old_before
+                .is_some_and(|before| modified.is_some_and(|m| m < before));
+        if old {
+            let path = path();
+            self.top.offer(bytes, || path.clone(), modified, disk);
+            // Only what a person may remove by hand: not the system's, not a program's files.
+            let guard = crate::safety::Guard::current();
+            if guard.removal_refusal(&path).is_none() && !guard.is_program_folder(&path) {
+                self.old.offer(bytes, || path, modified, disk);
+            }
+        } else {
+            self.top.offer(bytes, path, modified, disk);
+        }
     }
 
     /// Reports the files of one folder, once its listing is done.
@@ -320,19 +372,8 @@ impl<'a> Context<'a> {
     fn finish(self, raw: RawDir, root: &Path, started: Instant, from_file_table: bool) -> ScanTree {
         self.task.set_stage("Sorting results");
         let nodes = flatten(raw);
-        let mut top_files: Vec<FileEntry> = self
-            .top
-            .heap
-            .into_inner()
-            .into_iter()
-            .map(|Reverse((bytes, path, modified, disk_bytes))| FileEntry {
-                path,
-                bytes,
-                disk_bytes,
-                modified: modified.map(DateTime::<Utc>::from),
-            })
-            .collect();
-        top_files.sort_by_key(|e| Reverse(e.bytes));
+        let top_files = self.top.into_sorted();
+        let old_files = self.old.into_sorted();
 
         let mut extensions: Vec<ExtensionStat> = self
             .extensions
@@ -351,6 +392,7 @@ impl<'a> Context<'a> {
             root: root.to_path_buf(),
             nodes,
             top_files,
+            old_files,
             extensions,
             unreadable_dirs: self.unreadable.into_inner(),
             elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),

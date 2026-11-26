@@ -7,7 +7,7 @@ use crate::widgets::{self, Choice, card, page_header};
 use egui::{Color32, CornerRadius, RichText, Role, Sense, Stroke, WidgetInfo};
 use rewind_os_engine::format::{bytes, count, local_date, signed_bytes};
 use rewind_os_engine::history::Comparison;
-use rewind_os_engine::scan::{FileEntry, NodeId, ScanTree};
+use rewind_os_engine::scan::{self, FileEntry, NodeId, ScanTree};
 use rewind_os_engine::{Request, Response};
 use rewind_os_i18n::{tr, trf};
 use std::collections::HashSet;
@@ -19,6 +19,7 @@ enum View {
     #[default]
     Folders,
     LargestFiles,
+    OldFiles,
     FileTypes,
     Changes,
 }
@@ -70,6 +71,7 @@ impl State {
                 match crate::devtools::analyzer_view().as_deref() {
                     Some("folders") => self.view = View::Folders,
                     Some("files") => self.view = View::LargestFiles,
+                    Some("old") => self.view = View::OldFiles,
                     Some("types") => self.view = View::FileTypes,
                     Some("changes") => self.view = View::Changes,
                     _ => {}
@@ -153,6 +155,7 @@ impl State {
         ui.horizontal(|ui| {
             ui.selectable_value(&mut self.view, View::Folders, tr("Folders"));
             ui.selectable_value(&mut self.view, View::LargestFiles, tr("Largest files"));
+            ui.selectable_value(&mut self.view, View::OldFiles, tr("Old large files"));
             ui.selectable_value(&mut self.view, View::FileTypes, tr("File types"));
             ui.selectable_value(&mut self.view, View::Changes, tr("What changed"));
         });
@@ -160,6 +163,7 @@ impl State {
         match self.view {
             View::Folders => self.folders(ui, shared, &tree),
             View::LargestFiles => self.largest_files(ui, shared, &tree),
+            View::OldFiles => self.old_files(ui, shared, &tree),
             View::FileTypes => file_types(ui, &tree),
             View::Changes => self.changes(ui, &tree),
         }
@@ -485,6 +489,33 @@ impl State {
             &mut self.pending_trash,
             &self.trashed,
             &tree.top_files,
+        );
+    }
+
+    /// Large files nobody changed in a year: often forgotten videos, backups and disk images.
+    fn old_files(&mut self, ui: &mut egui::Ui, shared: &mut Shared, tree: &ScanTree) {
+        let t = theme::current(ui.ctx());
+        let total: u64 = tree.old_files.iter().map(|f| f.bytes).sum();
+        ui.label(
+            RichText::new(trf(
+                "Files of {size} or more that nobody changed in over a year: {n}, {total} in all. The system's and programs' own files are left out. Check each before moving it to the recycle bin.",
+                &[
+                    ("size", &bytes(scan::OLD_MIN_BYTES)),
+                    ("n", &tree.old_files.len().to_string()),
+                    ("total", &bytes(total)),
+                ],
+            ))
+            .color(t.text_muted),
+        );
+        if tree.old_files.is_empty() {
+            return;
+        }
+        file_rows(
+            ui,
+            shared,
+            &mut self.pending_trash,
+            &self.trashed,
+            &tree.old_files,
         );
     }
 

@@ -897,3 +897,4 @@ Login items are not shown: macOS does not let Rewind OS control System Events. A
 Login items are not shown: System Events did not answer.	No se muestran los elementos de inicio de sesión: System Events no respondió.
 The app of this login item is no longer there, so it cannot be put back.	La app de este elemento de inicio de sesión ya no está, así que no se puede volver a añadir.
 Stopping… press Ctrl+C again to quit at once.	Parando… pulsa Ctrl+C otra vez para salir ya.
+{folder} shows {original} again; its files were counted there.	{folder} muestra otra vez {original}; sus archivos se contaron allí.

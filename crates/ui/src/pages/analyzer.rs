@@ -300,6 +300,19 @@ impl State {
                 .color(t.text_muted),
             );
         }
+        for (point, original) in &tree.repeated_mounts {
+            ui.label(
+                RichText::new(trf(
+                    "{folder} shows {original} again; its files were counted there.",
+                    &[
+                        ("folder", &point.display().to_string()),
+                        ("original", &original.display().to_string()),
+                    ],
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+        }
         if let Some(Comparison::Changes {
             since,
             before,

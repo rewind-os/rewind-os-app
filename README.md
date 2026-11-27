@@ -194,6 +194,8 @@ rewind-os-cli mcp --allow-system-changes
 `--json` prints the engine's response for scripts. `--lang es` switches the language. In a
 terminal, headings, sizes, warnings and errors are coloured; output to a pipe or a file, and
 `NO_COLOR=1`, have no colours.
+While a scan or a cleanup runs, a line shows what it counted and the time taken. The first
+Ctrl+C stops it and prints what it did so far, marked as stopped (exit code 130); the second quits.
 
 ## Development
 

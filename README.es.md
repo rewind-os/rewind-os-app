@@ -164,6 +164,8 @@ target/release/rewind-os-cli    # línea de comandos
 Todas las funciones de la app son también comandos; consulta el [README en inglés](README.md#command-line).
 Añade `--lang es` para los mensajes en español. En una terminal, los títulos, tamaños, avisos y
 errores salen en color; la salida a una tubería o un archivo, y `NO_COLOR=1`, van sin colores.
+Mientras un análisis o una limpieza trabaja, una línea muestra lo que lleva y el tiempo. El primer
+Ctrl+C lo para y muestra lo hecho hasta entonces, marcado como parado (código de salida 130); el segundo sale.
 
 `rewind-os-cli mcp` ofrece las mismas herramientas a un asistente con el Model Context Protocol.
 Por defecto solo las que no cambian nada; `--automation-read-root`, `--automation-write-root` y

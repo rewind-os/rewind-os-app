@@ -99,6 +99,10 @@ administrador cuando una tarea lo necesita.
 Una herramienta que aún no está disponible lo dice, en la app y en la CLI; nunca finge
 funcionar.
 
+La ventana dibuja su propia barra de título con los colores de la app (en macOS el sistema
+mantiene sus tres botones). Si un escritorio no se lleva bien con una ventana sin la barra del
+sistema, abre la app con `REWIND_OS_NATIVE_TITLE_BAR=1` para usar la del sistema.
+
 ## Descargar
 
 Hay versiones listas en la [página de releases](../../releases); puedes comprobarlas con

@@ -8,6 +8,7 @@ mod icons;
 mod jobs;
 mod pages;
 mod theme;
+mod title_bar;
 mod treemap;
 mod update;
 mod widgets;
@@ -19,12 +20,14 @@ pub const APP_ID: &str = "io.github.rewind_os.rewind_os_app";
 pub fn run() -> eframe::Result {
     rewind_os_i18n::init(None);
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Rewind OS")
-            .with_app_id(APP_ID)
-            .with_inner_size([1200.0, 780.0])
-            .with_min_inner_size([760.0, 520.0])
-            .with_icon(icon()),
+        viewport: title_bar::window(
+            egui::ViewportBuilder::default()
+                .with_title("Rewind OS")
+                .with_app_id(APP_ID)
+                .with_inner_size([1200.0, 780.0])
+                .with_min_inner_size([760.0, 520.0])
+                .with_icon(icon()),
+        ),
         ..Default::default()
     };
     eframe::run_native(

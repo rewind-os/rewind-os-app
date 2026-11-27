@@ -24,6 +24,10 @@ pub enum Purpose {
     LeftoversTrash,
     BuildFolders,
     BuildClean,
+    Processes,
+    Close,
+    StartupOff,
+    Maintenance,
 }
 
 /// What a running request reports.

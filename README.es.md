@@ -174,8 +174,9 @@ más grandes), la limpieza (Espacio elige una categoría, Intro pregunta antes d
 (Espacio desactiva o activa un programa) y los programas instalados (`u` desinstala, tras
 preguntar), los archivos duplicados, los restos de programas y las carpetas de compilación de
 tus proyectos (Espacio elige, Intro pregunta antes de quitar; siempre queda una copia de cada
-archivo). `/` filtra una lista. `1`–`8`, Tab o el nombre de una vista tras `:` (`:disco`,
-`:duplicados`…) cambian de vista, Esc para lo que está en marcha, `?` muestra las teclas y `q` sale.
+archivo), los programas en marcha (`x` cierra uno, `F` lo fuerza, tras preguntar) y el
+mantenimiento (las herramientas del propio sistema). `/` filtra una lista. `1`–`9` y `0`, Tab o el
+nombre de una vista tras `:` (`:disco`, `:procesos`…) cambian de vista, Esc para lo que está en marcha, `?` muestra las teclas y `q` sale.
 Sin escritorio, ábrela con `sudo` para desinstalar paquetes de Linux: si no, la contraseña se pide
 en una ventana.
 

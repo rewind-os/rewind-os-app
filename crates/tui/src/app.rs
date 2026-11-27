@@ -3,7 +3,10 @@
 //! `lib.rs` runs them, so this is tested without a terminal or the engine.
 
 use crate::jobs::{Jobs, Purpose};
-use crate::{build_folders, cleanup, duplicates, home, leftovers, programs, scan, startup, style};
+use crate::{
+    build_folders, cleanup, duplicates, home, leftovers, maintenance, processes, programs, scan,
+    startup, style,
+};
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::{Constraint, Flex, Layout};
@@ -30,10 +33,12 @@ pub enum View {
     Duplicates,
     Leftovers,
     BuildFolders,
+    Processes,
+    Maintenance,
 }
 
 impl View {
-    pub const ALL: [View; 8] = [
+    pub const ALL: [View; 10] = [
         View::Home,
         View::Scan,
         View::Cleanup,
@@ -42,6 +47,8 @@ impl View {
         View::Duplicates,
         View::Leftovers,
         View::BuildFolders,
+        View::Processes,
+        View::Maintenance,
     ];
 
     fn title(self) -> &'static str {
@@ -54,6 +61,8 @@ impl View {
             View::Duplicates => tr("Duplicates"),
             View::Leftovers => tr("Leftovers"),
             View::BuildFolders => tr("Builds"),
+            View::Processes => tr("Processes"),
+            View::Maintenance => tr("Maintenance"),
         }
     }
 
@@ -72,6 +81,8 @@ impl View {
             View::Duplicates => &["duplicates", "dupes"],
             View::Leftovers => &["leftovers"],
             View::BuildFolders => &["builds", "dev", "projects"],
+            View::Processes => &["processes", "ps", "top"],
+            View::Maintenance => &["maintenance"],
         };
         names.iter().any(|n| n.starts_with(&typed))
             || self.title().to_lowercase().starts_with(&typed)
@@ -96,6 +107,8 @@ pub struct App {
     pub duplicates: duplicates::State,
     pub leftovers: leftovers::State,
     pub build_folders: build_folders::State,
+    pub processes: processes::State,
+    pub maintenance: maintenance::State,
     mode: Mode,
     /// A line for the bottom bar, and whether it is an error.
     message: Option<(String, bool)>,
@@ -111,6 +124,8 @@ impl App {
             duplicates: duplicates::State::new(scan_root.clone()),
             leftovers: leftovers::State::default(),
             build_folders: build_folders::State::new(scan_root),
+            processes: processes::State::default(),
+            maintenance: maintenance::State::default(),
             cleanup: cleanup::State::default(),
             startup: startup::State::default(),
             programs: programs::State::default(),
@@ -132,6 +147,8 @@ impl App {
             View::Startup => self.startup.open(),
             View::Programs => self.programs.open(),
             View::Leftovers => self.leftovers.open(),
+            View::Processes => self.processes.open(),
+            View::Maintenance => self.maintenance.open(),
             View::Home | View::Scan | View::Duplicates | View::BuildFolders => Vec::new(),
         }
     }
@@ -145,6 +162,8 @@ impl App {
             View::Duplicates => self.duplicates.captures_keys(),
             View::Leftovers => self.leftovers.captures_keys(),
             View::BuildFolders => self.build_folders.captures_keys(),
+            View::Processes => self.processes.captures_keys(),
+            View::Maintenance => self.maintenance.captures_keys(),
             View::Home => false,
         }
     }
@@ -200,8 +219,13 @@ impl App {
                     self.mode = Mode::Help;
                     return Vec::new();
                 }
-                KeyCode::Char(c @ '1'..='8') => {
-                    let index = (c as usize).saturating_sub('1' as usize);
+                KeyCode::Char(c @ '0'..='9') => {
+                    // 1 to 9, then 0 for the tenth, as on the keyboard.
+                    let index = if c == '0' {
+                        9
+                    } else {
+                        (c as usize).saturating_sub('1' as usize)
+                    };
                     if let Some(&view) = View::ALL.get(index) {
                         return self.show(view);
                     }
@@ -220,6 +244,8 @@ impl App {
             View::Duplicates => self.duplicates.key(key, jobs),
             View::Leftovers => self.leftovers.key(key, jobs),
             View::BuildFolders => self.build_folders.key(key, jobs),
+            View::Processes => self.processes.key(key, jobs),
+            View::Maintenance => self.maintenance.key(key, jobs),
         }
     }
 
@@ -263,6 +289,13 @@ impl App {
                 self.build_folders.finished(purpose, outcome);
                 Vec::new()
             }
+            Purpose::Processes | Purpose::Close | Purpose::StartupOff => {
+                self.processes.finished(purpose, outcome)
+            }
+            Purpose::Maintenance => {
+                self.maintenance.finished(outcome);
+                Vec::new()
+            }
         }
     }
 
@@ -278,12 +311,24 @@ impl App {
             Span::styled(" Rewind OS ", style::heading()),
             Span::raw(" "),
         ];
+        // Each view's key: 1 to 9, then 0.
+        let key = |i: usize| (i + 1) % 10;
+        let full: usize = View::ALL
+            .iter()
+            .enumerate()
+            .map(|(i, v)| format!(" {} {} ", key(i), v.title()).chars().count())
+            .sum::<usize>()
+            + 12;
+        // When every name does not fit, the other views show only their key.
+        let compact = full > usize::from(top.width);
         for (i, view) in View::ALL.iter().enumerate() {
-            let label = format!(" {} {} ", i + 1, view.title());
             if *view == self.view {
+                let label = format!(" {} {} ", key(i), view.title());
                 tabs.push(Span::styled(label, style::active()));
+            } else if compact {
+                tabs.push(Span::styled(format!(" {} ", key(i)), style::muted()));
             } else {
-                tabs.push(Span::raw(label));
+                tabs.push(Span::raw(format!(" {} {} ", key(i), view.title())));
             }
         }
         if let Some(o) = &self.home.overview {
@@ -300,6 +345,8 @@ impl App {
             View::Duplicates => self.duplicates.draw(frame, body, jobs),
             View::Leftovers => self.leftovers.draw(frame, body, jobs),
             View::BuildFolders => self.build_folders.draw(frame, body, jobs),
+            View::Processes => self.processes.draw(frame, body, jobs),
+            View::Maintenance => self.maintenance.draw(frame, body, jobs),
         }
 
         let line = match (&self.mode, &self.message) {
@@ -325,9 +372,11 @@ impl App {
                     View::Duplicates => self.duplicates.hints(jobs),
                     View::Leftovers => self.leftovers.hints(jobs),
                     View::BuildFolders => self.build_folders.hints(jobs),
+                    View::Processes => self.processes.hints(jobs),
+                    View::Maintenance => self.maintenance.hints(),
                 });
                 if !self.captured() {
-                    hints.push(("1-8", tr("Views")));
+                    hints.push(("1-0", tr("Views")));
                 }
                 let mut spans = Vec::new();
                 for (key, what) in hints {
@@ -341,7 +390,7 @@ impl App {
 
         if self.mode == Mode::Help {
             let rows = [
-                ("1 … 8", tr("The views, in the order of the tabs")),
+                ("1 … 9  0", tr("The views, in the order of the tabs")),
                 ("Tab", tr("Next view")),
                 (":disk  :startup …", tr("Open a view by name")),
                 ("/", tr("Filter the list")),

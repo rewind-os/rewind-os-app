@@ -414,3 +414,78 @@ fn leftovers_and_build_folders_remove_only_what_was_picked_after_asking() {
         other => panic!("expected a deletion, got {other:?}"),
     }
 }
+
+#[test]
+fn closing_a_program_asks_first_and_never_offers_one_that_is_refused() {
+    use rewind_os_engine::processes::{Program, Report};
+    let program = |name: &str, refusal| Program {
+        name: name.to_owned(),
+        exe: None,
+        pids: vec![10, 11],
+        cpu: 1.0,
+        memory: 1_000,
+        refusal,
+        startup: None,
+    };
+    let mut app = App::new(PathBuf::from("."));
+    let opened = press(&mut app, &[KeyCode::Char('9')]);
+    assert!(runs(&opened, Purpose::Processes).is_some());
+    app.finished(
+        Purpose::Processes,
+        Ok(Response::Processes(Report {
+            programs: vec![
+                program("init", Some(rewind_os_engine::safety::THIS_APP)),
+                program("editor", None),
+            ],
+            cpu: 2.0,
+            memory_used: 1,
+            memory_total: 2,
+            processes: 3,
+        })),
+    );
+    assert!(press(&mut app, &[KeyCode::Char('x')]).is_empty());
+    assert!(app.processes.confirming.is_none());
+    assert!(
+        press(
+            &mut app,
+            &[KeyCode::Down, KeyCode::Char('F'), KeyCode::Char('n')]
+        )
+        .is_empty()
+    );
+    let effects = press(&mut app, &[KeyCode::Char('x'), KeyCode::Char('y')]);
+    match runs(&effects, Purpose::Close) {
+        Some(Request::ProcessesClose { name, pids, force }) => {
+            assert_eq!(name, "editor");
+            assert_eq!(pids, &[10, 11]);
+            assert!(!force);
+        }
+        other => panic!("expected a close, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_maintenance_action_that_changes_the_system_asks_first_and_needs_its_rights() {
+    let mut app = App::new(PathBuf::from("."));
+    press(&mut app, &[KeyCode::Char('0')]);
+    assert_eq!(app.view, View::Maintenance);
+    let actions = app.maintenance.actions();
+    let Some(index) = actions.iter().position(|a| a.question().is_some()) else {
+        return; // No maintenance tools on this system.
+    };
+    let to_it: Vec<KeyCode> = std::iter::repeat_n(KeyCode::Down, index).collect();
+    press(&mut app, &to_it);
+    // Without the rights it needs: nothing runs and nothing is asked.
+    app.maintenance.elevated = false;
+    let needs_admin = rewind_os_engine::tool(actions[index].request().id())
+        .is_some_and(|t| t.admin == rewind_os_engine::AdminNeed::Yes);
+    if needs_admin {
+        assert!(press(&mut app, &[KeyCode::Enter]).is_empty());
+        assert!(app.maintenance.confirming.is_none());
+    }
+    app.maintenance.elevated = true;
+    assert!(press(&mut app, &[KeyCode::Enter]).is_empty());
+    assert!(app.maintenance.confirming.is_some());
+    assert!(press(&mut app, &[KeyCode::Char('n')]).is_empty());
+    let effects = press(&mut app, &[KeyCode::Enter, KeyCode::Char('y')]);
+    assert!(runs(&effects, Purpose::Maintenance).is_some());
+}

@@ -953,3 +953,9 @@ Press Enter to look for files with identical contents in it, or e to choose anot
 Press Enter to look for the build folders of your projects in it, or e to choose another folder.	Pulsa Intro para buscar en ella las carpetas de compilación de tus proyectos, o e para elegir otra carpeta.
 Searching	Buscando
 {n} picked	{n} elegidos
+Asks first	Pregunta antes
+It does not start with the system.	No arranca con el sistema.
+Processes	Procesos
+Run	Ejecutar
+This needs administrator rights. Start Rewind OS as administrator (with sudo on Linux).	Esto necesita permisos de administrador. Abre Rewind OS como administrador (con sudo en Linux).
+This system has no maintenance tools Rewind OS can run yet.	Este sistema aún no tiene herramientas de mantenimiento que Rewind OS pueda ejecutar.

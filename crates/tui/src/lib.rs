@@ -11,6 +11,8 @@ pub mod home;
 pub mod jobs;
 pub mod leftovers;
 mod list;
+pub mod maintenance;
+pub mod processes;
 pub mod programs;
 pub mod scan;
 pub mod startup;

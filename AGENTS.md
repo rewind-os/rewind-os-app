@@ -44,9 +44,10 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
    Fix what a lint reports; do not silence it with `allow` or a lint-config change.
 6. Dates use `chrono`. Locks use `parking_lot::Mutex`.
 7. Colours, radii and spacing come from the theme tokens in `crates/ui/src/theme.rs`. The look
-   follows Termius: deep navy layers (the page, then the navigation, the page's tool band and
-   the cards a step lighter, then hovered and selected items; white and cool greys in the light
-   theme), one blue for actions and selection, flat surfaces without borders, names and buttons
+   follows Termius, with the dark theme's colours from VS Code: neutral near-black and grey
+   layers (the navigation darkest, then the page, then the page's tool band and the cards a step
+   lighter, then hovered and selected items; white and cool greys in the light theme), one blue
+   for actions and selection, flat surfaces without borders, names and buttons
    in semibold, list rows as cards (items people pick from, such as programs, as a grid of cards that opens
    a detail panel on the right), icons as white line glyphs (`crates/ui/src/glyphs.rs`) on a
    rounded square of a `TILES` colour, tags as words on a faint tint, muted secondary text.

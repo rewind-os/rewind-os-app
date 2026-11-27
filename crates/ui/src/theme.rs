@@ -7,7 +7,7 @@ use egui::{Color32, CornerRadius, Stroke, Visuals};
 #[derive(Debug, Clone, Copy)]
 pub struct Theme {
     pub background: Color32,
-    /// The navigation column, a step darker than the page.
+    /// The navigation column.
     pub sidebar: Color32,
     pub surface: Color32,
     pub surface_raised: Color32,
@@ -36,31 +36,31 @@ pub struct Theme {
     pub card_padding: i8,
 }
 
-// A calm, data-first look in the manner of Termius: deep navy layers (the page, then the
-// navigation, tool band and cards a step lighter, then hovered and selected items), one blue for
-// actions and selection, no borders, semibold names and muted secondary text. The light theme
-// keeps the same layers in white and cool greys. Charts use `palette`, a categorical set that
-// stays distinct in both themes; status colours appear as text, a faint tint behind a word, or
-// a gauge that also shows its number.
+// A calm, data-first look: in the dark theme, neutral near-black and grey layers as in VS Code
+// (the navigation darkest, then the page, then cards and the tool band a step lighter, then
+// hovered and selected items), one blue for actions and selection, no borders, semibold names
+// and muted secondary text. The light theme keeps the same layers in white and cool greys.
+// Charts use `palette`, a categorical set that stays distinct in both themes; status colours
+// appear as text, a faint tint behind a word, or a gauge that also shows its number.
 pub const DARK: Theme = Theme {
-    background: Color32::from_rgb(0x1d, 0x20, 0x33),
-    sidebar: Color32::from_rgb(0x28, 0x2b, 0x3d),
-    surface: Color32::from_rgb(0x28, 0x2b, 0x3d),
-    surface_raised: Color32::from_rgb(0x3e, 0x42, 0x57),
-    border: Color32::from_rgb(0x4a, 0x4f, 0x66),
-    text: Color32::from_rgb(0xf2, 0xf3, 0xf7),
-    text_muted: Color32::from_rgb(0x9a, 0x9e, 0xb2),
-    accent: Color32::from_rgb(0x4a, 0xa3, 0xf8),
-    accent_fill: Color32::from_rgb(0x17, 0x74, 0xd6),
+    background: Color32::from_rgb(0x1f, 0x1f, 0x1f),
+    sidebar: Color32::from_rgb(0x18, 0x18, 0x18),
+    surface: Color32::from_rgb(0x2b, 0x2b, 0x2b),
+    surface_raised: Color32::from_rgb(0x37, 0x37, 0x3d),
+    border: Color32::from_rgb(0x45, 0x45, 0x45),
+    text: Color32::from_rgb(0xe4, 0xe4, 0xe4),
+    text_muted: Color32::from_rgb(0xa0, 0xa0, 0xa0),
+    accent: Color32::from_rgb(0x4d, 0xaa, 0xfc),
+    accent_fill: Color32::from_rgb(0x00, 0x78, 0xd4),
     on_accent: Color32::from_rgb(0xff, 0xff, 0xff),
     ok: Color32::from_rgb(0x4c, 0xc7, 0x7c),
     warn: Color32::from_rgb(0xec, 0xb2, 0x45),
     danger: Color32::from_rgb(0xff, 0x6b, 0x6b),
     on_danger: Color32::from_rgb(0x1f, 0x06, 0x05),
-    track: Color32::from_rgb(0x3e, 0x42, 0x57),
-    control: Color32::from_rgb(0x6c, 0x71, 0x8a),
+    track: Color32::from_rgb(0x3a, 0x3a, 0x3a),
+    control: Color32::from_rgb(0x85, 0x85, 0x85),
     palette: [
-        Color32::from_rgb(0x4a, 0xa3, 0xf8),
+        Color32::from_rgb(0x4d, 0xaa, 0xfc),
         Color32::from_rgb(0x2d, 0xc0, 0xa8),
         Color32::from_rgb(0x9b, 0x7d, 0xff),
         Color32::from_rgb(0xf0, 0xa9, 0x3b),
@@ -83,7 +83,7 @@ pub const LIGHT: Theme = Theme {
     border: Color32::from_rgb(0xd6, 0xd9, 0xe4),
     text: Color32::from_rgb(0x1d, 0x20, 0x33),
     text_muted: Color32::from_rgb(0x5c, 0x61, 0x75),
-    accent: Color32::from_rgb(0x17, 0x6c, 0xc8),
+    accent: Color32::from_rgb(0x14, 0x62, 0xb6),
     accent_fill: Color32::from_rgb(0x17, 0x74, 0xd6),
     on_accent: Color32::from_rgb(0xff, 0xff, 0xff),
     ok: Color32::from_rgb(0x1a, 0x7f, 0x37),
@@ -91,7 +91,7 @@ pub const LIGHT: Theme = Theme {
     danger: Color32::from_rgb(0xcf, 0x22, 0x2e),
     on_danger: Color32::from_rgb(0xff, 0xff, 0xff),
     track: Color32::from_rgb(0xe4, 0xe8, 0xee),
-    control: Color32::from_rgb(0x8a, 0x93, 0xa1),
+    control: Color32::from_rgb(0x7d, 0x85, 0x94),
     palette: [
         Color32::from_rgb(0x2f, 0x6f, 0xe4),
         Color32::from_rgb(0x13, 0x8f, 0x7f),
@@ -226,4 +226,55 @@ pub fn install(ctx: &egui::Context) {
             }
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// WCAG contrast ratio between two colours.
+    fn contrast(a: Color32, b: Color32) -> f32 {
+        let luminance = |c: Color32| {
+            let channel = |v: u8| {
+                let v = f32::from(v) / 255.0;
+                if v <= 0.040_45 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * channel(c.r()) + 0.7152 * channel(c.g()) + 0.0722 * channel(c.b())
+        };
+        let (x, y) = (luminance(a), luminance(b));
+        (x.max(y) + 0.05) / (x.min(y) + 0.05)
+    }
+
+    #[test]
+    fn text_and_controls_stay_readable_on_every_layer_of_both_themes() {
+        for (name, t) in [("dark", DARK), ("light", LIGHT)] {
+            let layers = [t.background, t.sidebar, t.surface, t.surface_raised];
+            for layer in layers {
+                for (what, ink, least) in [
+                    ("text", t.text, 4.5),
+                    ("muted text", t.text_muted, 4.5),
+                    ("accent", t.accent, 4.5),
+                    ("control", t.control, 3.0),
+                ] {
+                    let ratio = contrast(ink, layer);
+                    assert!(
+                        ratio >= least,
+                        "{name}: {what} on {layer:?} is {ratio:.2}:1"
+                    );
+                }
+            }
+            assert!(
+                contrast(t.on_accent, t.accent_fill) >= 4.5,
+                "{name}: button text"
+            );
+            assert!(
+                contrast(t.on_danger, t.danger) >= 4.5,
+                "{name}: danger text"
+            );
+        }
+    }
 }

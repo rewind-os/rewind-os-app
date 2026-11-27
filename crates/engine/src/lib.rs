@@ -546,7 +546,7 @@ pub enum Response {
     Leftovers(Vec<leftovers::Leftover>),
     RegistryLeftovers(Vec<leftovers::RegistryLeftover>),
     Trashed(Vec<TrashResult>),
-    Startup(Vec<startup::StartupEntry>),
+    Startup(startup::Report),
     Processes(processes::Report),
     Power(power::Report),
     ProcessClosed(processes::Closed),
@@ -677,7 +677,7 @@ impl Engine {
                     Revealed::Nearest(_) => REVEALED_NEAREST,
                 }))
             }
-            Request::StartupList => Ok(Response::Startup(startup::list())),
+            Request::StartupList => Ok(Response::Startup(startup::report())),
             Request::ProcessesList => processes::list(task).map(Response::Processes),
             Request::PowerList => power::report().map(Response::Power),
             Request::PowerSet { id } => {

@@ -1,8 +1,9 @@
 //! Programs that start with the system: the Run keys and Startup folders on Windows, XDG
-//! autostart entries on Linux, LaunchAgents on macOS. Turning one off never deletes it; it can be turned back on here
+//! autostart entries on Linux, LaunchAgents and login items on macOS. Turning one off never deletes it; it can be turned back on here
 //! or from the system's own settings.
 
 pub mod launchd;
+pub mod login_items;
 pub mod services;
 pub mod tasks;
 mod windows;
@@ -34,6 +35,8 @@ pub enum Source {
     UserLaunchAgent,
     /// macOS: `/Library/LaunchAgents`.
     LaunchAgent,
+    /// macOS: the apps "Open at Login" (System Events' login items).
+    LoginItem,
 }
 
 impl Source {
@@ -49,6 +52,7 @@ impl Source {
             Source::ScheduledTask => "task",
             Source::Service => "service",
             Source::UserLaunchAgent | Source::LaunchAgent => "launchd",
+            Source::LoginItem => "login",
         }
     }
 
@@ -66,6 +70,7 @@ impl Source {
             Source::Service => "Service",
             Source::UserLaunchAgent => "Launch agent (you)",
             Source::LaunchAgent => "Launch agent (all users)",
+            Source::LoginItem => "Login item (you)",
         }
     }
 }
@@ -132,6 +137,33 @@ pub fn is_essential(name: &str) -> bool {
     ESSENTIAL_PREFIXES.iter().any(|p| name.starts_with(p))
 }
 
+/// What the Startup page shows.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Report {
+    pub entries: Vec<StartupEntry>,
+    /// Kinds of entries that could not be read, with why (English; translate with
+    /// `rewind_os_i18n::tr`).
+    pub not_shown: Vec<&'static str>,
+}
+
+/// Every entry, with macOS login items too. Reading those can make macOS ask whether the app
+/// may control System Events, so only the Startup page asks for them; [`list`] leaves them out.
+pub fn report() -> Report {
+    let mut report = Report {
+        entries: list(),
+        not_shown: Vec::new(),
+    };
+    if Os::current() == Os::MacOs {
+        match login_items::list() {
+            Ok(items) => report.entries.extend(items),
+            Err(why) => report.not_shown.push(why),
+        }
+        report.entries.sort_by_key(|e| e.name.to_lowercase());
+    }
+    report
+}
+
+/// The entries that can be read without asking for anything (no macOS login items).
 pub fn list() -> Vec<StartupEntry> {
     match Os::current() {
         Os::Windows => {
@@ -159,10 +191,13 @@ pub fn set_enabled(id: &str, enabled: bool) -> Result<()> {
         Os::Linux => xdg::Dirs::current()
             .ok_or_else(|| EngineError::NotFound("autostart folder".to_owned()))?
             .set_enabled(id, enabled),
-        Os::MacOs => launchd::set_enabled(
-            id.strip_prefix("launchd|")
-                .ok_or_else(|| EngineError::NotFound(id.to_owned()))?,
-            enabled,
-        ),
+        Os::MacOs => match id.strip_prefix("login|") {
+            Some(name) => login_items::set_enabled(name, enabled),
+            None => launchd::set_enabled(
+                id.strip_prefix("launchd|")
+                    .ok_or_else(|| EngineError::NotFound(id.to_owned()))?,
+                enabled,
+            ),
+        },
     }
 }

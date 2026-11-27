@@ -892,3 +892,7 @@ Moved {n} empty folders to the recycle bin.	{n} carpetas vacías movidas a la pa
 {n} empty folders (rewind-os-cli trash-empty <path>… --yes)	{n} carpetas vacías (rewind-os-cli trash-empty <ruta>… --yes)
 Something was added to this folder since the scan; it was left alone.	Se ha añadido algo a esta carpeta desde el análisis; se ha dejado como estaba.
 Looking for empty folders	Buscando carpetas vacías
+Login item (you)	Elemento de inicio de sesión (tú)
+Login items are not shown: macOS does not let Rewind OS control System Events. Allow it in System Settings › Privacy & Security › Automation.	No se muestran los elementos de inicio de sesión: macOS no deja a Rewind OS controlar System Events. Permítelo en Ajustes del Sistema › Privacidad y seguridad › Automatización.
+Login items are not shown: System Events did not answer.	No se muestran los elementos de inicio de sesión: System Events no respondió.
+The app of this login item is no longer there, so it cannot be put back.	La app de este elemento de inicio de sesión ya no está, así que no se puede volver a añadir.

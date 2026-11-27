@@ -88,6 +88,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>MIT OR Apache-2.0</string>
+  <key>NSAppleEventsUsageDescription</key><string>Rewind OS lists the apps that open at login, and turns them off and on, through System Events.</string>
 </dict>
 </plist>
 PLIST

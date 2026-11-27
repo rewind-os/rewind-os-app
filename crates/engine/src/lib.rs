@@ -6,6 +6,7 @@ pub mod apps;
 pub mod boot;
 pub mod cleanup;
 pub mod disks;
+pub mod drivers;
 pub mod duplicates;
 pub mod elevated;
 pub mod empty;
@@ -335,6 +336,18 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "drivers.list",
+        "List old driver packages that a newer version replaced and no device uses, and the space they take",
+    )
+    .only(WINDOWS),
+    ToolSpec::new(
+        "drivers.clean",
+        "Remove old driver packages; the newest of each driver and every one a device uses stay",
+    )
+    .admin(AdminNeed::Yes)
+    .changes()
+    .only(WINDOWS),
+    ToolSpec::new(
         "restore.list",
         "List restore points and the other shadow copies of each drive, and the space they take",
     )
@@ -506,6 +519,14 @@ pub enum Request {
     AnalyzeComponentStore,
     #[serde(rename = "maintenance.component_cleanup")]
     ComponentCleanup,
+    #[serde(rename = "drivers.list")]
+    DriversList,
+    /// Published names (`oem12.inf`) as `drivers.list` gave them; empty means every old one.
+    #[serde(rename = "drivers.clean")]
+    DriversClean {
+        #[serde(default)]
+        packages: Vec<String>,
+    },
     #[serde(rename = "restore.list")]
     RestoreList,
     #[serde(rename = "restore.clean")]
@@ -536,6 +557,8 @@ pub enum Response {
     BuildFoldersCleaned(Vec<projects::Cleaned>),
     VirtualDisks(vdisks::Report),
     Compacted(vdisks::Compacted),
+    Drivers(drivers::Report),
+    DriversRemoved(drivers::Removed),
     RestorePoints(restore::Report),
     RestoreCleaned(restore::Cleaned),
     Update(update::Status),
@@ -706,6 +729,10 @@ impl Engine {
                 maintenance::analyze_component_store().map(Response::ToolOutput)
             }
             Request::ComponentCleanup => maintenance::component_cleanup().map(Response::ToolOutput),
+            Request::DriversList => drivers::list(task).map(Response::Drivers),
+            Request::DriversClean { packages } => {
+                drivers::remove(&packages, task).map(Response::DriversRemoved)
+            }
             Request::RestoreList => restore::list().map(Response::RestorePoints),
             Request::RestoreClean => restore::clean(task).map(Response::RestoreCleaned),
             Request::Hibernation { enabled } => {
@@ -766,6 +793,8 @@ impl Request {
             Request::StartupSet { .. } => "startup.set",
             Request::AnalyzeComponentStore => "maintenance.analyze_component_store",
             Request::ComponentCleanup => "maintenance.component_cleanup",
+            Request::DriversList => "drivers.list",
+            Request::DriversClean { .. } => "drivers.clean",
             Request::RestoreList => "restore.list",
             Request::RestoreClean => "restore.clean",
             Request::Hibernation { .. } => "maintenance.hibernation",

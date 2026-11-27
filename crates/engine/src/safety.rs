@@ -665,3 +665,13 @@ fn lexical(path: &Path) -> PathBuf {
     }
     out
 }
+
+/// Whether `name` is the name Windows gives a driver package it added (`oem12.inf`): the only
+/// driver packages Rewind OS may remove, and the only text it passes to `pnputil`.
+pub fn is_oem_driver_name(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    lower
+        .strip_prefix("oem")
+        .and_then(|rest| rest.strip_suffix(".inf"))
+        .is_some_and(|n| !n.is_empty() && n.len() <= 6 && n.bytes().all(|b| b.is_ascii_digit()))
+}

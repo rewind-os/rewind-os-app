@@ -8,7 +8,7 @@ use anstream::{eprintln, println};
 use clap::{Parser, Subcommand};
 use rewind_os_engine::format::{bytes, count, duration_ms, local_date, signed_bytes};
 use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
-use rewind_os_i18n::{tr, trf};
+use rewind_os_i18n::{tr, tr_text, trf};
 use std::io::IsTerminal;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -129,6 +129,9 @@ enum Command {
     /// Virtual disks of WSL and Docker Desktop.
     #[command(subcommand)]
     Vdisks(Vdisks),
+    /// Old driver packages a newer version replaced (Windows).
+    #[command(subcommand)]
+    Drivers(Drivers),
     /// Windows restore points and shadow copies (need administrator rights).
     #[command(subcommand)]
     Restore(Restore),
@@ -265,6 +268,20 @@ enum Vdisks {
     Compact {
         /// The distribution's name, "Docker Desktop", or the disk's path from `vdisks list`.
         disk: String,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Drivers {
+    /// The old packages no device uses, and the space they take.
+    List,
+    /// Remove them (as administrator; cannot be undone). The newest of each driver and every
+    /// package a device uses stay.
+    Clean {
+        /// Only these packages (`oem12.inf`), as `drivers list` names them.
+        packages: Vec<String>,
         #[arg(long)]
         yes: bool,
     },
@@ -541,6 +558,11 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
                     tr("This is not one of the virtual disks Rewind OS found.").to_owned()
                 })?;
             Request::VdiskCompact { path: found.path }
+        }
+        Command::Drivers(Drivers::List) => Request::DriversList,
+        Command::Drivers(Drivers::Clean { packages, yes }) => {
+            confirm(yes)?;
+            Request::DriversClean { packages }
         }
         Command::Restore(Restore::List) => Request::RestoreList,
         Command::Restore(Restore::Clean { yes }) => {
@@ -1395,6 +1417,61 @@ fn print_human(response: &Response, top: usize) {
             );
             if !done.output.is_empty() {
                 println!("\n{}", done.output);
+            }
+        }
+        Response::Drivers(report) => {
+            if report.old.is_empty() {
+                println!(
+                    "{}",
+                    paint::good(tr(
+                        "No old driver packages: each driver has only the version in use."
+                    ))
+                );
+            }
+            for p in &report.old {
+                println!(
+                    "{}  {:<12} {} {} {}  {}",
+                    paint::size(format!("{:>10}", bytes(p.bytes))),
+                    p.published,
+                    p.provider,
+                    p.original,
+                    p.version,
+                    paint::muted(trf("newest: {version}", &[("version", &p.newest)]))
+                );
+            }
+            println!(
+                "\n{}",
+                paint::heading(trf(
+                    "{n} old driver packages take {size}.",
+                    &[
+                        ("n", &count(report.old.len() as u64)),
+                        ("size", &bytes(report.reclaimable()))
+                    ],
+                ))
+            );
+            if report.old_in_use > 0 {
+                println!(
+                    "{}",
+                    paint::muted(trf(
+                        "{n} older packages stay because a device uses them.",
+                        &[("n", &count(report.old_in_use as u64))],
+                    ))
+                );
+            }
+        }
+        Response::DriversRemoved(done) => {
+            println!(
+                "{}",
+                trf(
+                    "Removed {n} old driver packages, {size}.",
+                    &[
+                        ("n", &count(done.removed.len() as u64)),
+                        ("size", &bytes(done.bytes))
+                    ],
+                )
+            );
+            for (name, why) in &done.failed {
+                eprintln!("{}", paint::warn(format!("{name}: {}", tr_text(why))));
             }
         }
         Response::RestorePoints(report) => {

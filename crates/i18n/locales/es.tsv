@@ -964,3 +964,19 @@ Maximize	Maximizar
 Restore	Restaurar
 Mouse	Ratón
 Click a tab or a row; the wheel moves	Clic en una pestaña o una fila; la rueda mueve
+Every driver update leaves the previous version in the driver store. The newest of each driver and every one a device uses always stay.	Cada actualización de un driver deja la versión anterior en el almacén de drivers. La más nueva de cada driver y todas las que usa algún dispositivo se quedan siempre.
+No old driver packages: each driver has only the version in use.	No hay paquetes de drivers antiguos: cada driver tiene solo la versión que se usa.
+Old driver packages	Paquetes de drivers antiguos
+Reading the driver store	Leyendo el almacén de drivers
+Remove old driver packages?	¿Quitar los paquetes de drivers antiguos?
+Remove old packages	Quitar los paquetes antiguos
+Remove {count} old ones	Quitar {count} antiguos
+Removed {n} old driver packages, {size}.	Se quitaron {n} paquetes de drivers antiguos, {size}.
+Removing old driver packages	Quitando paquetes de drivers antiguos
+The older versions of each driver that no device uses are removed from the driver store. The newest of each driver and every one in use stay. They cannot be put back here; Windows Update or the maker's installer brings a driver again if one is needed.	Se quitan del almacén de drivers las versiones antiguas de cada driver que no usa ningún dispositivo. La más nueva de cada driver y todas las que están en uso se quedan. No se pueden recuperar desde aquí; si alguna hiciera falta, Windows Update o el instalador del fabricante vuelve a traer el driver.
+This is not an old driver package: it is the newest of its driver, a device uses it, or it is gone.	Este no es un paquete de drivers antiguo: es el más nuevo de su driver, lo usa un dispositivo o ya no está.
+Windows did not say which drivers its devices use, so no driver package is offered.	Windows no dijo qué drivers usan sus dispositivos, así que no se ofrece ningún paquete.
+Windows kept {n} driver packages.	Windows conservó {n} paquetes de drivers.
+newest: {version}	la más nueva: {version}
+{n} old driver packages take {size}.	{n} paquetes de drivers antiguos ocupan {size}.
+{n} older packages stay because a device uses them.	{n} paquetes más antiguos se quedan porque los usa un dispositivo.

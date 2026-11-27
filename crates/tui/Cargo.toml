@@ -11,6 +11,7 @@ publish.workspace = true
 rewind-os-engine.workspace = true
 rewind-os-i18n.workspace = true
 ratatui.workspace = true
+chrono.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

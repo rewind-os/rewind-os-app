@@ -172,8 +172,10 @@ o a los que entras por SSH: Inicio (discos, memoria, lo que merece la pena hacer
 del disco (carpetas por tamaño, Intro para entrar y Retroceso para volver, `f` para los archivos
 más grandes), la limpieza (Espacio elige una categoría, Intro pregunta antes de limpiar), el arranque
 (Espacio desactiva o activa un programa) y los programas instalados (`u` desinstala, tras
-preguntar). `/` filtra una lista. `1`–`5`, Tab o `:inicio`, `:disco`, `:limpieza`, `:arranque`,
-`:programas` cambian de vista, Esc para lo que está en marcha, `?` muestra las teclas y `q` sale.
+preguntar), los archivos duplicados, los restos de programas y las carpetas de compilación de
+tus proyectos (Espacio elige, Intro pregunta antes de quitar; siempre queda una copia de cada
+archivo). `/` filtra una lista. `1`–`8`, Tab o el nombre de una vista tras `:` (`:disco`,
+`:duplicados`…) cambian de vista, Esc para lo que está en marcha, `?` muestra las teclas y `q` sale.
 Sin escritorio, ábrela con `sudo` para desinstalar paquetes de Linux: si no, la contraseña se pide
 en una ventana.
 

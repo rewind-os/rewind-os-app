@@ -3727,6 +3727,7 @@ dependencies = [
 name = "rewind-os-tui"
 version = "0.27.0"
 dependencies = [
+ "chrono",
  "ratatui",
  "rewind-os-engine",
  "rewind-os-i18n",

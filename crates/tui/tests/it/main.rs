@@ -278,3 +278,139 @@ fn uninstalling_asks_first_and_names_the_program_under_the_cursor() {
         other => panic!("expected an uninstall, got {other:?}"),
     }
 }
+
+fn duplicates_view() -> App {
+    use rewind_os_engine::duplicates::{Copy, DuplicateReport, DuplicateSet};
+    let set = |name: &str, n: usize| DuplicateSet {
+        bytes: 1_000,
+        copies: (0..n)
+            .map(|i| Copy {
+                path: PathBuf::from(format!("/d/{name}{i}")),
+                modified: None,
+            })
+            .collect(),
+    };
+    let mut app = App::new(PathBuf::from("/d"));
+    press(&mut app, &[KeyCode::Char('6')]);
+    let report = DuplicateReport {
+        root: PathBuf::from("/d"),
+        min_bytes: 1,
+        sets: vec![set("a", 2), set("b", 3)],
+        files_seen: 5,
+        unreadable: 0,
+        cloud_skipped: 0,
+        program_folders_skipped: 0,
+        cancelled: false,
+    };
+    app.finished(Purpose::Duplicates, Ok(Response::Duplicates(report)));
+    app
+}
+
+#[test]
+fn the_last_copy_of_a_file_can_never_be_picked() {
+    let mut app = duplicates_view();
+    // Both copies of "a": the second is refused.
+    press(
+        &mut app,
+        &[KeyCode::Char(' '), KeyCode::Down, KeyCode::Char(' ')],
+    );
+    assert_eq!(app.duplicates.selected.len(), 1);
+    // All but the oldest, then cleaning: every set keeps its oldest copy.
+    let effects = press(
+        &mut app,
+        &[KeyCode::Char('a'), KeyCode::Enter, KeyCode::Char('y')],
+    );
+    match runs(&effects, Purpose::DuplicatesTrash) {
+        Some(Request::FilesTrash { paths }) => {
+            assert_eq!(paths.len(), 3);
+            assert!(!paths.iter().any(|p| p.ends_with("a0") || p.ends_with("b0")));
+        }
+        other => panic!("expected the copies to move, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_file_left_with_one_copy_leaves_the_list() {
+    let mut app = duplicates_view();
+    let moved = vec![rewind_os_engine::TrashResult {
+        path: PathBuf::from("/d/a1"),
+        bytes: 1_000,
+        error: None,
+    }];
+    app.finished(Purpose::DuplicatesTrash, Ok(Response::Trashed(moved)));
+    let left = app.duplicates.remaining();
+    assert_eq!(left.len(), 1);
+    assert!(left.iter().all(|s| s.copies.len() == 3));
+}
+
+#[test]
+fn leftovers_and_build_folders_remove_only_what_was_picked_after_asking() {
+    use rewind_os_engine::leftovers::{Confidence, Leftover, Location};
+    let leftover = |name: &str, confidence| Leftover {
+        path: PathBuf::from(format!("/home/me/.config/{name}")),
+        location: Location::UserConfig,
+        bytes: 10,
+        files: 1,
+        last_change: None,
+        confidence,
+    };
+    let mut app = App::new(PathBuf::from("/home/me"));
+    let opened = press(&mut app, &[KeyCode::Char('7')]);
+    assert!(runs(&opened, Purpose::Leftovers).is_some());
+    app.finished(
+        Purpose::Leftovers,
+        Ok(Response::Leftovers(vec![
+            leftover("old", Confidence::High),
+            leftover("recent", Confidence::Low),
+        ])),
+    );
+    // "Likely unused" only, then the picked one after the question.
+    press(&mut app, &[KeyCode::Char('c'), KeyCode::Char('c')]);
+    assert_eq!(app.leftovers.shown().len(), 1);
+    assert!(press(&mut app, &[KeyCode::Char(' '), KeyCode::Enter]).is_empty());
+    let effects = press(&mut app, &[KeyCode::Char('y')]);
+    match runs(&effects, Purpose::LeftoversTrash) {
+        Some(Request::FilesTrash { paths }) => {
+            assert_eq!(paths, &[PathBuf::from("/home/me/.config/old")]);
+        }
+        other => panic!("expected the folder to move, got {other:?}"),
+    }
+
+    use rewind_os_engine::projects::{BuildFolder, Kind, Report};
+    let folder = |name: &str| BuildFolder {
+        path: PathBuf::from(format!("/home/me/{name}/node_modules")),
+        project: PathBuf::from(format!("/home/me/{name}")),
+        kind: Kind::NodeModules,
+        risk: Kind::NodeModules.risk(),
+        bytes: 100,
+        files: 3,
+        last_used: None,
+    };
+    press(&mut app, &[KeyCode::Char('8')]);
+    app.finished(
+        Purpose::BuildFolders,
+        Ok(Response::BuildFolders(Report {
+            root: PathBuf::from("/home/me"),
+            folders: vec![folder("site"), folder("app")],
+            unreadable: 0,
+            cancelled: false,
+        })),
+    );
+    let effects = press(
+        &mut app,
+        &[
+            KeyCode::Down,
+            KeyCode::Char(' '),
+            KeyCode::Enter,
+            KeyCode::Char('n'),
+        ],
+    );
+    assert!(effects.is_empty());
+    let effects = press(&mut app, &[KeyCode::Enter, KeyCode::Char('y')]);
+    match runs(&effects, Purpose::BuildClean) {
+        Some(Request::DevClean { paths }) => {
+            assert_eq!(paths, &[PathBuf::from("/home/me/app/node_modules")]);
+        }
+        other => panic!("expected a deletion, got {other:?}"),
+    }
+}

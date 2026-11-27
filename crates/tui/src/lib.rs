@@ -3,9 +3,13 @@
 //! with `rewind-os-cli tui`.
 
 pub mod app;
+pub mod build_folders;
 pub mod cleanup;
+mod dialog;
+pub mod duplicates;
 pub mod home;
 pub mod jobs;
+pub mod leftovers;
 mod list;
 pub mod programs;
 pub mod scan;

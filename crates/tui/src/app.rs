@@ -3,7 +3,7 @@
 //! `lib.rs` runs them, so this is tested without a terminal or the engine.
 
 use crate::jobs::{Jobs, Purpose};
-use crate::{cleanup, home, programs, scan, startup, style};
+use crate::{build_folders, cleanup, duplicates, home, leftovers, programs, scan, startup, style};
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::{Constraint, Flex, Layout};
@@ -27,15 +27,21 @@ pub enum View {
     Cleanup,
     Startup,
     Programs,
+    Duplicates,
+    Leftovers,
+    BuildFolders,
 }
 
 impl View {
-    pub const ALL: [View; 5] = [
+    pub const ALL: [View; 8] = [
         View::Home,
         View::Scan,
         View::Cleanup,
         View::Startup,
         View::Programs,
+        View::Duplicates,
+        View::Leftovers,
+        View::BuildFolders,
     ];
 
     fn title(self) -> &'static str {
@@ -45,6 +51,9 @@ impl View {
             View::Cleanup => tr("Cleanup"),
             View::Startup => tr("Startup"),
             View::Programs => tr("Programs"),
+            View::Duplicates => tr("Duplicates"),
+            View::Leftovers => tr("Leftovers"),
+            View::BuildFolders => tr("Builds"),
         }
     }
 
@@ -60,6 +69,9 @@ impl View {
             View::Cleanup => &["cleanup", "clean"],
             View::Startup => &["startup"],
             View::Programs => &["programs", "apps", "uninstall"],
+            View::Duplicates => &["duplicates", "dupes"],
+            View::Leftovers => &["leftovers"],
+            View::BuildFolders => &["builds", "dev", "projects"],
         };
         names.iter().any(|n| n.starts_with(&typed))
             || self.title().to_lowercase().starts_with(&typed)
@@ -81,6 +93,9 @@ pub struct App {
     pub cleanup: cleanup::State,
     pub startup: startup::State,
     pub programs: programs::State,
+    pub duplicates: duplicates::State,
+    pub leftovers: leftovers::State,
+    pub build_folders: build_folders::State,
     mode: Mode,
     /// A line for the bottom bar, and whether it is an error.
     message: Option<(String, bool)>,
@@ -92,7 +107,10 @@ impl App {
         App {
             view: View::Home,
             home: home::State::default(),
-            scan: scan::State::new(scan_root),
+            scan: scan::State::new(scan_root.clone()),
+            duplicates: duplicates::State::new(scan_root.clone()),
+            leftovers: leftovers::State::default(),
+            build_folders: build_folders::State::new(scan_root),
             cleanup: cleanup::State::default(),
             startup: startup::State::default(),
             programs: programs::State::default(),
@@ -113,7 +131,8 @@ impl App {
             View::Cleanup => self.cleanup.open(),
             View::Startup => self.startup.open(),
             View::Programs => self.programs.open(),
-            View::Home | View::Scan => Vec::new(),
+            View::Leftovers => self.leftovers.open(),
+            View::Home | View::Scan | View::Duplicates | View::BuildFolders => Vec::new(),
         }
     }
 
@@ -123,6 +142,9 @@ impl App {
             View::Cleanup => self.cleanup.captures_keys(),
             View::Startup => self.startup.captures_keys(),
             View::Programs => self.programs.captures_keys(),
+            View::Duplicates => self.duplicates.captures_keys(),
+            View::Leftovers => self.leftovers.captures_keys(),
+            View::BuildFolders => self.build_folders.captures_keys(),
             View::Home => false,
         }
     }
@@ -178,7 +200,7 @@ impl App {
                     self.mode = Mode::Help;
                     return Vec::new();
                 }
-                KeyCode::Char(c @ '1'..='5') => {
+                KeyCode::Char(c @ '1'..='8') => {
                     let index = (c as usize).saturating_sub('1' as usize);
                     if let Some(&view) = View::ALL.get(index) {
                         return self.show(view);
@@ -195,6 +217,9 @@ impl App {
             View::Cleanup => self.cleanup.key(key, jobs),
             View::Startup => self.startup.key(key, jobs),
             View::Programs => self.programs.key(key, jobs),
+            View::Duplicates => self.duplicates.key(key, jobs),
+            View::Leftovers => self.leftovers.key(key, jobs),
+            View::BuildFolders => self.build_folders.key(key, jobs),
         }
     }
 
@@ -226,6 +251,18 @@ impl App {
             Purpose::Analyze | Purpose::Clean => self.cleanup.finished(purpose, outcome),
             Purpose::Startup | Purpose::StartupSet => self.startup.finished(purpose, outcome),
             Purpose::Programs | Purpose::Uninstall => self.programs.finished(purpose, outcome),
+            Purpose::Duplicates | Purpose::DuplicatesTrash => {
+                self.duplicates.finished(purpose, outcome);
+                Vec::new()
+            }
+            Purpose::Leftovers | Purpose::LeftoversTrash => {
+                self.leftovers.finished(purpose, outcome);
+                Vec::new()
+            }
+            Purpose::BuildFolders | Purpose::BuildClean => {
+                self.build_folders.finished(purpose, outcome);
+                Vec::new()
+            }
         }
     }
 
@@ -248,7 +285,6 @@ impl App {
             } else {
                 tabs.push(Span::raw(label));
             }
-            tabs.push(Span::raw(" "));
         }
         if let Some(o) = &self.home.overview {
             tabs.push(Span::styled(format!("  {}", o.host), style::muted()));
@@ -261,6 +297,9 @@ impl App {
             View::Cleanup => self.cleanup.draw(frame, body, jobs),
             View::Startup => self.startup.draw(frame, body, jobs),
             View::Programs => self.programs.draw(frame, body, jobs),
+            View::Duplicates => self.duplicates.draw(frame, body, jobs),
+            View::Leftovers => self.leftovers.draw(frame, body, jobs),
+            View::BuildFolders => self.build_folders.draw(frame, body, jobs),
         }
 
         let line = match (&self.mode, &self.message) {
@@ -283,9 +322,12 @@ impl App {
                     View::Cleanup => self.cleanup.hints(jobs),
                     View::Startup => self.startup.hints(),
                     View::Programs => self.programs.hints(),
+                    View::Duplicates => self.duplicates.hints(jobs),
+                    View::Leftovers => self.leftovers.hints(jobs),
+                    View::BuildFolders => self.build_folders.hints(jobs),
                 });
                 if !self.captured() {
-                    hints.push(("1-5", tr("Views")));
+                    hints.push(("1-8", tr("Views")));
                 }
                 let mut spans = Vec::new();
                 for (key, what) in hints {
@@ -299,7 +341,7 @@ impl App {
 
         if self.mode == Mode::Help {
             let rows = [
-                ("1 … 5", tr("Home, disk, cleanup, startup, programs")),
+                ("1 … 8", tr("The views, in the order of the tabs")),
                 ("Tab", tr("Next view")),
                 (":disk  :startup …", tr("Open a view by name")),
                 ("/", tr("Filter the list")),

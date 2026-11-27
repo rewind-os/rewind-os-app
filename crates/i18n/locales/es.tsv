@@ -932,7 +932,6 @@ incomplete	incompleta
 Esc clears	Esc borra
 Filter	Filtrar
 Filter the list	Filtrar la lista
-Home, disk, cleanup, startup, programs	Inicio, disco, limpieza, arranque, programas
 Pick, or turn on and off	Elegir, o activar y desactivar
 Reading the installed programs…	Leyendo los programas instalados…
 Reading what starts…	Leyendo lo que arranca…
@@ -943,3 +942,14 @@ Uninstall	Desinstalar
 Uninstalling is not available on this system yet.	Desinstalar aún no está disponible en este sistema.
 {n} start with the system	{n} arrancan con el sistema
 {n} turned off	{n} desactivados
+Builds	Compilación
+Duplicates	Duplicados
+Folder to search	Carpeta en la que buscar
+The views, in the order of the tabs	Las vistas, en el orden de las pestañas
+Leftovers	Restos
+Pick at least one copy with Space.	Elige al menos una copia con Espacio.
+Pick at least one folder with Space.	Elige al menos una carpeta con Espacio.
+Press Enter to look for files with identical contents in it, or e to choose another folder.	Pulsa Intro para buscar en ella archivos con el mismo contenido, o e para elegir otra carpeta.
+Press Enter to look for the build folders of your projects in it, or e to choose another folder.	Pulsa Intro para buscar en ella las carpetas de compilación de tus proyectos, o e para elegir otra carpeta.
+Searching	Buscando
+{n} picked	{n} elegidos

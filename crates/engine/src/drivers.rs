@@ -300,6 +300,103 @@ pub fn remove(names: &[String], task: &Task) -> Result<Removed> {
     Ok(done)
 }
 
+/// A device Windows marks with a problem (the yellow mark of Device Manager).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DeviceProblem {
+    pub name: String,
+    /// Its kind, as Windows names it (`Display`, `USB`), when known.
+    pub class: Option<String>,
+    /// Device Manager's problem code.
+    pub code: u32,
+}
+
+impl DeviceProblem {
+    /// What the code means, in English; translate with `rewind_os_i18n::tr`.
+    pub fn meaning(&self) -> &'static str {
+        match self.code {
+            1 => "It is not set up correctly.",
+            3 => "Its driver may be damaged, or the computer is short of memory.",
+            10 => "It cannot start.",
+            12 => "It cannot find enough free resources.",
+            14 => "It works after the computer restarts.",
+            18 | 19 => "Its driver needs to be installed again.",
+            21 => "Windows is removing it.",
+            28 => "Its driver is not installed.",
+            31 => "Windows cannot load its driver.",
+            39 => "Its driver is damaged or missing.",
+            43 => "Windows stopped it because it reported problems.",
+            48 => "Its driver is blocked because it has known problems.",
+            52 => "Windows cannot verify its driver's signature.",
+            _ => "Windows reports a problem with it.",
+        }
+    }
+}
+
+/// Codes that are not problems to fix: turned off on purpose (22) or not plugged in (24, 45).
+const NOT_PROBLEMS: &[u32] = &[0, 22, 24, 45];
+
+/// Reads the devices from `Win32_PnPEntity` as JSON (one object, or a list of them).
+pub fn parse_problems(json: &str) -> Option<Vec<DeviceProblem>> {
+    let value: serde_json::Value = serde_json::from_str(json.trim()).ok()?;
+    let items = match value {
+        serde_json::Value::Array(items) => items,
+        serde_json::Value::Null => Vec::new(),
+        one => vec![one],
+    };
+    let mut problems: Vec<DeviceProblem> = items
+        .iter()
+        .filter_map(|item| {
+            let code = u32::try_from(item.get("ConfigManagerErrorCode")?.as_u64()?).ok()?;
+            let name = item
+                .get("Name")
+                .and_then(serde_json::Value::as_str)
+                .map(str::trim)
+                .filter(|n| !n.is_empty())
+                .unwrap_or("Unknown device")
+                .to_owned();
+            let class = item
+                .get("PNPClass")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_owned);
+            (!NOT_PROBLEMS.contains(&code)).then_some(DeviceProblem { name, class, code })
+        })
+        .collect();
+    problems.sort_by(|a, b| a.name.cmp(&b.name));
+    problems.dedup();
+    Some(problems)
+}
+
+/// The devices with a problem, as Device Manager shows them. Reading changes nothing.
+pub fn problems() -> Result<Vec<DeviceProblem>> {
+    require_windows("drivers.problems")?;
+    let script = "Get-CimInstance Win32_PnPEntity -Filter 'ConfigManagerErrorCode <> 0' | Select-Object Name,PNPClass,ConfigManagerErrorCode | ConvertTo-Json -Compress";
+    let out = process::run_checked(
+        "powershell",
+        &["-NoProfile", "-NonInteractive", "-Command", script],
+    )?;
+    // No device with a problem: PowerShell prints nothing.
+    if out.stdout.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    parse_problems(&out.stdout).ok_or_else(|| {
+        rewind_os_platform::PlatformError::Command {
+            program: "powershell".to_owned(),
+            code: None,
+            detail: out.stdout.trim().to_owned(),
+        }
+        .into()
+    })
+}
+
+/// Opens Windows' Device Manager.
+pub fn open_device_manager() -> Result<()> {
+    require_windows("drivers.device_manager")?;
+    Ok(process::start(
+        std::path::Path::new("mmc.exe"),
+        &["devmgmt.msc"],
+    )?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,5 +456,23 @@ mod tests {
         other.provider = "Someone else".to_owned();
         let packages = [package("oem1.inf", "gpu.inf", [2, 0, 0, 0]), other];
         assert!(old_packages(&packages, &HashSet::new()).is_empty());
+    }
+
+    #[test]
+    fn devices_turned_off_or_unplugged_are_not_problems() {
+        let json = r#"[
+            {"Name":"Wireless adapter","PNPClass":"Net","ConfigManagerErrorCode":28},
+            {"Name":"Old webcam","PNPClass":"Camera","ConfigManagerErrorCode":45},
+            {"Name":"Spare port","PNPClass":"Ports","ConfigManagerErrorCode":22},
+            {"Name":"Graphics","PNPClass":"Display","ConfigManagerErrorCode":43}
+        ]"#;
+        let problems = parse_problems(json).unwrap();
+        let names: Vec<&str> = problems.iter().map(|p| p.name.as_str()).collect();
+        assert_eq!(names, ["Graphics", "Wireless adapter"]);
+        // One device comes as an object, none as nothing at all.
+        let one = r#"{"Name":"Card reader","PNPClass":null,"ConfigManagerErrorCode":10}"#;
+        assert_eq!(parse_problems(one).map(|p| p.len()), Some(1));
+        assert_eq!(parse_problems("").map(|p| p.len()), None);
+        assert_eq!(parse_problems("null").map(|p| p.len()), Some(0));
     }
 }

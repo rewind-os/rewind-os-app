@@ -56,6 +56,8 @@ pub enum Action {
     VirtualDisks,
     /// Open the restore points (on the maintenance page).
     RestorePoints,
+    /// Open Windows' Device Manager.
+    DeviceManager,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -115,6 +117,8 @@ pub struct Facts {
     /// Restore points all but the newest of which could go, and what all of them take; known
     /// only with administrator rights.
     pub restore_points: Option<(usize, u64)>,
+    /// Devices with a driver problem: their name and what is wrong (English).
+    pub device_problems: Vec<(String, &'static str)>,
 }
 
 fn size(bytes: u64) -> String {
@@ -132,6 +136,29 @@ fn category_bytes(facts: &Facts, id: &str) -> u64 {
 
 pub fn rules(facts: &Facts) -> Vec<Recommendation> {
     let mut out = Vec::new();
+
+    // A device that does not work is worth knowing first, after failing drives.
+    match facts.device_problems.as_slice() {
+        [] => {}
+        [(name, what)] => out.push(Recommendation {
+            id: "device_problem",
+            level: Level::Suggested,
+            title: "{name} is not working properly",
+            detail: what,
+            args: vec![("name", name.clone())],
+            saving: None,
+            action: Action::DeviceManager,
+        }),
+        many => out.push(Recommendation {
+            id: "device_problem",
+            level: Level::Suggested,
+            title: "{count} devices are not working properly",
+            detail: "Device Manager marks them in yellow. The maker's driver or Windows Update usually fixes them.",
+            args: vec![("count", many.len().to_string())],
+            saving: None,
+            action: Action::DeviceManager,
+        }),
+    }
 
     for (name, health) in &facts.disks {
         let (id, title, detail) = match health {
@@ -496,6 +523,11 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
         .then(restore::list)
         .and_then(|r| r.ok())
         .map(|r| (restore::all_but_newest(&r.copies).len(), r.used())),
+        device_problems: tool_available("drivers.problems")
+            .then(crate::drivers::problems)
+            .and_then(|r| r.ok())
+            .map(|list| list.iter().map(|p| (p.name.clone(), p.meaning())).collect())
+            .unwrap_or_default(),
     };
     rules(&facts)
 }

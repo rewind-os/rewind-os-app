@@ -106,7 +106,7 @@ Hay versiones listas en la [página de releases](../../releases); puedes comprob
 (ver [packaging/README.md](packaging/README.md#release-signature)).
 
 - **Windows** x64 y ARM64: ejecuta `rewind-os-<versión>-windows-<arq>.msi` para instalarlo (menú
-  Inicio, se desinstala desde Configuración), o descomprime
+  Inicio, `rewind-os-cli` en el PATH de las terminales nuevas, se desinstala desde Configuración), o descomprime
   `rewind-os-<versión>-windows-<arq>-portable.zip` y ejecuta `rewind-os.exe` sin instalar nada.
 - **Linux** x64 y ARM64 (glibc 2.35 o posterior: Debian 12, Ubuntu 22.04, Fedora 36 y
   posteriores): descomprime `rewind-os-<versión>-linux-<arq>.tar.gz` y ejecuta

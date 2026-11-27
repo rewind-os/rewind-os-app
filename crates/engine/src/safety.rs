@@ -666,6 +666,18 @@ fn lexical(path: &Path) -> PathBuf {
     out
 }
 
+/// Whether an installed kernel may be removed: never the one running now (the computer needs
+/// it until it restarts) and never the newest installed one (it starts next time), and only a
+/// release whose package names cannot be read as options of the package tool.
+pub fn is_removable_kernel(release: &str, running: &str, newest: &str) -> bool {
+    !release.is_empty()
+        && !running.is_empty()
+        && !newest.is_empty()
+        && release != running
+        && release != newest
+        && crate::packages::safe_package_name(release)
+}
+
 /// Whether `name` is the name Windows gives a driver package it added (`oem12.inf`): the only
 /// driver packages Rewind OS may remove, and the only text it passes to `pnputil`.
 pub fn is_oem_driver_name(name: &str) -> bool {

@@ -20,6 +20,8 @@ use rewind_os_i18n::{tr, trf};
 pub enum Action {
     JournalUsage,
     JournalVacuum,
+    KernelsList,
+    KernelsClean,
     ComponentStore,
     ComponentCleanup,
     RestoreList,
@@ -31,9 +33,11 @@ pub enum Action {
 }
 
 impl Action {
-    const ALL: [Action; 10] = [
+    const ALL: [Action; 12] = [
         Action::JournalUsage,
         Action::JournalVacuum,
+        Action::KernelsList,
+        Action::KernelsClean,
         Action::ComponentStore,
         Action::ComponentCleanup,
         Action::RestoreList,
@@ -48,6 +52,10 @@ impl Action {
         match self {
             Action::JournalUsage => Request::JournalUsage,
             Action::JournalVacuum => Request::JournalVacuum,
+            Action::KernelsList => Request::KernelsList,
+            Action::KernelsClean => Request::KernelsClean {
+                releases: Vec::new(),
+            },
             Action::ComponentStore => Request::AnalyzeComponentStore,
             Action::ComponentCleanup => Request::ComponentCleanup,
             Action::RestoreList => Request::RestoreList,
@@ -65,6 +73,7 @@ impl Action {
     fn group(self) -> &'static str {
         match self {
             Action::JournalUsage | Action::JournalVacuum => tr("System journal"),
+            Action::KernelsList | Action::KernelsClean => tr("Old kernels"),
             Action::ComponentStore | Action::ComponentCleanup => tr("Windows component store"),
             Action::RestoreList | Action::RestoreClean => tr("Restore points"),
             Action::DriversList | Action::DriversClean => tr("Old driver packages"),
@@ -76,6 +85,8 @@ impl Action {
         match self {
             Action::JournalUsage => tr("Measure"),
             Action::JournalVacuum => tr("Keep only the last two weeks"),
+            Action::KernelsList => tr("Check"),
+            Action::KernelsClean => tr("Remove old kernels"),
             Action::ComponentStore => tr("Measure real size"),
             Action::ComponentCleanup => tr("Remove old components"),
             Action::RestoreList => tr("Check"),
@@ -91,6 +102,9 @@ impl Action {
         match self {
             Action::JournalUsage | Action::JournalVacuum => tr(
                 "systemd keeps a log of everything the system does. Old entries are rarely needed and can take gigabytes.",
+            ),
+            Action::KernelsList | Action::KernelsClean => tr(
+                "Each kernel update installs the new kernel next to the old ones, in /boot and /lib/modules. The kernel running now and the newest always stay.",
             ),
             Action::ComponentStore | Action::ComponentCleanup => tr(
                 "The WinSxS folder looks huge in a disk scan because most of its files are shared with Windows itself. This measures its real size and removes old versions of updated components.",
@@ -134,6 +148,13 @@ impl Action {
                 tr("Entries older than two weeks are deleted for good."),
                 tr("Delete"),
             ),
+            Action::KernelsClean => (
+                tr("Remove old kernels?"),
+                tr(
+                    "The old kernels are removed with the package manager, which asks for your password. The running kernel and the newest stay, so the computer keeps starting. If removing them would take other packages along, Rewind OS stops.",
+                ),
+                tr("Remove"),
+            ),
             Action::RestoreClean => (
                 tr("Delete old restore points?"),
                 tr(
@@ -149,6 +170,7 @@ impl Action {
                 tr("Remove"),
             ),
             Action::JournalUsage
+            | Action::KernelsList
             | Action::ComponentStore
             | Action::RestoreList
             | Action::DriversList => return None,
@@ -245,6 +267,22 @@ impl State {
             Ok(Response::Done(message)) => (vec![tr(message).to_owned()], false),
             Ok(Response::RestorePoints(report)) => (restore_lines(&report), false),
             Ok(Response::Drivers(report)) => (driver_lines(&report), false),
+            Ok(Response::Kernels(report)) => (kernel_lines(&report), false),
+            Ok(Response::KernelsRemoved(done)) => {
+                let mut lines = vec![trf(
+                    "Removed {n} old kernels, {size}.",
+                    &[
+                        ("n", &count(done.removed.len() as u64)),
+                        ("size", &bytes(done.bytes)),
+                    ],
+                )];
+                lines.extend(
+                    done.failed.iter().map(|(release, why)| {
+                        format!("{release}: {}", rewind_os_i18n::tr_text(why))
+                    }),
+                );
+                (lines, !done.failed.is_empty())
+            }
             Ok(Response::DriversRemoved(done)) => {
                 let mut lines = vec![trf(
                     "Removed {n} old driver packages, {size}.",
@@ -370,7 +408,16 @@ impl State {
         if let Some(action) = self.confirming
             && let Some((title, body, yes)) = action.question()
         {
-            dialog::confirm(frame, area, title, vec![Line::from(body)], yes);
+            let mut lines = vec![Line::from(body)];
+            // The package manager asks for the password through the desktop, as for programs.
+            if action == Action::KernelsClean && !self.elevated {
+                lines.push(Line::raw(""));
+                lines.push(Line::styled(
+                    tr("The password is asked in a window of the desktop. Without one, or over SSH, start Rewind OS with sudo."),
+                    style::muted(),
+                ));
+            }
+            dialog::confirm(frame, area, title, lines, yes);
         }
     }
 }
@@ -437,5 +484,35 @@ fn driver_lines(report: &rewind_os_engine::drivers::Report) -> Vec<String> {
             &[("n", &count(report.old_in_use as u64))],
         ));
     }
+    lines
+}
+
+/// The installed kernels, which stay and what the old ones take.
+fn kernel_lines(report: &rewind_os_engine::kernels::Report) -> Vec<String> {
+    if report.kernels.is_empty() {
+        return vec![tr(rewind_os_engine::kernels::NO_PACKAGES).to_owned()];
+    }
+    let old = report.old().count();
+    let mut lines = vec![if old == 0 {
+        tr("No old kernels: only the running one and the newest are installed.").to_owned()
+    } else {
+        trf(
+            "{n} old kernels take {size}.",
+            &[
+                ("n", &count(old as u64)),
+                ("size", &bytes(report.reclaimable())),
+            ],
+        )
+    }];
+    lines.extend(report.kernels.iter().map(|k| {
+        let why = if k.running {
+            format!("  ({})", tr("running now, kept"))
+        } else if k.newest {
+            format!("  ({})", tr("newest, kept"))
+        } else {
+            String::new()
+        };
+        format!("{:>10}  {}{why}", bytes(k.bytes), k.release)
+    }));
     lines
 }

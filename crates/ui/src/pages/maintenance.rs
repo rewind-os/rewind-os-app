@@ -18,6 +18,7 @@ enum Action {
     JournalVacuum,
     RestoreClean,
     DriversClean,
+    KernelsClean,
 }
 
 fn available(id: &str) -> bool {
@@ -33,6 +34,8 @@ pub struct State {
     restore: Option<restore::Report>,
     /// The old driver packages, once checked.
     drivers: Option<rewind_os_engine::drivers::Report>,
+    /// The installed kernels, once checked.
+    kernels: Option<rewind_os_engine::kernels::Report>,
 }
 
 impl State {
@@ -82,6 +85,27 @@ impl State {
                 });
                 // Checked again, so the card shows what is left.
                 self.job = Some(Job::start(&ctx, &shared.engine, Request::DriversList));
+            }
+            Some(Ok(Response::Kernels(report))) => self.kernels = Some(report),
+            Some(Ok(Response::KernelsRemoved(done))) => {
+                shared.info(trf(
+                    "Removed {n} old kernels, {size}.",
+                    &[
+                        ("n", &count(done.removed.len() as u64)),
+                        ("size", &bytes(done.bytes)),
+                    ],
+                ));
+                self.output = (!done.failed.is_empty()).then(|| {
+                    done.failed
+                        .iter()
+                        .map(|(release, why)| {
+                            format!("{release}: {}", rewind_os_i18n::tr_text(why))
+                        })
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                });
+                // Checked again, so the card shows what is left.
+                self.job = Some(Job::start(&ctx, &shared.engine, Request::KernelsList));
             }
             Some(Ok(Response::RestoreCleaned(done))) => {
                 shared.info(trf(
@@ -156,6 +180,13 @@ impl State {
                         }
                     });
                 });
+            }
+            if available("kernels.list") {
+                card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    self.kernels_card(ui, &ctx, shared);
+                });
+                ui.add_space(t.gap);
             }
             if windows {
             card(ui, |ui| {
@@ -258,6 +289,14 @@ impl State {
                     tr("Remove"),
                     Request::DriversClean {
                         packages: Vec::new(),
+                    },
+                ),
+                Action::KernelsClean => (
+                    tr("Remove old kernels?"),
+                    tr(KERNELS_QUESTION),
+                    tr("Remove"),
+                    Request::KernelsClean {
+                        releases: Vec::new(),
                     },
                 ),
                 Action::HibernationOn => (
@@ -455,6 +494,78 @@ impl State {
         });
     }
 }
+
+impl State {
+    /// Old kernels: which are installed, what the old ones take, and removing them.
+    fn kernels_card(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, shared: &mut Shared) {
+        let t = theme::current(ctx);
+        ui.label(
+            RichText::new(tr("Old kernels"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
+        ui.label(RichText::new(tr(KERNELS_ABOUT)).color(t.text_muted));
+        let old = self.kernels.as_ref().map_or(0, |r| r.old().count());
+        if let Some(report) = &self.kernels {
+            ui.add_space(4.0);
+            if report.kernels.is_empty() {
+                ui.label(tr(rewind_os_engine::kernels::NO_PACKAGES));
+            } else if old == 0 {
+                ui.label(tr(
+                    "No old kernels: only the running one and the newest are installed.",
+                ));
+            } else {
+                ui.label(
+                    RichText::new(trf(
+                        "{n} old kernels take {size}.",
+                        &[
+                            ("n", &count(old as u64)),
+                            ("size", &bytes(report.reclaimable())),
+                        ],
+                    ))
+                    .family(crate::theme::bold()),
+                );
+            }
+            for k in &report.kernels {
+                let why = if k.running {
+                    format!("  ({})", tr("running now, kept"))
+                } else if k.newest {
+                    format!("  ({})", tr("newest, kept"))
+                } else {
+                    String::new()
+                };
+                ui.label(
+                    RichText::new(format!("{}  ·  {}{why}", bytes(k.bytes), k.release))
+                        .small()
+                        .color(t.text_muted),
+                );
+            }
+        }
+        ui.horizontal(|ui| {
+            if ui
+                .add_enabled(self.job.is_none(), egui::Button::new(tr("Check")))
+                .clicked()
+            {
+                self.job = Some(Job::start(ctx, &shared.engine, Request::KernelsList));
+            }
+            let label = if old > 0 {
+                trf("Remove {count} old ones", &[("count", &count(old as u64))])
+            } else {
+                tr("Remove old kernels").to_owned()
+            };
+            // The package manager asks for the password itself.
+            let button = widgets::primary_button(ui, &label, self.job.is_none() && old > 0);
+            if self.kernels.is_none() {
+                button.on_disabled_hover_text(tr("Check first how many there are."));
+            } else if button.clicked() {
+                self.confirm = Some(Action::KernelsClean);
+            }
+        });
+    }
+}
+
+const KERNELS_ABOUT: &str = "Each kernel update installs the new kernel next to the old ones, in /boot and /lib/modules. The kernel running now and the newest always stay.";
+const KERNELS_QUESTION: &str = "The old kernels are removed with the package manager, which asks for your password. The running kernel and the newest stay, so the computer keeps starting. If removing them would take other packages along, Rewind OS stops.";
 
 /// A key figure: label, value, detail and an optional meter.
 struct Tile(String, String, String, Option<(f32, egui::Color32)>);

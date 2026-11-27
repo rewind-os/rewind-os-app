@@ -20,9 +20,13 @@ pub fn confirm(frame: &mut Frame, area: Rect, title: &str, body: Vec<Line<'stati
         Span::styled("[n] ", style::muted()),
         Span::raw(tr("Cancel")),
     ]));
-    let height = u16::try_from(lines.len())
-        .unwrap_or(8)
-        .saturating_add(5)
+    // Every line as many rows as it wraps to, inside a border, with a little room spare as
+    // wrapping breaks at words.
+    let inner = usize::from(area.width.min(70).saturating_sub(4)).max(1);
+    let rows: usize = lines.iter().map(|l| l.width().div_ceil(inner).max(1)).sum();
+    let height = u16::try_from(rows)
+        .unwrap_or(area.height)
+        .saturating_add(3)
         .min(area.height);
     let [middle] = Layout::vertical([Constraint::Length(height)])
         .flex(Flex::Center)

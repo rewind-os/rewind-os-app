@@ -206,7 +206,7 @@ impl State {
         .row_highlight_style(style::selected())
         .block(Block::bordered().title(Span::styled(tr("Startup programs"), style::heading())));
         let mut table_state = TableState::default().with_selected(Some(self.cursor));
-        frame.render_stateful_widget(table, list_area, &mut table_state);
+        list::render(frame, table, list_area, &mut table_state, 0);
 
         let Some(entry) = shown.get(self.cursor) else {
             frame.render_widget(Block::bordered(), detail);

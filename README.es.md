@@ -182,7 +182,9 @@ archivo), los programas en marcha (`x` cierra uno, `F` lo fuerza, tras preguntar
 mantenimiento (las herramientas del propio sistema). `/` filtra una lista. `1`–`9` y `0`, Tab o el
 nombre de una vista tras `:` (`:disco`, `:procesos`…) cambian de vista, Esc para lo que está en marcha, `?` muestra las teclas y `q` sale.
 Sin escritorio, ábrela con `sudo` para desinstalar paquetes de Linux: si no, la contraseña se pide
-en una ventana.
+en una ventana. También funciona el ratón: clic en una pestaña o una fila, la rueda para
+moverse y doble clic en una carpeta para abrirla (con Mayúsculas pulsada se selecciona texto). Los
+programas en marcha se vuelven a medir cada pocos segundos mientras su vista está abierta.
 
 `rewind-os-cli mcp` ofrece las mismas herramientas a un asistente con el Model Context Protocol.
 Por defecto solo las que no cambian nada; `--automation-read-root`, `--automation-write-root` y

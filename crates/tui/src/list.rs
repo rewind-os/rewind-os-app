@@ -84,3 +84,57 @@ impl Filter {
         Some(Line::from(spans))
     }
 }
+
+/// Where the last list was drawn, so a click can tell which row it is on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rows {
+    pub area: ratatui::layout::Rect,
+    /// The first row shown (the list scrolls to keep the cursor in view).
+    pub offset: usize,
+    /// Header lines above the rows, inside the border.
+    pub header: u16,
+}
+
+impl Rows {
+    /// The row at a point, counted from the first row of the list.
+    pub fn row_at(&self, column: u16, line: u16) -> Option<usize> {
+        let top = self.area.y.saturating_add(1).saturating_add(self.header);
+        let bottom = self.area.bottom().saturating_sub(1);
+        let inside = column > self.area.x
+            && column < self.area.right().saturating_sub(1)
+            && line >= top
+            && line < bottom;
+        inside.then(|| self.offset + usize::from(line - top))
+    }
+}
+
+thread_local! {
+    static ROWS: std::cell::Cell<Option<Rows>> = const { std::cell::Cell::new(None) };
+}
+
+/// Draws a bordered list and remembers where, for the mouse.
+pub fn render(
+    frame: &mut ratatui::Frame,
+    table: ratatui::widgets::Table,
+    area: ratatui::layout::Rect,
+    state: &mut ratatui::widgets::TableState,
+    header: u16,
+) {
+    frame.render_stateful_widget(table, area, state);
+    let rows = Rows {
+        area,
+        offset: state.offset(),
+        header,
+    };
+    ROWS.with(|r| r.set(Some(rows)));
+}
+
+/// The list drawn in the last frame, if any.
+pub fn last_rows() -> Option<Rows> {
+    ROWS.with(std::cell::Cell::get)
+}
+
+/// Forgets the last list; called before each frame.
+pub fn forget_rows() {
+    ROWS.with(|r| r.set(None));
+}

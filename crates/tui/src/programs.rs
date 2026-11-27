@@ -237,7 +237,7 @@ impl State {
         .row_highlight_style(style::selected())
         .block(Block::bordered().title(Span::styled(tr("Installed programs"), style::heading())));
         let mut table_state = TableState::default().with_selected(Some(self.cursor));
-        frame.render_stateful_widget(table, list_area, &mut table_state);
+        list::render(frame, table, list_area, &mut table_state, 0);
 
         if let Some(p) = shown.get(self.cursor) {
             let mut lines = Vec::new();

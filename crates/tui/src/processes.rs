@@ -26,8 +26,13 @@ pub struct State {
     /// The program to close, and whether to force it, waiting for an answer.
     pub confirming: Option<(Program, bool)>,
     pub note: Option<(String, bool)>,
+    /// When the list was last measured, to measure it again every few seconds.
+    measured: Option<std::time::Instant>,
     started: bool,
 }
+
+/// How often the open list is measured again.
+const REFRESH: std::time::Duration = std::time::Duration::from_secs(3);
 
 /// Why a program is not closed, in a word.
 fn refusal_word(why: &str) -> &'static str {
@@ -70,6 +75,19 @@ impl State {
         self.filter.editing || self.confirming.is_some()
     }
 
+    /// Measures the list again when it is older than a few seconds and nothing else runs.
+    pub fn tick(&mut self, jobs: &Jobs) -> Vec<Effect> {
+        let busy = [Purpose::Processes, Purpose::Close, Purpose::StartupOff]
+            .iter()
+            .any(|p| jobs.running(*p).is_some());
+        let stale = self.measured.is_some_and(|at| at.elapsed() >= REFRESH);
+        if busy || !stale || self.confirming.is_some() {
+            return Vec::new();
+        }
+        self.measured = None;
+        self.measure()
+    }
+
     pub fn key(&mut self, key: KeyEvent, jobs: &Jobs) -> Vec<Effect> {
         if let Some((program, force)) = &self.confirming {
             return match dialog::answer(key) {
@@ -95,7 +113,8 @@ impl State {
             }
             return Vec::new();
         }
-        if [Purpose::Processes, Purpose::Close, Purpose::StartupOff]
+        // Measuring again does not stop the keys: the list stays usable while it refreshes.
+        if [Purpose::Close, Purpose::StartupOff]
             .iter()
             .any(|p| jobs.running(*p).is_some())
         {
@@ -146,8 +165,23 @@ impl State {
     pub fn finished(&mut self, purpose: Purpose, outcome: Result<Response, String>) -> Vec<Effect> {
         match (purpose, outcome) {
             (Purpose::Processes, Ok(Response::Processes(report))) => {
-                self.cursor = self.cursor.min(report.programs.len().saturating_sub(1));
+                // The order changes as programs work: the cursor stays on the same program.
+                let selected = self
+                    .shown()
+                    .get(self.cursor)
+                    .map(|p| (p.name.clone(), p.pids.clone()));
                 self.report = Some(report);
+                self.measured = Some(std::time::Instant::now());
+                let shown = self.shown();
+                self.cursor = selected
+                    .and_then(|(name, pids)| {
+                        shown
+                            .iter()
+                            .position(|p| p.name == name && p.pids == pids)
+                            .or_else(|| shown.iter().position(|p| p.name == name))
+                    })
+                    .unwrap_or(self.cursor)
+                    .min(shown.len().saturating_sub(1));
                 Vec::new()
             }
             (Purpose::Close, Ok(Response::ProcessClosed(closed))) => {
@@ -280,7 +314,7 @@ impl State {
         .row_highlight_style(style::selected())
         .block(Block::bordered().title(Span::styled(tr("Running programs"), style::heading())));
         let mut table_state = TableState::default().with_selected(Some(self.cursor));
-        frame.render_stateful_widget(table, list_area, &mut table_state);
+        list::render(frame, table, list_area, &mut table_state, 1);
 
         if let Some(p) = shown.get(self.cursor) {
             let mut lines = vec![field(tr("Processes"), &count(p.pids.len() as u64))];

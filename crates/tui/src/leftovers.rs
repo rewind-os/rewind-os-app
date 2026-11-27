@@ -306,7 +306,7 @@ impl State {
                 Block::bordered().title(Span::styled(tr("Program leftovers"), style::heading())),
             );
             let mut state = TableState::default().with_selected(Some(self.cursor));
-            frame.render_stateful_widget(table, list_area, &mut state);
+            list::render(frame, table, list_area, &mut state, 0);
         }
         if self.confirming {
             let body = vec![Line::from(trf(

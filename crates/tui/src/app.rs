@@ -8,7 +8,9 @@ use crate::{
     startup, style,
 };
 use ratatui::Frame;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{
+    KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind,
+};
 use ratatui::layout::{Constraint, Flex, Layout};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Clear, Paragraph};
@@ -113,6 +115,10 @@ pub struct App {
     /// A line for the bottom bar, and whether it is an error.
     message: Option<(String, bool)>,
     pub quit: bool,
+    /// Where each view's tab was drawn on the top line: first and last column.
+    tabs: std::cell::RefCell<Vec<(u16, u16, View)>>,
+    /// The last click on a row: when, and which row, to tell a double click.
+    last_click: Option<(std::time::Instant, usize)>,
 }
 
 impl App {
@@ -132,6 +138,8 @@ impl App {
             mode: Mode::Normal,
             message: None,
             quit: false,
+            tabs: std::cell::RefCell::new(Vec::new()),
+            last_click: None,
         }
     }
 
@@ -249,6 +257,63 @@ impl App {
         }
     }
 
+    /// The mouse: a click on a tab opens its view, a click on a row moves the cursor there, the
+    /// wheel moves it like the arrows. A double click opens a folder in the disk view. Nothing
+    /// happens while a field, a question or the help is open.
+    pub fn mouse(&mut self, event: MouseEvent, jobs: &Jobs) -> Vec<Effect> {
+        if self.mode != Mode::Normal || self.captured() {
+            return Vec::new();
+        }
+        let arrow = |code| KeyEvent::new(code, KeyModifiers::NONE);
+        match event.kind {
+            MouseEventKind::ScrollDown => self.key(arrow(KeyCode::Down), jobs),
+            MouseEventKind::ScrollUp => self.key(arrow(KeyCode::Up), jobs),
+            MouseEventKind::Down(MouseButton::Left) => {
+                let tab = self
+                    .tabs
+                    .borrow()
+                    .iter()
+                    .find(|(start, end, _)| {
+                        event.row == 0 && event.column >= *start && event.column < *end
+                    })
+                    .map(|(_, _, view)| *view);
+                if let Some(view) = tab {
+                    return self.show(view);
+                }
+                let Some(row) =
+                    crate::list::last_rows().and_then(|r| r.row_at(event.column, event.row))
+                else {
+                    return Vec::new();
+                };
+                let now = std::time::Instant::now();
+                let double = self.last_click.is_some_and(|(at, last)| {
+                    last == row && now.duration_since(at) < std::time::Duration::from_millis(400)
+                });
+                self.last_click = Some((now, row));
+                // To the row: the first row, then down to it, as the keys would.
+                let mut effects = self.key(arrow(KeyCode::Home), jobs);
+                for _ in 0..row {
+                    effects.extend(self.key(arrow(KeyCode::Down), jobs));
+                }
+                if double && self.view == View::Scan {
+                    effects.extend(self.key(arrow(KeyCode::Enter), jobs));
+                }
+                effects
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// Called often while nothing happens: the running programs are measured again every few
+    /// seconds while their view is open.
+    pub fn tick(&mut self, jobs: &Jobs) -> Vec<Effect> {
+        if self.view == View::Processes && self.mode == Mode::Normal {
+            self.processes.tick(jobs)
+        } else {
+            Vec::new()
+        }
+    }
+
     fn command(&mut self, typed: &str) -> Vec<Effect> {
         let typed = typed.trim();
         if matches!(typed, "q" | "quit") {
@@ -331,10 +396,23 @@ impl App {
                 tabs.push(Span::raw(format!(" {} {} ", key(i), view.title())));
             }
         }
+        // Each tab's columns, for the mouse.
+        let mut column = top.x;
+        let mut places = Vec::new();
+        for (i, span) in tabs.iter().enumerate() {
+            let width = u16::try_from(span.width()).unwrap_or(u16::MAX);
+            // The first two spans are the name and a space; then one span per view.
+            if let Some(&view) = i.checked_sub(2).and_then(|v| View::ALL.get(v)) {
+                places.push((column, column.saturating_add(width), view));
+            }
+            column = column.saturating_add(width);
+        }
+        *self.tabs.borrow_mut() = places;
         if let Some(o) = &self.home.overview {
             tabs.push(Span::styled(format!("  {}", o.host), style::muted()));
         }
         frame.render_widget(Paragraph::new(Line::from(tabs)), top);
+        crate::list::forget_rows();
 
         match self.view {
             View::Home => self.home.draw(frame, body, jobs),
@@ -401,6 +479,7 @@ impl App {
                 ("u", tr("Uninstall…")),
                 ("Esc", tr("Stop what is running, or close")),
                 ("q  Ctrl+C", tr("Quit")),
+                (tr("Mouse"), tr("Click a tab or a row; the wheel moves")),
             ];
             let lines: Vec<Line> = rows
                 .iter()

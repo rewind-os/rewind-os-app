@@ -980,3 +980,22 @@ Windows kept {n} driver packages.	Windows conservó {n} paquetes de drivers.
 newest: {version}	la más nueva: {version}
 {n} old driver packages take {size}.	{n} paquetes de drivers antiguos ocupan {size}.
 {n} older packages stay because a device uses them.	{n} paquetes más antiguos se quedan porque los usa un dispositivo.
+It is not set up correctly.	No está bien configurado.
+Its driver may be damaged, or the computer is short of memory.	Su driver puede estar dañado, o al equipo le falta memoria.
+It cannot start.	No puede arrancar.
+It cannot find enough free resources.	No encuentra suficientes recursos libres.
+It works after the computer restarts.	Funcionará cuando se reinicie el equipo.
+Its driver needs to be installed again.	Hay que volver a instalar su driver.
+Windows is removing it.	Windows lo está quitando.
+Its driver is not installed.	Su driver no está instalado.
+Windows cannot load its driver.	Windows no puede cargar su driver.
+Its driver is damaged or missing.	Su driver está dañado o falta.
+Windows stopped it because it reported problems.	Windows lo detuvo porque informó de problemas.
+Its driver is blocked because it has known problems.	Su driver está bloqueado porque tiene problemas conocidos.
+Windows cannot verify its driver's signature.	Windows no puede verificar la firma de su driver.
+Windows reports a problem with it.	Windows informa de un problema con él.
+{name} is not working properly	{name} no funciona bien
+{count} devices are not working properly	{count} dispositivos no funcionan bien
+Device Manager marks them in yellow. The maker's driver or Windows Update usually fixes them.	El Administrador de dispositivos los marca en amarillo. Suele arreglarlo el driver del fabricante o Windows Update.
+Opened Device Manager	Se abrió el Administrador de dispositivos
+Every device works: none has a driver problem.	Todos los dispositivos funcionan: ninguno tiene problemas de driver.

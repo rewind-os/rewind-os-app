@@ -89,9 +89,10 @@ impl State {
                             Action::Clean { .. } => tr("Clean"),
                             Action::Analyze { .. } => tr("Analyze"),
                             Action::Duplicates { .. } | Action::Leftovers => tr("Review"),
-                            Action::Hibernation | Action::DiskHealth | Action::PowerPlan => {
-                                tr("Open")
-                            }
+                            Action::Hibernation
+                            | Action::DiskHealth
+                            | Action::PowerPlan
+                            | Action::DeviceManager => tr("Open"),
                             Action::ReviewStartup
                             | Action::Lighten
                             | Action::VirtualDisks
@@ -168,6 +169,15 @@ impl State {
                 Action::PowerPlan => shared.goto = Some(Page::Processes),
                 Action::VirtualDisks => shared.goto = Some(Page::VirtualDisks),
                 Action::RestorePoints => shared.goto = Some(Page::Maintenance),
+                Action::DeviceManager => {
+                    match shared
+                        .engine
+                        .run(Request::DeviceManager, &rewind_os_engine::Task::new())
+                    {
+                        Ok(_) => {}
+                        Err(err) => shared.error(crate::widgets::error_text(&err)),
+                    }
+                }
             }
         }
     }

@@ -185,3 +185,40 @@ fn restore_points_matter_more_when_the_drive_is_tight() {
         "only the newest is left, and it is kept"
     );
 }
+
+#[test]
+fn a_device_with_a_driver_problem_is_named_and_several_are_counted() {
+    let one = Facts {
+        device_problems: vec![(
+            "Wireless adapter".to_owned(),
+            "Its driver is not installed.",
+        )],
+        ..Facts::default()
+    };
+    let advice = rules(&one);
+    let device = advice.iter().find(|r| r.id == "device_problem").unwrap();
+    assert!(matches!(device.action, Action::DeviceManager));
+    assert!(device.args.iter().any(|(_, v)| v == "Wireless adapter"));
+    assert_eq!(device.detail, "Its driver is not installed.");
+
+    let several = Facts {
+        device_problems: vec![
+            (
+                "Wireless adapter".to_owned(),
+                "Its driver is not installed.",
+            ),
+            ("Card reader".to_owned(), "It cannot start."),
+        ],
+        ..Facts::default()
+    };
+    let advice = rules(&several);
+    let devices: Vec<_> = advice.iter().filter(|r| r.id == "device_problem").collect();
+    assert_eq!(devices.len(), 1);
+    assert!(devices.iter().all(|r| r.args.iter().any(|(_, v)| v == "2")));
+    // Nothing wrong: no advice about devices.
+    assert!(
+        rules(&Facts::default())
+            .iter()
+            .all(|r| r.id != "device_problem")
+    );
+}

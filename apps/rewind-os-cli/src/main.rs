@@ -277,6 +277,8 @@ enum Vdisks {
 enum Drivers {
     /// The old packages no device uses, and the space they take.
     List,
+    /// Devices with a driver problem, as Device Manager marks them.
+    Problems,
     /// Remove them (as administrator; cannot be undone). The newest of each driver and every
     /// package a device uses stay.
     Clean {
@@ -560,6 +562,7 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::VdiskCompact { path: found.path }
         }
         Command::Drivers(Drivers::List) => Request::DriversList,
+        Command::Drivers(Drivers::Problems) => Request::DriverProblems,
         Command::Drivers(Drivers::Clean { packages, yes }) => {
             confirm(yes)?;
             Request::DriversClean { packages }
@@ -1456,6 +1459,22 @@ fn print_human(response: &Response, top: usize) {
                         "{n} older packages stay because a device uses them.",
                         &[("n", &count(report.old_in_use as u64))],
                     ))
+                );
+            }
+        }
+        Response::DeviceProblems(problems) => {
+            if problems.is_empty() {
+                println!(
+                    "{}",
+                    paint::good(tr("Every device works: none has a driver problem."))
+                );
+            }
+            for p in problems {
+                println!(
+                    "{}  {}  {}",
+                    paint::warn(format!("{:>3}", p.code)),
+                    paint::heading(&p.name),
+                    paint::muted(tr(p.meaning()))
                 );
             }
         }

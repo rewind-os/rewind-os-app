@@ -342,6 +342,12 @@ pub const TOOLS: &[ToolSpec] = &[
     )
     .only(WINDOWS),
     ToolSpec::new(
+        "drivers.problems",
+        "List devices with a driver problem, as Device Manager marks them",
+    )
+    .only(WINDOWS),
+    ToolSpec::new("drivers.device_manager", "Open Device Manager").only(WINDOWS),
+    ToolSpec::new(
         "drivers.clean",
         "Remove old driver packages; the newest of each driver and every one a device uses stay",
     )
@@ -533,6 +539,10 @@ pub enum Request {
     ComponentCleanup,
     #[serde(rename = "drivers.list")]
     DriversList,
+    #[serde(rename = "drivers.problems")]
+    DriverProblems,
+    #[serde(rename = "drivers.device_manager")]
+    DeviceManager,
     /// Published names (`oem12.inf`) as `drivers.list` gave them; empty means every old one.
     #[serde(rename = "drivers.clean")]
     DriversClean {
@@ -578,6 +588,7 @@ pub enum Response {
     VirtualDisks(vdisks::Report),
     Compacted(vdisks::Compacted),
     Drivers(drivers::Report),
+    DeviceProblems(Vec<drivers::DeviceProblem>),
     DriversRemoved(drivers::Removed),
     Kernels(kernels::Report),
     KernelsRemoved(kernels::Removed),
@@ -752,6 +763,11 @@ impl Engine {
             }
             Request::ComponentCleanup => maintenance::component_cleanup().map(Response::ToolOutput),
             Request::DriversList => drivers::list(task).map(Response::Drivers),
+            Request::DriverProblems => drivers::problems().map(Response::DeviceProblems),
+            Request::DeviceManager => {
+                drivers::open_device_manager()?;
+                Ok(Response::Done("Opened Device Manager"))
+            }
             Request::DriversClean { packages } => {
                 drivers::remove(&packages, task).map(Response::DriversRemoved)
             }
@@ -820,6 +836,8 @@ impl Request {
             Request::AnalyzeComponentStore => "maintenance.analyze_component_store",
             Request::ComponentCleanup => "maintenance.component_cleanup",
             Request::DriversList => "drivers.list",
+            Request::DriverProblems => "drivers.problems",
+            Request::DeviceManager => "drivers.device_manager",
             Request::DriversClean { .. } => "drivers.clean",
             Request::KernelsList => "kernels.list",
             Request::KernelsClean { .. } => "kernels.clean",

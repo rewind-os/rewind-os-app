@@ -174,6 +174,7 @@ rewind-os-cli clean run --defaults --yes     # the categories marked safe
 rewind-os-cli leftovers
 rewind-os-cli drivers list                   # Windows: old driver packages no device uses
 rewind-os-cli kernels list                   # Linux (APT): old kernels; the running one and the newest stay
+rewind-os-cli drivers problems               # Windows: devices with a driver problem
 rewind-os-cli startup list
 rewind-os-cli recommend
 rewind-os-cli tweaks list

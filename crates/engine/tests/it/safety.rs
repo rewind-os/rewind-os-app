@@ -303,3 +303,22 @@ fn windows_parts_outside_the_windows_folder_are_kept() {
         assert!(!refused_by_hand(&g, path), "{path} was refused");
     }
 }
+
+#[test]
+fn only_driver_packages_windows_added_can_reach_pnputil() {
+    use rewind_os_engine::safety::is_oem_driver_name;
+    for name in ["oem0.inf", "oem12.inf", "OEM123.INF"] {
+        assert!(is_oem_driver_name(name), "{name}");
+    }
+    for name in [
+        "oem.inf",
+        "oem12.inf /force",
+        "oem1.inf;del",
+        "nvlddmkm.inf",
+        "oem1234567.inf",
+        "../oem1.inf",
+        "",
+    ] {
+        assert!(!is_oem_driver_name(name), "{name}");
+    }
+}

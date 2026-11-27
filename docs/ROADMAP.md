@@ -39,6 +39,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R1.22 Old large files: files of 50 MB or more not changed in over a year, found during the scan, without the system's or programs' own files
 - [x] R1.23 Restore points: how many and what they take (CIM, in any language), and deleting all but the newest on each drive, as Disk Cleanup does, after asking
 - [x] R1.24 Empty folders: found during the scan and checked on the disk (links count as content), without hidden, system, program or project folders; to the recycle bin, each checked again first
+- [x] R1.25 Old driver packages: older versions of each driver in the driver store that no device uses, measured and removed with `pnputil` (never `/force`); the newest and every one in use stay
+- [ ] R1.26 Devices with a driver problem (the yellow mark of Device Manager) named on Home, without changing anything
 - [x] R1.14 What changed since the last scan of a folder: the folders that grew or shrank most, as deep as the change goes (summaries kept on this computer)
 
 ## R2 — Rewind OS on every system
@@ -64,6 +66,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.13 Linux: `.deb` and `.rpm` packages next to the tar.gz
 - [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)
 - [x] R2.22 Linux: signed apt, dnf and zypper repositories on GitHub Pages, updated by every release and installed from in clean containers first, so `apt`/`dnf`/`zypper install rewind-os` and system updates work
+- [ ] R2.23 Linux: old kernels in `/boot` removed with the package manager, always keeping the running one and the newest
 - [x] R2.14 Linux and macOS: administrator rights for one action at a time (pkexec / authorization dialog), never a root window
 
 ## R3 — Easier and lighter

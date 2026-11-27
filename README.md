@@ -89,7 +89,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |
 | Make Windows lighter | ✓ | — | — |
-| Maintenance | component store, hibernation, restore points | journal | — |
+| Maintenance | component store, hibernation, restore points, old driver packages | journal | — |
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.
 
@@ -172,6 +172,7 @@ rewind-os-cli dev find                       # build folders of your projects
 rewind-os-cli clean analyze
 rewind-os-cli clean run --defaults --yes     # the categories marked safe
 rewind-os-cli leftovers
+rewind-os-cli drivers list                   # Windows: old driver packages no device uses
 rewind-os-cli startup list
 rewind-os-cli recommend
 rewind-os-cli tweaks list

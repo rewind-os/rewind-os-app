@@ -24,18 +24,22 @@ pub enum Action {
     ComponentCleanup,
     RestoreList,
     RestoreClean,
+    DriversList,
+    DriversClean,
     HibernationOff,
     HibernationOn,
 }
 
 impl Action {
-    const ALL: [Action; 8] = [
+    const ALL: [Action; 10] = [
         Action::JournalUsage,
         Action::JournalVacuum,
         Action::ComponentStore,
         Action::ComponentCleanup,
         Action::RestoreList,
         Action::RestoreClean,
+        Action::DriversList,
+        Action::DriversClean,
         Action::HibernationOff,
         Action::HibernationOn,
     ];
@@ -48,6 +52,10 @@ impl Action {
             Action::ComponentCleanup => Request::ComponentCleanup,
             Action::RestoreList => Request::RestoreList,
             Action::RestoreClean => Request::RestoreClean,
+            Action::DriversList => Request::DriversList,
+            Action::DriversClean => Request::DriversClean {
+                packages: Vec::new(),
+            },
             Action::HibernationOff => Request::Hibernation { enabled: false },
             Action::HibernationOn => Request::Hibernation { enabled: true },
         }
@@ -59,6 +67,7 @@ impl Action {
             Action::JournalUsage | Action::JournalVacuum => tr("System journal"),
             Action::ComponentStore | Action::ComponentCleanup => tr("Windows component store"),
             Action::RestoreList | Action::RestoreClean => tr("Restore points"),
+            Action::DriversList | Action::DriversClean => tr("Old driver packages"),
             Action::HibernationOff | Action::HibernationOn => tr("Hibernation"),
         }
     }
@@ -71,6 +80,8 @@ impl Action {
             Action::ComponentCleanup => tr("Remove old components"),
             Action::RestoreList => tr("Check"),
             Action::RestoreClean => tr("Delete all but the newest"),
+            Action::DriversList => tr("Check"),
+            Action::DriversClean => tr("Remove old packages"),
             Action::HibernationOff => tr("Turn off"),
             Action::HibernationOn => tr("Turn on"),
         }
@@ -86,6 +97,9 @@ impl Action {
             ),
             Action::RestoreList | Action::RestoreClean => tr(
                 "Windows keeps restore points and other copies of your drives to undo changes. Deleting all but the newest frees their space; the newest one on each drive is always kept.",
+            ),
+            Action::DriversList | Action::DriversClean => tr(
+                "Every driver update leaves the previous version in the driver store. The newest of each driver and every one a device uses always stay.",
             ),
             Action::HibernationOff | Action::HibernationOn => tr(
                 "Turning hibernation off deletes hiberfil.sys, which is often as large as your memory. Fast startup also stops working.",
@@ -127,7 +141,17 @@ impl Action {
                 ),
                 tr("Delete"),
             ),
-            Action::JournalUsage | Action::ComponentStore | Action::RestoreList => return None,
+            Action::DriversClean => (
+                tr("Remove old driver packages?"),
+                tr(
+                    "The older versions of each driver that no device uses are removed from the driver store. The newest of each driver and every one in use stay. They cannot be put back here; Windows Update or the maker's installer brings a driver again if one is needed.",
+                ),
+                tr("Remove"),
+            ),
+            Action::JournalUsage
+            | Action::ComponentStore
+            | Action::RestoreList
+            | Action::DriversList => return None,
         })
     }
 
@@ -220,6 +244,22 @@ impl State {
             Ok(Response::ToolOutput(text)) => (text.lines().map(str::to_owned).collect(), false),
             Ok(Response::Done(message)) => (vec![tr(message).to_owned()], false),
             Ok(Response::RestorePoints(report)) => (restore_lines(&report), false),
+            Ok(Response::Drivers(report)) => (driver_lines(&report), false),
+            Ok(Response::DriversRemoved(done)) => {
+                let mut lines = vec![trf(
+                    "Removed {n} old driver packages, {size}.",
+                    &[
+                        ("n", &count(done.removed.len() as u64)),
+                        ("size", &bytes(done.bytes)),
+                    ],
+                )];
+                lines.extend(
+                    done.failed
+                        .iter()
+                        .map(|(name, why)| format!("{name}: {}", rewind_os_i18n::tr_text(why))),
+                );
+                (lines, !done.failed.is_empty())
+            }
             Ok(Response::RestoreCleaned(done)) => {
                 let mut lines = vec![trf(
                     "{count} restore points deleted; they took {before}, now {after}",
@@ -363,6 +403,39 @@ fn restore_lines(report: &rewind_os_engine::restore::Report) -> Vec<String> {
                 &[("drive", &storage.drive), ("max", &bytes(max))],
             ));
         }
+    }
+    lines
+}
+
+/// How many old driver packages there are, what they take, and the largest.
+fn driver_lines(report: &rewind_os_engine::drivers::Report) -> Vec<String> {
+    if report.old.is_empty() {
+        return vec![
+            tr("No old driver packages: each driver has only the version in use.").to_owned(),
+        ];
+    }
+    let mut lines = vec![trf(
+        "{n} old driver packages take {size}.",
+        &[
+            ("n", &count(report.old.len() as u64)),
+            ("size", &bytes(report.reclaimable())),
+        ],
+    )];
+    lines.extend(report.old.iter().take(8).map(|p| {
+        format!(
+            "{:>10}  {} {} {}  ({})",
+            bytes(p.bytes),
+            p.provider,
+            p.original,
+            p.version,
+            trf("newest: {version}", &[("version", &p.newest)])
+        )
+    }));
+    if report.old_in_use > 0 {
+        lines.push(trf(
+            "{n} older packages stay because a device uses them.",
+            &[("n", &count(report.old_in_use as u64))],
+        ));
     }
     lines
 }

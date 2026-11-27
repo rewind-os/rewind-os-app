@@ -94,7 +94,7 @@ administrador cuando una tarea lo necesita.
 | Programas instalados | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, a la Papelera) |
 | Restos de programas | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |
 | Aligerar Windows | ✓ | — | — |
-| Mantenimiento | almacén de componentes, hibernación, puntos de restauración | journal | — |
+| Mantenimiento | almacén de componentes, hibernación, puntos de restauración, paquetes de drivers antiguos | journal | — |
 
 Una herramienta que aún no está disponible lo dice, en la app y en la CLI; nunca finge
 funcionar.

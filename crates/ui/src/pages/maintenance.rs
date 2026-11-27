@@ -17,6 +17,7 @@ enum Action {
     HibernationOn,
     JournalVacuum,
     RestoreClean,
+    DriversClean,
 }
 
 fn available(id: &str) -> bool {
@@ -30,6 +31,8 @@ pub struct State {
     confirm: Option<Action>,
     /// The restore points, once checked.
     restore: Option<restore::Report>,
+    /// The old driver packages, once checked.
+    drivers: Option<rewind_os_engine::drivers::Report>,
 }
 
 impl State {
@@ -55,6 +58,31 @@ impl State {
                 _ => {}
             },
             Some(Ok(Response::RestorePoints(report))) => self.restore = Some(report),
+            Some(Ok(Response::Drivers(report))) => self.drivers = Some(report),
+            Some(Ok(Response::DriversRemoved(done))) => {
+                shared.info(trf(
+                    "Removed {n} old driver packages, {size}.",
+                    &[
+                        ("n", &count(done.removed.len() as u64)),
+                        ("size", &bytes(done.bytes)),
+                    ],
+                ));
+                if !done.failed.is_empty() {
+                    shared.error(trf(
+                        "Windows kept {n} driver packages.",
+                        &[("n", &count(done.failed.len() as u64))],
+                    ));
+                }
+                self.output = (!done.failed.is_empty()).then(|| {
+                    done.failed
+                        .iter()
+                        .map(|(name, why)| format!("{name}: {}", rewind_os_i18n::tr_text(why)))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                });
+                // Checked again, so the card shows what is left.
+                self.job = Some(Job::start(&ctx, &shared.engine, Request::DriversList));
+            }
             Some(Ok(Response::RestoreCleaned(done))) => {
                 shared.info(trf(
                     "{count} restore points deleted; they took {before}, now {after}",
@@ -151,6 +179,13 @@ impl State {
                 });
                 ui.add_space(t.gap);
             }
+            if available("drivers.list") {
+                card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    self.drivers_card(ui, &ctx, shared, ready);
+                });
+                ui.add_space(t.gap);
+            }
             card(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.label(RichText::new(tr("Hibernation")).strong().family(crate::theme::bold()));
@@ -214,6 +249,16 @@ impl State {
                     ),
                     tr("Delete"),
                     Request::RestoreClean,
+                ),
+                Action::DriversClean => (
+                    tr("Remove old driver packages?"),
+                    tr(
+                        "The older versions of each driver that no device uses are removed from the driver store. The newest of each driver and every one in use stay. They cannot be put back here; Windows Update or the maker's installer brings a driver again if one is needed.",
+                    ),
+                    tr("Remove"),
+                    Request::DriversClean {
+                        packages: Vec::new(),
+                    },
                 ),
                 Action::HibernationOn => (
                     tr("Turn hibernation on?"),
@@ -320,6 +365,92 @@ impl State {
                 button.on_disabled_hover_text(tr("Check first how many there are."));
             } else if button.clicked() {
                 self.confirm = Some(Action::RestoreClean);
+            }
+        });
+    }
+
+    /// Old driver packages: how many, what they take, and removing them.
+    fn drivers_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &egui::Context,
+        shared: &mut Shared,
+        ready: bool,
+    ) {
+        let t = theme::current(ctx);
+        ui.label(
+            RichText::new(tr("Old driver packages"))
+                .strong()
+                .family(crate::theme::bold()),
+        );
+        ui.label(
+            RichText::new(tr(
+                "Every driver update leaves the previous version in the driver store. The newest of each driver and every one a device uses always stay.",
+            ))
+            .color(t.text_muted),
+        );
+        let old = self.drivers.as_ref().map_or(0, |r| r.old.len());
+        if let Some(report) = &self.drivers {
+            ui.add_space(4.0);
+            if report.old.is_empty() {
+                ui.label(tr(
+                    "No old driver packages: each driver has only the version in use.",
+                ));
+            } else {
+                ui.label(
+                    RichText::new(trf(
+                        "{n} old driver packages take {size}.",
+                        &[
+                            ("n", &count(report.old.len() as u64)),
+                            ("size", &bytes(report.reclaimable())),
+                        ],
+                    ))
+                    .family(crate::theme::bold()),
+                );
+                for p in report.old.iter().take(5) {
+                    ui.label(
+                        RichText::new(format!(
+                            "{}  ·  {} {} {}  ({})",
+                            bytes(p.bytes),
+                            p.provider,
+                            p.original,
+                            p.version,
+                            trf("newest: {version}", &[("version", &p.newest)])
+                        ))
+                        .small()
+                        .color(t.text_muted),
+                    );
+                }
+            }
+            if report.old_in_use > 0 {
+                ui.label(
+                    RichText::new(trf(
+                        "{n} older packages stay because a device uses them.",
+                        &[("n", &count(report.old_in_use as u64))],
+                    ))
+                    .small()
+                    .color(t.text_muted),
+                );
+            }
+        }
+        ui.horizontal(|ui| {
+            // Reading needs no administrator rights.
+            if ui
+                .add_enabled(self.job.is_none(), egui::Button::new(tr("Check")))
+                .clicked()
+            {
+                self.job = Some(Job::start(ctx, &shared.engine, Request::DriversList));
+            }
+            let label = if old > 0 {
+                trf("Remove {count} old ones", &[("count", &count(old as u64))])
+            } else {
+                tr("Remove old packages").to_owned()
+            };
+            let button = widgets::primary_button(ui, &label, ready && old > 0);
+            if self.drivers.is_none() {
+                button.on_disabled_hover_text(tr("Check first how many there are."));
+            } else if button.clicked() {
+                self.confirm = Some(Action::DriversClean);
             }
         });
     }

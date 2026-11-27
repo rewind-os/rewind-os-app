@@ -88,4 +88,5 @@ by keys like k9s, through the same engine requests as the app and the CLI.
 
 - [x] R4.1 `rewind-os-cli tui`: Home (drives, memory, recommendations), disk scan (folders by size, into and out of them, largest files, stopped with a key) and cleanup (categories to pick, a confirmation, what was freed and kept); views switched with `1`–`3` or `:name`
 - [x] R4.2 Startup programs and installed programs, with their details and on/off
-- [ ] R4.3 The other pages (duplicates, leftovers, build folders, processes, maintenance)
+- [x] R4.3 Duplicates, program leftovers and build folders: picked one by one, moved to the recycle bin (or, for build folders, deleted) after a confirmation, never the last copy of a file
+- [ ] R4.4 Processes and maintenance

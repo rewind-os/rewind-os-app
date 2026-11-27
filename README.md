@@ -182,8 +182,10 @@ rewind-os-cli --json run '{"tool":"cleanup.analyze"}'
 reached over SSH: Home (drives, memory, what is worth doing), the disk scan (folders by size,
 opened with Enter and left with Backspace, `f` for the largest files) cleanup (Space picks
 a category, Enter asks before cleaning), startup programs (Space turns one off or on) and
-installed programs (`u` uninstalls, after asking). `/` filters a list. `1`–`5`, Tab or `:home`,
-`:disk`, `:cleanup`, `:startup`, `:programs` switch views, Esc stops what is running, `?` lists
+installed programs (`u` uninstalls, after asking), duplicate files, program leftovers and the
+build folders of your projects (Space picks, Enter asks before removing; one copy of each file
+always stays). `/` filters a list. `1`–`8`, Tab or a view's name after `:` (`:disk`,
+`:duplicates`…) switch views, Esc stops what is running, `?` lists
 the keys and `q` quits. Without a desktop, start it with `sudo` to uninstall Linux packages:
 the password is otherwise asked in a window.
 

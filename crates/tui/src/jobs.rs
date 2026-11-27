@@ -18,6 +18,12 @@ pub enum Purpose {
     StartupSet,
     Programs,
     Uninstall,
+    Duplicates,
+    DuplicatesTrash,
+    Leftovers,
+    LeftoversTrash,
+    BuildFolders,
+    BuildClean,
 }
 
 /// What a running request reports.

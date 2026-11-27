@@ -63,7 +63,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [ ] R2.21 macOS: sign with an Apple Developer ID and notarize, so the app opens without a confirmation (needs a paid Apple Developer account)
 - [x] R2.13 Linux: `.deb` and `.rpm` packages next to the tar.gz
 - [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)
-- [ ] R2.22 Linux: signed apt, dnf and zypper repositories on GitHub Pages, updated by every release and installed from in clean containers first, so `apt`/`dnf`/`zypper install rewind-os` and system updates work
+- [x] R2.22 Linux: signed apt, dnf and zypper repositories on GitHub Pages, updated by every release and installed from in clean containers first, so `apt`/`dnf`/`zypper install rewind-os` and system updates work
 - [x] R2.14 Linux and macOS: administrator rights for one action at a time (pkexec / authorization dialog), never a root window
 
 ## R3 — Easier and lighter
@@ -79,3 +79,4 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.9 A rail of groups (Home, Free up space, Programs, System) with only the current group's pages listed next to it; each group reopens the page last used in it
 - [x] R3.10 Recommendations on Home for virtual disks of WSL and Docker that compacting would shrink, and for restore points that take a lot of space (with administrator rights)
 - [x] R3.11 Colours in the CLI after the app's look (bold headings, sizes in the accent blue, yellow warnings, red errors), only in a terminal and never with NO_COLOR
+- [x] R3.12 CLI progress with the time taken; the first Ctrl+C stops a scan or cleanup and prints what it did so far, marked as stopped (exit code 130), the second quits

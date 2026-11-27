@@ -896,3 +896,4 @@ Login item (you)	Elemento de inicio de sesión (tú)
 Login items are not shown: macOS does not let Rewind OS control System Events. Allow it in System Settings › Privacy & Security › Automation.	No se muestran los elementos de inicio de sesión: macOS no deja a Rewind OS controlar System Events. Permítelo en Ajustes del Sistema › Privacidad y seguridad › Automatización.
 Login items are not shown: System Events did not answer.	No se muestran los elementos de inicio de sesión: System Events no respondió.
 The app of this login item is no longer there, so it cannot be put back.	La app de este elemento de inicio de sesión ya no está, así que no se puede volver a añadir.
+Stopping… press Ctrl+C again to quit at once.	Parando… pulsa Ctrl+C otra vez para salir ya.

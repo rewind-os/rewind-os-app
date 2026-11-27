@@ -6,7 +6,7 @@ mod paint;
 
 use anstream::{eprintln, println};
 use clap::{Parser, Subcommand};
-use rewind_os_engine::format::{bytes, count, local_date, signed_bytes};
+use rewind_os_engine::format::{bytes, count, duration_ms, local_date, signed_bytes};
 use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
 use rewind_os_i18n::{tr, trf};
 use std::io::IsTerminal;
@@ -340,6 +340,7 @@ fn main() -> ExitCode {
         }
     };
     let task = Arc::new(Task::new());
+    stop_on_ctrl_c(&task);
     let reporter = (!json && std::io::stderr().is_terminal()).then(|| spawn_reporter(&task));
     let result = Engine::new().run(request, &task);
     drop(reporter);
@@ -356,7 +357,12 @@ fn main() -> ExitCode {
             } else {
                 print_human(&response, top);
             }
-            ExitCode::SUCCESS
+            if task.is_cancelled() {
+                // Stopped with Ctrl+C: what was printed is incomplete.
+                ExitCode::from(130)
+            } else {
+                ExitCode::SUCCESS
+            }
         }
         Err(err) => {
             let text = match err.message() {
@@ -629,7 +635,24 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
     }))
 }
 
-/// Prints progress to stderr until dropped.
+/// The first Ctrl+C asks the running request to stop: a scan then reports what it found so
+/// far, marked as stopped, and a cleanup what it removed. The second one quits at once. Without
+/// a handler Ctrl+C quits as usual.
+fn stop_on_ctrl_c(task: &Arc<Task>) {
+    let task = Arc::clone(task);
+    let _ = ctrlc::set_handler(move || {
+        if task.is_cancelled() {
+            std::process::exit(130);
+        }
+        task.cancel();
+        eprintln!(
+            "\r\x1b[2K{}",
+            paint::warn(tr("Stopping… press Ctrl+C again to quit at once."))
+        );
+    });
+}
+
+/// Prints progress to stderr until dropped: the stage, what it counted and how long it took.
 struct Reporter {
     done: Arc<std::sync::atomic::AtomicBool>,
     handle: Option<std::thread::JoinHandle<()>>,
@@ -651,14 +674,17 @@ fn spawn_reporter(task: &Arc<Task>) -> Reporter {
         let task = Arc::clone(task);
         let done = Arc::clone(&done);
         std::thread::spawn(move || {
+            let started = std::time::Instant::now();
             while !done.load(std::sync::atomic::Ordering::Relaxed) {
                 let p = task.snapshot();
                 if !p.stage.is_empty() {
+                    let elapsed = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
                     eprint!(
-                        "\r\x1b[2K{} · {} · {}",
-                        tr(p.stage),
+                        "\r\x1b[2K{} · {} · {} · {}",
+                        paint::heading(tr(p.stage)),
                         trf("{n} items", &[("n", &count(p.items))]),
-                        bytes(p.bytes)
+                        paint::size(bytes(p.bytes)),
+                        paint::muted(duration_ms(elapsed - elapsed % 1000)),
                     );
                 }
                 std::thread::sleep(Duration::from_millis(250));
@@ -1201,7 +1227,7 @@ fn print_human(response: &Response, top: usize) {
             ),
         },
         Response::Boot(report) => {
-            use rewind_os_engine::format::{duration_ms, local_date};
+            use rewind_os_engine::format::local_date;
             match report.boots.first() {
                 Some(last) => {
                     let mut line = trf(

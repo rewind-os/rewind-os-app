@@ -11,6 +11,7 @@ rust-version = "1.90"
 publish = false
 
 [workspace.dependencies]
+ctrlc = "3"
 # internal (layers, lowest first: i18n + platform = L0, engine = L1, ui = L2)
 rewind-os-i18n = { path = "crates/i18n" }
 rewind-os-platform = { path = "crates/platform" }

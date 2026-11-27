@@ -1,6 +1,7 @@
 <!--
   The Rewind OS installer (WiX 5): per machine, into Program Files\Rewind OS, with a Start menu
-  shortcut. A newer version replaces the installed one; an older one refuses to install over it.
+  shortcut and the folder on the system PATH for rewind-os-cli. A newer version replaces the
+  installed one; an older one refuses to install over it.
   Built by packaging/windows/package.ps1:
     wix build -arch <x64|arm64> -d Version=<1.2.3> -d BinDir=<folder> -d DocDir=<folder> ...
 -->
@@ -36,6 +37,15 @@
         </Component>
         <Component Id="Cli">
           <File Id="RewindOsCliExe" Source="$(BinDir)\rewind-os-cli.exe" KeyPath="yes" />
+          <!-- The folder goes at the end of the system PATH, so `rewind-os-cli` works in any new
+               terminal; uninstalling takes it out again. -->
+          <Environment Id="CliOnPath"
+                       Name="PATH"
+                       Value="[INSTALLFOLDER]"
+                       Action="set"
+                       Part="last"
+                       System="yes"
+                       Permanent="no" />
         </Component>
         <!-- One file per component: text files have no version, so each needs its own key path. -->
         <Component Id="Readme"><File Id="Readme" Source="$(DocDir)\README.md" KeyPath="yes" /></Component>

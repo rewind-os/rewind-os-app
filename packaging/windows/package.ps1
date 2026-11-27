@@ -6,7 +6,7 @@
   Produces, in $env:DIST (default: dist/release):
     rewind-os-<version>-windows-<arch>-portable.zip   rewind-os.exe, rewind-os-cli.exe, README and licences
     rewind-os-<version>-windows-<arch>-portable.zip.sha256
-    rewind-os-<version>-windows-<arch>.msi              installer (Program Files, Start menu)
+    rewind-os-<version>-windows-<arch>.msi              installer (Program Files, Start menu, CLI on the PATH)
     rewind-os-<version>-windows-<arch>.msi.sha256
 
   The installer is built with WiX 5 (packaging/windows/rewind-os.wxs), installed on the fly as a

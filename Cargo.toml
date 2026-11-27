@@ -12,11 +12,12 @@ publish = false
 
 [workspace.dependencies]
 ctrlc = "3"
-# internal (layers, lowest first: i18n + platform = L0, engine = L1, ui = L2)
+# internal (layers, lowest first: i18n + platform = L0, engine = L1, ui + tui = L2)
 rewind-os-i18n = { path = "crates/i18n" }
 rewind-os-platform = { path = "crates/platform" }
 rewind-os-engine = { path = "crates/engine" }
 rewind-os-ui = { path = "crates/ui" }
+rewind-os-tui = { path = "crates/tui" }
 
 # external
 thiserror = "2"
@@ -39,6 +40,8 @@ anstyle = "1"
 eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "accesskit", "wayland", "x11"] }
 egui = "0.37"
 rfd = "0.18"
+# The terminal interface; brings crossterm.
+ratatui = "0.30"
 tempfile = "3"
 flate2 = "1"
 winresource = "0.1"

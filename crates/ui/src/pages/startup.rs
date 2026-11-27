@@ -13,6 +13,8 @@ use rewind_os_i18n::{tr, trf};
 pub struct State {
     job: Option<Job>,
     entries: Option<Vec<StartupEntry>>,
+    /// Kinds of entries the system did not let the app read, with why (English).
+    not_shown: Vec<&'static str>,
     /// The id of the entry whose details are open.
     selected: Option<String>,
     started: bool,
@@ -118,7 +120,9 @@ impl State {
             self.refresh(&ctx, shared);
         }
         match jobs::finished(&mut self.job, &ctx) {
-            Some(Ok(Response::Startup(list))) => {
+            Some(Ok(Response::Startup(report))) => {
+                let list = report.entries;
+                self.not_shown = report.not_shown;
                 shared.icons.request(
                     &ctx,
                     list.iter()
@@ -161,6 +165,10 @@ impl State {
                 self.set(&ctx, shared, id, false);
             }
             return;
+        }
+        for why in &self.not_shown {
+            ui.label(RichText::new(tr(why)).color(t.warn));
+            ui.add_space(t.gap * 0.5);
         }
         if entries.is_empty() {
             ui.label(tr("No startup programs found."));

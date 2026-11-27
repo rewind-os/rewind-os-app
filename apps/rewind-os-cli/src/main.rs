@@ -1511,10 +1511,13 @@ fn print_human(response: &Response, top: usize) {
                 None => {}
             }
         }
-        Response::Startup(entries) => {
-            for e in entries {
+        Response::Startup(report) => {
+            for e in &report.entries {
                 let state = if e.enabled { tr("On") } else { tr("Off") };
                 println!("{:<4} {:<40} {}", state, e.id, e.command);
+            }
+            for why in &report.not_shown {
+                eprintln!("{}", paint::warn(tr(why)));
             }
         }
         Response::ToolOutput(text) => println!("{text}"),

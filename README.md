@@ -93,6 +93,10 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 
 A tool that is not available yet says so, in the app and in the CLI; it never pretends to work.
 
+The window draws its own title bar in the app's colours (on macOS the system keeps its three
+buttons). If a desktop handles a window without the system's bar badly, start the app with
+`REWIND_OS_NATIVE_TITLE_BAR=1` to keep the system's.
+
 ## Download
 
 Ready-made builds are on the [releases page](../../releases); check them against

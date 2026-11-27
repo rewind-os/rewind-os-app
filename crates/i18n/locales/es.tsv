@@ -959,3 +959,6 @@ Processes	Procesos
 Run	Ejecutar
 This needs administrator rights. Start Rewind OS as administrator (with sudo on Linux).	Esto necesita permisos de administrador. Abre Rewind OS como administrador (con sudo en Linux).
 This system has no maintenance tools Rewind OS can run yet.	Este sistema aún no tiene herramientas de mantenimiento que Rewind OS pueda ejecutar.
+Minimize	Minimizar
+Maximize	Maximizar
+Restore	Restaurar

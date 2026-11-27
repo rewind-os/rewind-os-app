@@ -80,6 +80,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.10 Recommendations on Home for virtual disks of WSL and Docker that compacting would shrink, and for restore points that take a lot of space (with administrator rights)
 - [x] R3.11 Colours in the CLI after the app's look (bold headings, sizes in the accent blue, yellow warnings, red errors), only in a terminal and never with NO_COLOR
 - [x] R3.12 CLI progress with the time taken; the first Ctrl+C stops a scan or cleanup and prints what it did so far, marked as stopped (exit code 130), the second quits
+- [x] R3.13 The window's own title bar in the app's colours (Windows and Linux: drag, double click to maximize, minimize, maximize and close, resizing from the edges; macOS keeps its own buttons); `REWIND_OS_NATIVE_TITLE_BAR=1` keeps the system's
 
 ## R4 — A terminal interface
 

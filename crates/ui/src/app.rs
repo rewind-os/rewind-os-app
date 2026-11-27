@@ -584,6 +584,14 @@ impl eframe::App for App {
         self.poll_relaunch(&ctx);
         self.overview.poll(&ctx, &mut self.shared);
 
+        if crate::title_bar::shown() {
+            egui::Panel::top("title_bar")
+                .exact_size(crate::title_bar::HEIGHT)
+                .resizable(false)
+                .show_separator_line(false)
+                .frame(egui::Frame::new().fill(t.background))
+                .show(ui, |ui| crate::title_bar::show(ui, tr(self.page.title())));
+        }
         if self.shared.status.is_some() {
             egui::Panel::bottom("status_bar")
                 .frame(
@@ -649,6 +657,7 @@ impl eframe::App for App {
         if let Some(last) = self.last.get_mut(Group::of(self.page).index()) {
             *last = Some(self.page);
         }
+        crate::title_bar::resize_edges(&ctx);
         let busy = self.busy();
         self.devtools.frame(&ctx, busy);
     }

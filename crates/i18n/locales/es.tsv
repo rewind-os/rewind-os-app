@@ -907,7 +907,6 @@ Disk	Disco
 Folder to scan	Carpeta que analizar
 Folders by size	Carpetas por tamaño
 Help	Ayuda
-Home, disk, cleanup	Inicio, disco, limpieza
 Keys	Teclas
 Largest files in the scan	Archivos más grandes del análisis
 Looking for what is worth doing…	Buscando lo que merece la pena hacer…
@@ -919,7 +918,6 @@ On for {hours} h	Encendido desde hace {hours} h
 Open / back	Abrir / volver
 Open a view by name	Abrir una vista por su nombre
 Pick	Elegir
-Pick a category	Elegir una categoría
 Pick at least one category with Space.	Elige al menos una categoría con Espacio.
 Press Enter to measure every folder in it, or e to choose another folder.	Pulsa Intro para medir todas sus carpetas, o e para elegir otra carpeta.
 Quit	Salir
@@ -931,3 +929,17 @@ The terminal interface needs a terminal.	La interfaz de terminal necesita una te
 Views	Vistas
 incomplete	incompleta
 {used} of {total} memory in use	{used} de {total} de memoria en uso
+Esc clears	Esc borra
+Filter	Filtrar
+Filter the list	Filtrar la lista
+Home, disk, cleanup, startup, programs	Inicio, disco, limpieza, arranque, programas
+Pick, or turn on and off	Elegir, o activar y desactivar
+Reading the installed programs…	Leyendo los programas instalados…
+Reading what starts…	Leyendo lo que arranca…
+Startup	Arranque
+The password is asked in a window of the desktop. Without one, or over SSH, start Rewind OS with sudo.	La contraseña se pide en una ventana del escritorio. Sin escritorio, o por SSH, abre Rewind OS con sudo.
+Turn on or off	Activar o desactivar
+Uninstall	Desinstalar
+Uninstalling is not available on this system yet.	Desinstalar aún no está disponible en este sistema.
+{n} start with the system	{n} arrancan con el sistema
+{n} turned off	{n} desactivados

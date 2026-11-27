@@ -170,9 +170,12 @@ Ctrl+C lo para y muestra lo hecho hasta entonces, marcado como parado (código d
 `rewind-os-cli tui` abre vistas a pantalla completa en la terminal, para equipos sin escritorio
 o a los que entras por SSH: Inicio (discos, memoria, lo que merece la pena hacer), el análisis
 del disco (carpetas por tamaño, Intro para entrar y Retroceso para volver, `f` para los archivos
-más grandes) y la limpieza (Espacio elige una categoría, Intro pregunta antes de limpiar). `1`–`3`,
-Tab o `:inicio`, `:disco`, `:limpieza` cambian de vista, Esc para lo que está en marcha, `?` muestra
-las teclas y `q` sale.
+más grandes), la limpieza (Espacio elige una categoría, Intro pregunta antes de limpiar), el arranque
+(Espacio desactiva o activa un programa) y los programas instalados (`u` desinstala, tras
+preguntar). `/` filtra una lista. `1`–`5`, Tab o `:inicio`, `:disco`, `:limpieza`, `:arranque`,
+`:programas` cambian de vista, Esc para lo que está en marcha, `?` muestra las teclas y `q` sale.
+Sin escritorio, ábrela con `sudo` para desinstalar paquetes de Linux: si no, la contraseña se pide
+en una ventana.
 
 `rewind-os-cli mcp` ofrece las mismas herramientas a un asistente con el Model Context Protocol.
 Por defecto solo las que no cambian nada; `--automation-read-root`, `--automation-write-root` y

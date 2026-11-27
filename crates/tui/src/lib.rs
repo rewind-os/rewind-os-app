@@ -6,7 +6,10 @@ pub mod app;
 pub mod cleanup;
 pub mod home;
 pub mod jobs;
+mod list;
+pub mod programs;
 pub mod scan;
+pub mod startup;
 mod style;
 
 pub use app::{App, Effect, View};

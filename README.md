@@ -180,9 +180,12 @@ rewind-os-cli --json run '{"tool":"cleanup.analyze"}'
 
 `rewind-os-cli tui` opens full-screen views in the terminal, for computers without a desktop or
 reached over SSH: Home (drives, memory, what is worth doing), the disk scan (folders by size,
-opened with Enter and left with Backspace, `f` for the largest files) and cleanup (Space picks
-a category, Enter asks before cleaning). `1`–`3`, Tab or `:home`, `:disk`, `:cleanup` switch
-views, Esc stops what is running, `?` lists the keys and `q` quits.
+opened with Enter and left with Backspace, `f` for the largest files) cleanup (Space picks
+a category, Enter asks before cleaning), startup programs (Space turns one off or on) and
+installed programs (`u` uninstalls, after asking). `/` filters a list. `1`–`5`, Tab or `:home`,
+`:disk`, `:cleanup`, `:startup`, `:programs` switch views, Esc stops what is running, `?` lists
+the keys and `q` quits. Without a desktop, start it with `sudo` to uninstall Linux packages:
+the password is otherwise asked in a window.
 
 ```sh
 rewind-os-cli tui              # the disk view scans your home folder

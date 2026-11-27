@@ -178,3 +178,103 @@ fn a_view_opens_by_the_start_of_its_name_and_an_unknown_name_changes_nothing() {
     assert!(press(&mut app, &typed).is_empty());
     assert_eq!(app.view, View::Scan);
 }
+
+fn entry(name: &str, enabled: bool, essential: bool) -> rewind_os_engine::startup::StartupEntry {
+    rewind_os_engine::startup::StartupEntry {
+        id: format!("xdg|{name}"),
+        name: name.to_owned(),
+        command: format!("/usr/bin/{name}"),
+        source: rewind_os_engine::startup::Source::UserAutostart,
+        enabled,
+        needs_admin: false,
+        essential,
+        when: None,
+    }
+}
+
+fn startup_view(entries: Vec<rewind_os_engine::startup::StartupEntry>) -> App {
+    let mut app = App::new(PathBuf::from("."));
+    let opened = press(&mut app, &[KeyCode::Char('4')]);
+    assert!(runs(&opened, Purpose::Startup).is_some());
+    let report = rewind_os_engine::startup::Report {
+        entries,
+        not_shown: Vec::new(),
+    };
+    app.finished(Purpose::Startup, Ok(Response::Startup(report)));
+    app
+}
+
+#[test]
+fn space_turns_an_entry_the_other_way_and_never_turns_off_an_essential_one() {
+    let mut app = startup_view(vec![
+        entry("keyring", true, true),
+        entry("updater", false, false),
+    ]);
+    assert!(press(&mut app, &[KeyCode::Char(' ')]).is_empty());
+    assert!(app.startup.note.as_ref().is_some_and(|(_, error)| *error));
+    let effects = press(&mut app, &[KeyCode::Down, KeyCode::Char(' ')]);
+    match runs(&effects, Purpose::StartupSet) {
+        Some(Request::StartupSet { id, enabled }) => {
+            assert!(id.ends_with("updater"));
+            assert!(*enabled);
+        }
+        other => panic!("expected a change, got {other:?}"),
+    }
+}
+
+#[test]
+fn the_filter_takes_the_keys_it_is_typed_with() {
+    let mut app = startup_view(vec![
+        entry("alpha", true, false),
+        entry("quick", true, false),
+    ]);
+    let effects = press(
+        &mut app,
+        &[KeyCode::Char('/'), KeyCode::Char('q'), KeyCode::Char(' ')],
+    );
+    assert!(effects.is_empty());
+    assert!(!app.quit);
+    press(&mut app, &[KeyCode::Backspace, KeyCode::Enter]);
+    let shown: Vec<&str> = app
+        .startup
+        .shown()
+        .iter()
+        .map(|e| e.name.as_str())
+        .collect();
+    assert_eq!(shown, ["quick"]);
+}
+
+#[test]
+fn uninstalling_asks_first_and_names_the_program_under_the_cursor() {
+    let program = |name: &str| rewind_os_engine::programs::InstalledProgram {
+        key: format!("apt|{name}"),
+        name: name.to_owned(),
+        publisher: None,
+        version: None,
+        install_location: None,
+        display_icon: None,
+        uninstall_command: None,
+        estimated_bytes: None,
+        installed_on: None,
+        scope: rewind_os_engine::programs::Scope::Machine,
+        manager: Some("APT"),
+    };
+    let mut app = App::new(PathBuf::from("."));
+    press(&mut app, &[KeyCode::Char('5')]);
+    app.finished(
+        Purpose::Programs,
+        Ok(Response::Programs(vec![program("curl"), program("vim")])),
+    );
+    let available = rewind_os_engine::tool("programs.uninstall").is_some_and(|t| t.available());
+    assert!(press(&mut app, &[KeyCode::Down, KeyCode::Char('u')]).is_empty());
+    if !available {
+        assert!(app.programs.confirming.is_none());
+        return;
+    }
+    assert!(press(&mut app, &[KeyCode::Char('n')]).is_empty());
+    let effects = press(&mut app, &[KeyCode::Char('u'), KeyCode::Char('y')]);
+    match runs(&effects, Purpose::Uninstall) {
+        Some(Request::ProgramUninstall { key }) => assert_eq!(key, "apt|vim"),
+        other => panic!("expected an uninstall, got {other:?}"),
+    }
+}

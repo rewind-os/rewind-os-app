@@ -14,6 +14,10 @@ pub enum Purpose {
     Scan,
     Analyze,
     Clean,
+    Startup,
+    StartupSet,
+    Programs,
+    Uninstall,
 }
 
 /// What a running request reports.

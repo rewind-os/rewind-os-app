@@ -3,7 +3,7 @@
 //! `lib.rs` runs them, so this is tested without a terminal or the engine.
 
 use crate::jobs::{Jobs, Purpose};
-use crate::{cleanup, home, scan, style};
+use crate::{cleanup, home, programs, scan, startup, style};
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::{Constraint, Flex, Layout};
@@ -25,16 +25,26 @@ pub enum View {
     Home,
     Scan,
     Cleanup,
+    Startup,
+    Programs,
 }
 
 impl View {
-    pub const ALL: [View; 3] = [View::Home, View::Scan, View::Cleanup];
+    pub const ALL: [View; 5] = [
+        View::Home,
+        View::Scan,
+        View::Cleanup,
+        View::Startup,
+        View::Programs,
+    ];
 
     fn title(self) -> &'static str {
         match self {
             View::Home => tr("Home"),
             View::Scan => tr("Disk"),
             View::Cleanup => tr("Cleanup"),
+            View::Startup => tr("Startup"),
+            View::Programs => tr("Programs"),
         }
     }
 
@@ -48,6 +58,8 @@ impl View {
             View::Home => &["home"],
             View::Scan => &["scan", "disk"],
             View::Cleanup => &["cleanup", "clean"],
+            View::Startup => &["startup"],
+            View::Programs => &["programs", "apps", "uninstall"],
         };
         names.iter().any(|n| n.starts_with(&typed))
             || self.title().to_lowercase().starts_with(&typed)
@@ -67,6 +79,8 @@ pub struct App {
     pub home: home::State,
     pub scan: scan::State,
     pub cleanup: cleanup::State,
+    pub startup: startup::State,
+    pub programs: programs::State,
     mode: Mode,
     /// A line for the bottom bar, and whether it is an error.
     message: Option<(String, bool)>,
@@ -80,6 +94,8 @@ impl App {
             home: home::State::default(),
             scan: scan::State::new(scan_root),
             cleanup: cleanup::State::default(),
+            startup: startup::State::default(),
+            programs: programs::State::default(),
             mode: Mode::Normal,
             message: None,
             quit: false,
@@ -95,6 +111,8 @@ impl App {
         self.view = view;
         match view {
             View::Cleanup => self.cleanup.open(),
+            View::Startup => self.startup.open(),
+            View::Programs => self.programs.open(),
             View::Home | View::Scan => Vec::new(),
         }
     }
@@ -103,6 +121,8 @@ impl App {
         match self.view {
             View::Scan => self.scan.captures_keys(),
             View::Cleanup => self.cleanup.captures_keys(),
+            View::Startup => self.startup.captures_keys(),
+            View::Programs => self.programs.captures_keys(),
             View::Home => false,
         }
     }
@@ -158,7 +178,7 @@ impl App {
                     self.mode = Mode::Help;
                     return Vec::new();
                 }
-                KeyCode::Char(c @ '1'..='3') => {
+                KeyCode::Char(c @ '1'..='5') => {
                     let index = (c as usize).saturating_sub('1' as usize);
                     if let Some(&view) = View::ALL.get(index) {
                         return self.show(view);
@@ -173,6 +193,8 @@ impl App {
             View::Home => self.home.key(key),
             View::Scan => self.scan.key(key, jobs),
             View::Cleanup => self.cleanup.key(key, jobs),
+            View::Startup => self.startup.key(key, jobs),
+            View::Programs => self.programs.key(key, jobs),
         }
     }
 
@@ -202,6 +224,8 @@ impl App {
                 Vec::new()
             }
             Purpose::Analyze | Purpose::Clean => self.cleanup.finished(purpose, outcome),
+            Purpose::Startup | Purpose::StartupSet => self.startup.finished(purpose, outcome),
+            Purpose::Programs | Purpose::Uninstall => self.programs.finished(purpose, outcome),
         }
     }
 
@@ -235,6 +259,8 @@ impl App {
             View::Home => self.home.draw(frame, body, jobs),
             View::Scan => self.scan.draw(frame, body, jobs),
             View::Cleanup => self.cleanup.draw(frame, body, jobs),
+            View::Startup => self.startup.draw(frame, body, jobs),
+            View::Programs => self.programs.draw(frame, body, jobs),
         }
 
         let line = match (&self.mode, &self.message) {
@@ -255,9 +281,11 @@ impl App {
                     View::Home => self.home.hints(),
                     View::Scan => self.scan.hints(jobs),
                     View::Cleanup => self.cleanup.hints(jobs),
+                    View::Startup => self.startup.hints(),
+                    View::Programs => self.programs.hints(),
                 });
                 if !self.captured() {
-                    hints.push(("1-3", tr("Views")));
+                    hints.push(("1-5", tr("Views")));
                 }
                 let mut spans = Vec::new();
                 for (key, what) in hints {
@@ -271,13 +299,15 @@ impl App {
 
         if self.mode == Mode::Help {
             let rows = [
-                ("1  2  3", tr("Home, disk, cleanup")),
+                ("1 … 5", tr("Home, disk, cleanup, startup, programs")),
                 ("Tab", tr("Next view")),
-                (":home  :disk  :cleanup", tr("Open a view by name")),
+                (":disk  :startup …", tr("Open a view by name")),
+                ("/", tr("Filter the list")),
                 ("↑ ↓  j k", tr("Move")),
                 ("Enter  →  l", tr("Open")),
                 ("Backspace  ←  h", tr("Back")),
-                ("Space", tr("Pick a category")),
+                ("Space", tr("Pick, or turn on and off")),
+                ("u", tr("Uninstall…")),
                 ("Esc", tr("Stop what is running, or close")),
                 ("q  Ctrl+C", tr("Quit")),
             ];
@@ -285,7 +315,7 @@ impl App {
                 .iter()
                 .map(|(key, what)| {
                     Line::from(vec![
-                        Span::styled(format!("{key:<24}"), style::size()),
+                        Span::styled(format!("{key:<20}"), style::size()),
                         Span::raw(*what),
                     ])
                 })
@@ -293,7 +323,7 @@ impl App {
             let [middle] = Layout::vertical([Constraint::Length(rows.len() as u16 + 2)])
                 .flex(Flex::Center)
                 .areas(body);
-            let [dialog] = Layout::horizontal([Constraint::Max(64)])
+            let [dialog] = Layout::horizontal([Constraint::Max(76)])
                 .flex(Flex::Center)
                 .areas(middle);
             frame.render_widget(Clear, dialog);

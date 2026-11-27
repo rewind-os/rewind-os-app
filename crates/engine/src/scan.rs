@@ -87,6 +87,9 @@ pub struct ScanTree {
     /// Size of the extra names of hard-linked files, counted once. The folder that holds the
     /// first name found gets the size.
     pub hard_linked_bytes: u64,
+    /// Mounts inside the scan that show again files counted elsewhere in it (a bind mount; on
+    /// WSL `/mnt/wslg/distro` is `/` again), with where they are counted. Not entered.
+    pub repeated_mounts: Vec<(PathBuf, PathBuf)>,
     /// Measured from the volume's master file table (NTFS, with administrator rights) instead
     /// of folder by folder.
     pub from_file_table: bool,
@@ -173,6 +176,7 @@ pub fn serialize_summary<S: Serializer>(
         files: u64,
         dirs: usize,
         unreadable_dirs: u64,
+        repeated_mounts: &'a [(PathBuf, PathBuf)],
         cancelled: bool,
         elapsed_ms: u64,
         largest_folders: Vec<Child>,
@@ -190,6 +194,7 @@ pub fn serialize_summary<S: Serializer>(
         files: root.map(|r| r.files).unwrap_or(0),
         dirs: tree.dir_count(),
         unreadable_dirs: tree.unreadable_dirs,
+        repeated_mounts: &tree.repeated_mounts,
         cancelled: tree.cancelled,
         elapsed_ms: tree.elapsed_ms,
         largest_folders: tree
@@ -294,12 +299,19 @@ struct Context<'a> {
     /// Hard-linked files already counted.
     linked: Mutex<HashSet<(u64, u64)>>,
     linked_bytes: AtomicU64,
-    /// Mount points of virtual file systems (`/proc`, `/sys`…), never entered.
+    /// Mount points of virtual file systems (`/proc`, `/sys`…) and of repeated mounts, never
+    /// entered.
     skip: HashSet<PathBuf>,
+    repeated: Vec<(PathBuf, PathBuf)>,
 }
 
 impl<'a> Context<'a> {
-    fn new(task: &'a Task) -> Self {
+    fn new(task: &'a Task, root: &Path) -> Self {
+        let repeated = rewind_os_platform::files::repeated_mounts(root);
+        let skip = rewind_os_platform::files::virtual_mounts()
+            .into_iter()
+            .chain(repeated.iter().map(|(point, _)| point.clone()))
+            .collect();
         Context {
             task,
             top: TopFiles {
@@ -317,9 +329,8 @@ impl<'a> Context<'a> {
             unreadable: AtomicU64::new(0),
             linked: Mutex::new(HashSet::new()),
             linked_bytes: AtomicU64::new(0),
-            skip: rewind_os_platform::files::virtual_mounts()
-                .into_iter()
-                .collect(),
+            skip,
+            repeated,
         }
     }
 
@@ -409,6 +420,7 @@ impl<'a> Context<'a> {
             elapsed_ms: u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX),
             cancelled: self.task.is_cancelled(),
             hard_linked_bytes: self.linked_bytes.into_inner(),
+            repeated_mounts: self.repeated,
             from_file_table,
             history: None,
         }
@@ -482,7 +494,7 @@ pub fn scan(root: &Path, task: &Task) -> Result<ScanTree> {
     }
     task.set_stage("Scanning");
     let started = Instant::now();
-    let ctx = Context::new(task);
+    let ctx = Context::new(task, root);
     let raw = with_deep_stacks(|| scan_dir(root, root.display().to_string().into(), &ctx));
     Ok(ctx.finish(raw, root, started, false))
 }
@@ -575,7 +587,7 @@ fn from_table(
         return Err(EngineError::NotFound(root.display().to_string()));
     }
 
-    let ctx = Context::new(task);
+    let ctx = Context::new(task, root);
     ctx.unreadable.store(lost.len() as u64, Ordering::Relaxed);
     let tables = Tables {
         entries,
@@ -715,7 +727,8 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
         // `is_dir` and `is_file` are both false for symbolic links and junctions: skipped.
         if kind.is_dir() {
             let child = entry.path();
-            // Files the kernel makes up use no disk space (`/proc/kcore` says 128 TB).
+            // Files the kernel makes up use no disk space (`/proc/kcore` says 128 TB), and a
+            // repeated mount's files are counted where they are first shown.
             if ctx.skip.contains(&child) {
                 continue;
             }

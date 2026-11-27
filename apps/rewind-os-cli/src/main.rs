@@ -813,6 +813,18 @@ fn print_human(response: &Response, top: usize) {
                     )
                 );
             }
+            for (point, original) in &tree.repeated_mounts {
+                println!(
+                    "{}",
+                    trf(
+                        "{folder} shows {original} again; its files were counted there.",
+                        &[
+                            ("folder", &point.display().to_string()),
+                            ("original", &original.display().to_string()),
+                        ]
+                    )
+                );
+            }
             match &tree.history {
                 Some(rewind_os_engine::history::Comparison::Changes {
                     since,

@@ -291,7 +291,7 @@ impl State {
         .row_highlight_style(style::selected())
         .block(Block::bordered().title(Span::styled(tr("Maintenance"), style::heading())));
         let mut state = TableState::default().with_selected(Some(self.cursor));
-        frame.render_stateful_widget(table, list_area, &mut state);
+        list::render(frame, table, list_area, &mut state, 0);
 
         if let Some(a) = actions.get(self.cursor) {
             frame.render_widget(

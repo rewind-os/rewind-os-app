@@ -192,7 +192,9 @@ always stays), running programs (`x` closes one, `F` forces it, after asking) an
 (the system's own tools). `/` filters a list. `1`–`9` and `0`, Tab or a view's name after `:`
 (`:disk`, `:processes`…) switch views, Esc stops what is running, `?` lists
 the keys and `q` quits. Without a desktop, start it with `sudo` to uninstall Linux packages:
-the password is otherwise asked in a window.
+the password is otherwise asked in a window. The mouse works too: click a tab or a row, scroll
+with the wheel, double-click a folder to open it (hold Shift to select text). Running programs
+are measured again every few seconds while their view is open.
 
 ```sh
 rewind-os-cli tui              # the disk view scans your home folder

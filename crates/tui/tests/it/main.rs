@@ -489,3 +489,108 @@ fn a_maintenance_action_that_changes_the_system_asks_first_and_needs_its_rights(
     let effects = press(&mut app, &[KeyCode::Enter, KeyCode::Char('y')]);
     assert!(runs(&effects, Purpose::Maintenance).is_some());
 }
+
+fn click(column: u16, row: u16) -> ratatui::crossterm::event::MouseEvent {
+    use ratatui::crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+    MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column,
+        row,
+        modifiers: KeyModifiers::NONE,
+    }
+}
+
+/// Draws the app as a 110 × 32 terminal would show it, and returns its lines as cells.
+fn draw(app: &App, jobs: &Jobs) -> std::io::Result<Vec<Vec<String>>> {
+    let backend = ratatui::backend::TestBackend::new(110, 32);
+    let mut terminal = ratatui::Terminal::new(backend).map_err(std::io::Error::other)?;
+    terminal
+        .draw(|frame| app.draw(frame, jobs))
+        .map_err(std::io::Error::other)?;
+    let buffer = terminal.backend().buffer();
+    Ok((0..buffer.area.height)
+        .map(|y| {
+            (0..buffer.area.width)
+                .map(|x| buffer[(x, y)].symbol().to_owned())
+                .collect()
+        })
+        .collect())
+}
+
+/// The line and column where `text` starts on the screen.
+fn find(lines: &[Vec<String>], text: &str) -> Option<(u16, u16)> {
+    lines.iter().enumerate().find_map(|(y, cells)| {
+        let line: String = cells.concat();
+        let byte = line.find(text)?;
+        let column = line.get(..byte)?.chars().count();
+        Some((u16::try_from(column).ok()?, u16::try_from(y).ok()?))
+    })
+}
+
+#[test]
+fn a_click_on_a_tab_opens_its_view_and_one_on_a_row_moves_the_cursor_there() {
+    let mut app = startup_view(vec![
+        entry("alpha", true, false),
+        entry("beta", true, false),
+        entry("gamma", true, false),
+    ]);
+    let jobs = Jobs::default();
+    let lines = draw(&app, &jobs).unwrap();
+    // The row that shows "gamma", and the tab whose key is 9.
+    let (column, gamma) = find(&lines, "gamma").unwrap();
+    app.mouse(click(column, gamma), &jobs);
+    assert_eq!(app.startup.cursor, 2);
+    // Outside the list, a click changes nothing.
+    app.mouse(click(column, 31), &jobs);
+    assert_eq!(app.startup.cursor, 2);
+    let (tab, top) = find(&lines, " 9 ").unwrap();
+    assert_eq!(top, 0);
+    let effects = app.mouse(click(tab + 1, 0), &jobs);
+    assert_eq!(app.view, View::Processes);
+    assert!(runs(&effects, Purpose::Processes).is_some());
+}
+
+#[test]
+fn measuring_again_keeps_the_cursor_on_the_same_program() {
+    use rewind_os_engine::processes::{Program, Report};
+    let program = |name: &str, cpu: f32| Program {
+        name: name.to_owned(),
+        exe: None,
+        pids: vec![1],
+        cpu,
+        memory: 1,
+        refusal: None,
+        startup: None,
+    };
+    let report = |programs| Report {
+        programs,
+        cpu: 1.0,
+        memory_used: 1,
+        memory_total: 2,
+        processes: 2,
+    };
+    let mut app = App::new(PathBuf::from("."));
+    press(&mut app, &[KeyCode::Char('9')]);
+    app.finished(
+        Purpose::Processes,
+        Ok(Response::Processes(report(vec![
+            program("editor", 5.0),
+            program("browser", 1.0),
+        ]))),
+    );
+    press(&mut app, &[KeyCode::Down]);
+    // The browser is now the heaviest: the cursor follows it to the top.
+    app.finished(
+        Purpose::Processes,
+        Ok(Response::Processes(report(vec![
+            program("browser", 9.0),
+            program("editor", 1.0),
+        ]))),
+    );
+    let selected = app
+        .processes
+        .shown()
+        .get(app.processes.cursor)
+        .map(|p| p.name.clone());
+    assert_eq!(selected.as_deref(), Some("browser"));
+}

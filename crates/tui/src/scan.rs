@@ -2,6 +2,7 @@
 
 use crate::app::Effect;
 use crate::jobs::{Jobs, Purpose};
+use crate::list;
 use crate::style;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -282,7 +283,7 @@ impl State {
                 tr("Largest files in the scan"),
                 style::heading(),
             )));
-            frame.render_stateful_widget(table, list, &mut state);
+            list::render(frame, table, list, &mut state, 0);
             return;
         }
         let total = shown.map_or(0, |n| n.bytes).max(1);
@@ -324,7 +325,7 @@ impl State {
         )
         .row_highlight_style(style::selected())
         .block(Block::bordered().title(Span::styled(tr("Folders by size"), style::heading())));
-        frame.render_stateful_widget(table, list, &mut state);
+        list::render(frame, table, list, &mut state, 0);
     }
 }
 

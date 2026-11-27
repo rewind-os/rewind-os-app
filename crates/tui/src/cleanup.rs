@@ -2,6 +2,7 @@
 
 use crate::app::Effect;
 use crate::jobs::{Jobs, Purpose};
+use crate::list;
 use crate::style;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -304,7 +305,7 @@ impl State {
         .row_highlight_style(style::selected())
         .block(Block::bordered().title(Span::styled(tr("Junk cleanup"), style::heading())));
         let mut state = TableState::default().with_selected(Some(self.cursor));
-        frame.render_stateful_widget(table, list, &mut state);
+        list::render(frame, table, list, &mut state, 0);
 
         if let Some(r) = self.reports.as_ref().and_then(|r| r.get(self.cursor)) {
             let mut text = vec![Line::from(tr(r.category.description))];

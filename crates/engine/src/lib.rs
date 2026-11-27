@@ -13,6 +13,7 @@ pub mod empty;
 pub mod format;
 pub mod history;
 pub mod icons;
+pub mod kernels;
 pub mod leftovers;
 pub mod macapps;
 pub mod maintenance;
@@ -348,6 +349,17 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "kernels.list",
+        "List the installed kernels, which are old and the space they take",
+    )
+    .only(LINUX),
+    ToolSpec::new(
+        "kernels.clean",
+        "Remove old kernels with the package manager; the running one and the newest stay",
+    )
+    .changes()
+    .only(LINUX),
+    ToolSpec::new(
         "restore.list",
         "List restore points and the other shadow copies of each drive, and the space they take",
     )
@@ -527,6 +539,14 @@ pub enum Request {
         #[serde(default)]
         packages: Vec<String>,
     },
+    #[serde(rename = "kernels.list")]
+    KernelsList,
+    /// Releases (`6.8.0-45-generic`) as `kernels.list` gave them; empty means every old one.
+    #[serde(rename = "kernels.clean")]
+    KernelsClean {
+        #[serde(default)]
+        releases: Vec<String>,
+    },
     #[serde(rename = "restore.list")]
     RestoreList,
     #[serde(rename = "restore.clean")]
@@ -559,6 +579,8 @@ pub enum Response {
     Compacted(vdisks::Compacted),
     Drivers(drivers::Report),
     DriversRemoved(drivers::Removed),
+    Kernels(kernels::Report),
+    KernelsRemoved(kernels::Removed),
     RestorePoints(restore::Report),
     RestoreCleaned(restore::Cleaned),
     Update(update::Status),
@@ -733,6 +755,10 @@ impl Engine {
             Request::DriversClean { packages } => {
                 drivers::remove(&packages, task).map(Response::DriversRemoved)
             }
+            Request::KernelsList => kernels::list(task).map(Response::Kernels),
+            Request::KernelsClean { releases } => {
+                kernels::remove(&releases, task).map(Response::KernelsRemoved)
+            }
             Request::RestoreList => restore::list().map(Response::RestorePoints),
             Request::RestoreClean => restore::clean(task).map(Response::RestoreCleaned),
             Request::Hibernation { enabled } => {
@@ -795,6 +821,8 @@ impl Request {
             Request::ComponentCleanup => "maintenance.component_cleanup",
             Request::DriversList => "drivers.list",
             Request::DriversClean { .. } => "drivers.clean",
+            Request::KernelsList => "kernels.list",
+            Request::KernelsClean { .. } => "kernels.clean",
             Request::RestoreList => "restore.list",
             Request::RestoreClean => "restore.clean",
             Request::Hibernation { .. } => "maintenance.hibernation",

@@ -7,7 +7,7 @@ mod paint;
 use anstream::{eprintln, println};
 use clap::{Parser, Subcommand};
 use rewind_os_engine::format::{bytes, count, duration_ms, local_date, signed_bytes};
-use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup};
+use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup, kernels};
 use rewind_os_i18n::{tr, tr_text, trf};
 use std::io::IsTerminal;
 use std::path::PathBuf;
@@ -132,6 +132,9 @@ enum Command {
     /// Old driver packages a newer version replaced (Windows).
     #[command(subcommand)]
     Drivers(Drivers),
+    /// Old kernels left by kernel updates (Linux, with APT).
+    #[command(subcommand)]
+    Kernels(Kernels),
     /// Windows restore points and shadow copies (need administrator rights).
     #[command(subcommand)]
     Restore(Restore),
@@ -282,6 +285,20 @@ enum Drivers {
     Clean {
         /// Only these packages (`oem12.inf`), as `drivers list` names them.
         packages: Vec<String>,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Kernels {
+    /// The installed kernels, which are old and the space they take.
+    List,
+    /// Remove the old ones with the package manager (asks for the password; cannot be undone
+    /// here). The running kernel and the newest stay.
+    Clean {
+        /// Only these releases (`6.8.0-45-generic`), as `kernels list` names them.
+        releases: Vec<String>,
         #[arg(long)]
         yes: bool,
     },
@@ -563,6 +580,11 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
         Command::Drivers(Drivers::Clean { packages, yes }) => {
             confirm(yes)?;
             Request::DriversClean { packages }
+        }
+        Command::Kernels(Kernels::List) => Request::KernelsList,
+        Command::Kernels(Kernels::Clean { releases, yes }) => {
+            confirm(yes)?;
+            Request::KernelsClean { releases }
         }
         Command::Restore(Restore::List) => Request::RestoreList,
         Command::Restore(Restore::Clean { yes }) => {
@@ -1472,6 +1494,60 @@ fn print_human(response: &Response, top: usize) {
             );
             for (name, why) in &done.failed {
                 eprintln!("{}", paint::warn(format!("{name}: {}", tr_text(why))));
+            }
+        }
+        Response::Kernels(report) => {
+            for k in &report.kernels {
+                let why = if k.running {
+                    tr("running now, kept")
+                } else if k.newest {
+                    tr("newest, kept")
+                } else {
+                    ""
+                };
+                println!(
+                    "{}  {:<28} {}",
+                    paint::size(format!("{:>10}", bytes(k.bytes))),
+                    k.release,
+                    paint::muted(why)
+                );
+            }
+            let old = report.old().count();
+            if report.kernels.is_empty() {
+                println!("{}", tr(kernels::NO_PACKAGES));
+            } else if old == 0 {
+                println!(
+                    "\n{}",
+                    paint::good(tr(
+                        "No old kernels: only the running one and the newest are installed."
+                    ))
+                );
+            } else {
+                println!(
+                    "\n{}",
+                    paint::heading(trf(
+                        "{n} old kernels take {size}.",
+                        &[
+                            ("n", &count(old as u64)),
+                            ("size", &bytes(report.reclaimable()))
+                        ],
+                    ))
+                );
+            }
+        }
+        Response::KernelsRemoved(done) => {
+            println!(
+                "{}",
+                trf(
+                    "Removed {n} old kernels, {size}.",
+                    &[
+                        ("n", &count(done.removed.len() as u64)),
+                        ("size", &bytes(done.bytes))
+                    ],
+                )
+            );
+            for (release, why) in &done.failed {
+                eprintln!("{}", paint::warn(format!("{release}: {}", tr_text(why))));
             }
         }
         Response::RestorePoints(report) => {

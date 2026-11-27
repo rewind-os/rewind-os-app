@@ -980,3 +980,21 @@ Windows kept {n} driver packages.	Windows conservó {n} paquetes de drivers.
 newest: {version}	la más nueva: {version}
 {n} old driver packages take {size}.	{n} paquetes de drivers antiguos ocupan {size}.
 {n} older packages stay because a device uses them.	{n} paquetes más antiguos se quedan porque los usa un dispositivo.
+# Old kernels (R2.23)
+Old kernels	Kernels antiguos
+Remove old kernels	Quitar los kernels antiguos
+Remove old kernels?	¿Quitar los kernels antiguos?
+Reading the installed kernels	Leyendo los kernels instalados
+Removing old kernels	Quitando los kernels antiguos
+running now, kept	en uso, se queda
+newest, kept	el más nuevo, se queda
+{n} old kernels take {size}.	{n} kernels antiguos ocupan {size}.
+Removed {n} old kernels, {size}.	Se han quitado {n} kernels antiguos, {size}.
+No old kernels: only the running one and the newest are installed.	No hay kernels antiguos: solo están instalados el que está en uso y el más nuevo.
+Each kernel update installs the new kernel next to the old ones, in /boot and /lib/modules. The kernel running now and the newest always stay.	Cada actualización del kernel instala el nuevo junto a los anteriores, en /boot y /lib/modules. El kernel en uso y el más nuevo siempre se quedan.
+The old kernels are removed with the package manager, which asks for your password. The running kernel and the newest stay, so the computer keeps starting. If removing them would take other packages along, Rewind OS stops.	Los kernels antiguos se quitan con el gestor de paquetes, que te pide la contraseña. El kernel en uso y el más nuevo se quedan, así que el ordenador sigue arrancando. Si al quitarlos se fueran también otros paquetes, Rewind OS se detiene.
+Rewind OS removes old kernels only with APT, on Debian, Ubuntu and their family. Other package managers already keep only a few.	Rewind OS quita kernels antiguos solo con APT, en Debian, Ubuntu y su familia. Los demás gestores de paquetes ya guardan solo unos pocos.
+The system did not say which kernel is running, so no kernel is offered.	El sistema no ha dicho qué kernel está en uso, así que no se ofrece ninguno.
+No kernel is installed as a package: this system's kernel comes from elsewhere, as in WSL or a container.	No hay ningún kernel instalado como paquete: el kernel de este sistema viene de fuera, como en WSL o en un contenedor.
+Removing these kernels would also remove other packages, so Rewind OS does not do it. Use your package manager if you are sure.	Quitar estos kernels quitaría también otros paquetes, así que Rewind OS no lo hace. Usa tu gestor de paquetes si estás seguro.
+This is not an old kernel: it is the one running, the newest one, or it is gone.	No es un kernel antiguo: es el que está en uso, el más nuevo, o ya no está.

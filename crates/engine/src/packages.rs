@@ -180,7 +180,7 @@ pub fn parse_snap(out: &str) -> Vec<InstalledProgram> {
 
 /// Runs a package tool in the C locale, so its output is in English whatever the system
 /// language. `None` when the tool is missing or fails.
-fn run(program: &str, args: &[&str]) -> Option<String> {
+pub(crate) fn run(program: &str, args: &[&str]) -> Option<String> {
     let mut all = vec!["LC_ALL=C", program];
     all.extend_from_slice(args);
     let done = process::run("env", &all).ok()?;
@@ -268,7 +268,7 @@ pub const REMOVES_OTHERS: &str = "Removing this package would also remove other 
 
 /// Runs a command that needs administrator rights: directly when already elevated, through
 /// `pkexec` (which asks for the password) otherwise.
-fn run_as_admin(program: &str, args: &[&str]) -> crate::Result<()> {
+pub(crate) fn run_as_admin(program: &str, args: &[&str]) -> crate::Result<()> {
     let done = if rewind_os_platform::elevation::is_elevated() {
         process::run(program, args)?
     } else {

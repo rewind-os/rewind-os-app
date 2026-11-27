@@ -322,3 +322,23 @@ fn only_driver_packages_windows_added_can_reach_pnputil() {
         assert!(!is_oem_driver_name(name), "{name}");
     }
 }
+
+#[test]
+fn the_running_kernel_and_the_newest_are_never_removable() {
+    use rewind_os_engine::safety::is_removable_kernel;
+    let (running, newest) = ("6.8.0-45-generic", "6.8.0-100-generic");
+    assert!(is_removable_kernel("6.8.0-31-generic", running, newest));
+    for release in [
+        running,
+        newest,
+        "",
+        "-6.8.0-31",
+        "6.8.0-31 --purge",
+        "6.8.0-31;rm",
+    ] {
+        assert!(!is_removable_kernel(release, running, newest), "{release}");
+    }
+    // Without knowing which kernel runs, or which is newest, none is removable.
+    assert!(!is_removable_kernel("6.8.0-31-generic", "", newest));
+    assert!(!is_removable_kernel("6.8.0-31-generic", running, ""));
+}

@@ -294,6 +294,8 @@ struct Context<'a> {
     /// Hard-linked files already counted.
     linked: Mutex<HashSet<(u64, u64)>>,
     linked_bytes: AtomicU64,
+    /// Mount points of virtual file systems (`/proc`, `/sys`…), never entered.
+    skip: HashSet<PathBuf>,
 }
 
 impl<'a> Context<'a> {
@@ -315,6 +317,9 @@ impl<'a> Context<'a> {
             unreadable: AtomicU64::new(0),
             linked: Mutex::new(HashSet::new()),
             linked_bytes: AtomicU64::new(0),
+            skip: rewind_os_platform::files::virtual_mounts()
+                .into_iter()
+                .collect(),
         }
     }
 
@@ -709,7 +714,12 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Context<'_>) -> RawDir {
         };
         // `is_dir` and `is_file` are both false for symbolic links and junctions: skipped.
         if kind.is_dir() {
-            subdirs.push((entry.path(), entry.file_name().to_string_lossy().into()));
+            let child = entry.path();
+            // Files the kernel makes up use no disk space (`/proc/kcore` says 128 TB).
+            if ctx.skip.contains(&child) {
+                continue;
+            }
+            subdirs.push((child, entry.file_name().to_string_lossy().into()));
         } else if kind.is_file() {
             // On Windows this comes from the directory listing itself, without opening the file.
             let Ok(meta) = entry.metadata() else { continue };

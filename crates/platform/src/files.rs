@@ -88,3 +88,117 @@ pub fn hard_links_expected(dir: &std::path::Path) -> bool {
         .path()
         .is_some_and(|windows| lower(dir).starts_with(lower(&windows)))
 }
+
+/// File systems the kernel makes up (processes, devices, settings): nothing on them uses disk
+/// space, and some report files of many terabytes (`/proc/kcore`).
+const VIRTUAL_KINDS: &[&str] = &[
+    "proc",
+    "sysfs",
+    "devtmpfs",
+    "devpts",
+    "devfs",
+    "cgroup",
+    "cgroup2",
+    "debugfs",
+    "tracefs",
+    "securityfs",
+    "pstore",
+    "bpf",
+    "configfs",
+    "fusectl",
+    "mqueue",
+    "hugetlbfs",
+    "binfmt_misc",
+    "autofs",
+    "efivarfs",
+    "selinuxfs",
+    "rpc_pipefs",
+    "nsfs",
+];
+
+/// The mount points of virtual file systems in `/proc/self/mountinfo` text. The mount point is
+/// the fifth field (with spaces and other bytes written as `\040` and the like); the kind
+/// follows the ` - ` separator.
+pub fn virtual_mounts_in(mountinfo: &str) -> Vec<std::path::PathBuf> {
+    mountinfo
+        .lines()
+        .filter_map(|line| {
+            let (before, after) = line.split_once(" - ")?;
+            let kind = after.split_whitespace().next()?;
+            if !VIRTUAL_KINDS.contains(&kind) {
+                return None;
+            }
+            let point = before.split_whitespace().nth(4)?;
+            Some(std::path::PathBuf::from(unescape_octal(point)))
+        })
+        .collect()
+}
+
+/// Undoes the `\ooo` escapes the kernel writes in mount tables.
+fn unescape_octal(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while let Some(&b) = bytes.get(i) {
+        let code = bytes
+            .get(i + 1..i + 4)
+            .filter(|_| b == b'\\')
+            .and_then(|d| std::str::from_utf8(d).ok())
+            .and_then(|d| u8::from_str_radix(d, 8).ok());
+        match code {
+            Some(c) => {
+                out.push(c);
+                i += 4;
+            }
+            None => {
+                out.push(b);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+/// Where this system mounts virtual file systems, which measuring never enters. Empty on
+/// Windows; on macOS `/dev` (devfs), which has no mount table to read without a program.
+pub fn virtual_mounts() -> Vec<std::path::PathBuf> {
+    if cfg!(target_os = "linux") {
+        std::fs::read_to_string("/proc/self/mountinfo")
+            .map(|t| virtual_mounts_in(&t))
+            .unwrap_or_default()
+    } else if cfg!(target_os = "macos") {
+        vec![std::path::PathBuf::from("/dev")]
+    } else {
+        Vec::new()
+    }
+}
+
+#[cfg(test)]
+mod virtual_tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn only_virtual_file_systems_are_named_and_escapes_are_undone() {
+        let text = "\
+22 1 8:2 / / rw,relatime shared:1 - ext4 /dev/sda2 rw
+23 22 0:21 / /proc rw,nosuid - proc proc rw
+24 22 0:22 / /sys rw,nosuid - sysfs sysfs rw
+25 24 0:23 / /sys/fs/cgroup rw - cgroup2 cgroup2 rw
+26 22 0:5 / /dev rw - devtmpfs udev rw
+27 22 8:3 / /home rw shared:2 - ext4 /dev/sda3 rw
+28 22 0:40 / /mnt/my\\040proc rw - proc proc rw
+29 22 0:41 / /run rw - tmpfs tmpfs rw
+";
+        let mounts = virtual_mounts_in(text);
+        for virtual_point in ["/proc", "/sys", "/sys/fs/cgroup", "/dev", "/mnt/my proc"] {
+            assert!(
+                mounts.iter().any(|m| m == Path::new(virtual_point)),
+                "{virtual_point}"
+            );
+        }
+        for real in ["/", "/home", "/run"] {
+            assert!(!mounts.iter().any(|m| m == Path::new(real)), "{real}");
+        }
+    }
+}

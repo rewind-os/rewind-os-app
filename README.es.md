@@ -167,6 +167,13 @@ errores salen en color; la salida a una tubería o un archivo, y `NO_COLOR=1`, v
 Mientras un análisis o una limpieza trabaja, una línea muestra lo que lleva y el tiempo. El primer
 Ctrl+C lo para y muestra lo hecho hasta entonces, marcado como parado (código de salida 130); el segundo sale.
 
+`rewind-os-cli tui` abre vistas a pantalla completa en la terminal, para equipos sin escritorio
+o a los que entras por SSH: Inicio (discos, memoria, lo que merece la pena hacer), el análisis
+del disco (carpetas por tamaño, Intro para entrar y Retroceso para volver, `f` para los archivos
+más grandes) y la limpieza (Espacio elige una categoría, Intro pregunta antes de limpiar). `1`–`3`,
+Tab o `:inicio`, `:disco`, `:limpieza` cambian de vista, Esc para lo que está en marcha, `?` muestra
+las teclas y `q` sale.
+
 `rewind-os-cli mcp` ofrece las mismas herramientas a un asistente con el Model Context Protocol.
 Por defecto solo las que no cambian nada; `--automation-read-root`, `--automation-write-root` y
 `--allow-system-changes` abren más, de una en una ([detalles](README.md#assistants-mcp)).

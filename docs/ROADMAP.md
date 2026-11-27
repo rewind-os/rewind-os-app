@@ -80,3 +80,12 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.10 Recommendations on Home for virtual disks of WSL and Docker that compacting would shrink, and for restore points that take a lot of space (with administrator rights)
 - [x] R3.11 Colours in the CLI after the app's look (bold headings, sizes in the accent blue, yellow warnings, red errors), only in a terminal and never with NO_COLOR
 - [x] R3.12 CLI progress with the time taken; the first Ctrl+C stops a scan or cleanup and prints what it did so far, marked as stopped (exit code 130), the second quits
+
+## R4 — A terminal interface
+
+For computers without a desktop, or reached over SSH: full-screen views in the terminal, driven
+by keys like k9s, through the same engine requests as the app and the CLI.
+
+- [x] R4.1 `rewind-os-cli tui`: Home (drives, memory, recommendations), disk scan (folders by size, into and out of them, largest files, stopped with a key) and cleanup (categories to pick, a confirmation, what was freed and kept); views switched with `1`–`3` or `:name`
+- [ ] R4.2 Startup programs and installed programs, with their details and on/off
+- [ ] R4.3 The other pages (duplicates, leftovers, build folders, processes, maintenance)

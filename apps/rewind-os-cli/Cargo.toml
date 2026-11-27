@@ -14,6 +14,7 @@ path = "src/main.rs"
 [dependencies]
 rewind-os-engine.workspace = true
 rewind-os-i18n.workspace = true
+rewind-os-tui.workspace = true
 clap.workspace = true
 anstream.workspace = true
 anstyle.workspace = true

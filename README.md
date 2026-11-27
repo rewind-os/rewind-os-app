@@ -176,6 +176,19 @@ sudo rewind-os-cli clean run --defaults --yes   # Linux/macOS: system-wide categ
 rewind-os-cli --json run '{"tool":"cleanup.analyze"}'
 ```
 
+### In the terminal, full screen
+
+`rewind-os-cli tui` opens full-screen views in the terminal, for computers without a desktop or
+reached over SSH: Home (drives, memory, what is worth doing), the disk scan (folders by size,
+opened with Enter and left with Backspace, `f` for the largest files) and cleanup (Space picks
+a category, Enter asks before cleaning). `1`–`3`, Tab or `:home`, `:disk`, `:cleanup` switch
+views, Esc stops what is running, `?` lists the keys and `q` quits.
+
+```sh
+rewind-os-cli tui              # the disk view scans your home folder
+sudo rewind-os-cli tui /       # the whole system, with the categories that need rights
+```
+
 ### Assistants (MCP)
 
 `rewind-os-cli mcp` serves the same tools to an assistant over the Model Context Protocol

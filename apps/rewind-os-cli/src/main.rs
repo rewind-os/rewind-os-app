@@ -36,6 +36,11 @@ struct Cli {
 enum Command {
     /// List every tool with its id.
     Commands,
+    /// Full-screen views in the terminal, driven by keys (for computers without a desktop).
+    Tui {
+        /// The folder the disk view scans (your home folder if left out).
+        path: Option<PathBuf>,
+    },
     /// Drives, memory and large system files.
     Overview,
     /// What is worth doing on this computer.
@@ -406,6 +411,13 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
                 }
                 println!("\n* {}", tr("changes your system"));
             }
+            return Ok(None);
+        }
+        Command::Tui { path } => {
+            if !std::io::stdout().is_terminal() {
+                return Err(tr("The terminal interface needs a terminal.").to_owned());
+            }
+            rewind_os_tui::run(path).map_err(|e| e.to_string())?;
             return Ok(None);
         }
         Command::Overview => Request::SystemOverview,

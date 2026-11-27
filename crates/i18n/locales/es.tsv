@@ -898,3 +898,36 @@ Login items are not shown: System Events did not answer.	No se muestran los elem
 The app of this login item is no longer there, so it cannot be put back.	La app de este elemento de inicio de sesión ya no está, así que no se puede volver a añadir.
 Stopping… press Ctrl+C again to quit at once.	Parando… pulsa Ctrl+C otra vez para salir ya.
 {folder} shows {original} again; its files were counted there.	{folder} muestra otra vez {original}; sus archivos se contaron allí.
+Analyzing	Analizando
+Back	Atrás
+Choose a folder	Elegir una carpeta
+Cleaning	Limpiando
+Cleanup	Limpieza
+Disk	Disco
+Folder to scan	Carpeta que analizar
+Folders by size	Carpetas por tamaño
+Help	Ayuda
+Home, disk, cleanup	Inicio, disco, limpieza
+Keys	Teclas
+Largest files in the scan	Archivos más grandes del análisis
+Looking for what is worth doing…	Buscando lo que merece la pena hacer…
+Move	Moverse
+Next view	Vista siguiente
+No view is called “{name}”.	Ninguna vista se llama «{name}».
+Not on this computer	No está en este equipo
+On for {hours} h	Encendido desde hace {hours} h
+Open / back	Abrir / volver
+Open a view by name	Abrir una vista por su nombre
+Pick	Elegir
+Pick a category	Elegir una categoría
+Pick at least one category with Space.	Elige al menos una categoría con Espacio.
+Press Enter to measure every folder in it, or e to choose another folder.	Pulsa Intro para medir todas sus carpetas, o e para elegir otra carpeta.
+Quit	Salir
+Reading this computer…	Leyendo este equipo…
+Scan again	Analizar de nuevo
+Stop what is running, or close	Parar lo que está en marcha, o cerrar
+Stopping…	Parando…
+The terminal interface needs a terminal.	La interfaz de terminal necesita una terminal.
+Views	Vistas
+incomplete	incompleta
+{used} of {total} memory in use	{used} de {total} de memoria en uso

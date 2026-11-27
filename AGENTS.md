@@ -23,6 +23,7 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
 | L0 | `crates/platform` | Everything that talks to the OS: known folders, registry, processes, elevation, recycle bin |
 | L1 | `crates/engine` | Every feature, as a `Request` with a stable tool id (`TOOLS` in `lib.rs`) |
 | L2 | `crates/ui` | The egui interface; the only crate that uses egui, eframe or rfd |
+| L2 | `crates/tui` | The terminal interface (`rewind-os-cli tui`); the only crate that uses ratatui |
 | app | `apps/rewind-os` | Desktop executable (icon, manifest) |
 | app | `apps/rewind-os-cli` | Command line; `rewind-os-cli commands` lists every tool |
 | tool | `xtask` | `cargo xtask icons` renders the app icon files from `assets/app-icon/rewind-os.svg` |

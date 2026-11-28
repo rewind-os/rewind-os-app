@@ -46,7 +46,8 @@ large forgotten files and programs that start with the system for no reason.
   safe it is and whether it needs administrator rights.
 - **Program leftovers**: folders in Program Files, ProgramData and AppData that no installed
   program, Store app, service, driver, running program, startup entry, tool on the PATH,
-  Battle.net game or audio plugin (VST, CLAP, AAX) refers to. They go to the recycle bin.
+  Steam or Battle.net game or audio plugin (VST, CLAP, AAX) refers to. They go to the recycle
+  bin. On Linux and macOS the same, with packages, AppImages, LV2 and Audio Units.
   Registry keys of removed programs are reported too, never removed.
 - **Installed programs** with their icons, search and their own uninstaller.
 - **Startup programs** on and off, using the system's own records, including the scheduled tasks

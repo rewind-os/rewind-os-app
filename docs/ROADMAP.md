@@ -68,6 +68,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R2.19 Linux: Flatpak bundle (host filesystem; system tools run on the host)
 - [x] R2.22 Linux: signed apt, dnf and zypper repositories on GitHub Pages, updated by every release and installed from in clean containers first, so `apt`/`dnf`/`zypper install rewind-os` and system updates work
 - [x] R2.23 Linux: old kernels in `/boot` removed with the package manager, always keeping the running one and the newest
+- [x] R2.24 Leftovers on every system know what no package manager lists: Steam games, audio plugins (VST, CLAP, AAX, LV2, Audio Units), AppImages and `/opt`; checked end to end on each system in CI
 - [x] R2.14 Linux and macOS: administrator rights for one action at a time (pkexec / authorization dialog), never a root window
 
 ## R3 — Easier and lighter

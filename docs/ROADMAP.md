@@ -87,6 +87,8 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.12 CLI progress with the time taken; the first Ctrl+C stops a scan or cleanup and prints what it did so far, marked as stopped (exit code 130), the second quits
 - [x] R3.13 The window's own title bar in the app's colours (Windows and Linux: drag, double click to maximize, minimize, maximize and close, resizing from the edges; macOS keeps its own buttons); `REWIND_OS_NATIVE_TITLE_BAR=1` keeps the system's
 - [x] R3.14 A dark theme in neutral near-black and greys as in VS Code instead of navy, and a test that text, accents and controls keep their contrast on every layer of both themes
+- [x] R3.15 Battery health: the charge each battery still holds against what it was made to hold, and its cycles (Windows' battery report, `/sys/class/power_supply`, `ioreg`), on the health page, in the CLI and as a tip on Home when it is worn
+- [ ] R3.16 Optional scheduled cleaning of the categories marked safe (Task Scheduler, a systemd timer, launchd), off until turned on, with a report of each run
 
 ## R4 — A terminal interface
 

@@ -58,6 +58,8 @@ pub enum Action {
     RestorePoints,
     /// Open Windows' Device Manager.
     DeviceManager,
+    /// Open the battery's health (on the health page).
+    Battery,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -119,6 +121,8 @@ pub struct Facts {
     pub restore_points: Option<(usize, u64)>,
     /// Devices with a driver problem: their name and what is wrong (English).
     pub device_problems: Vec<(String, &'static str)>,
+    /// Worn batteries: what each still holds, as a percent of what it was made to hold.
+    pub worn_batteries: Vec<u8>,
 }
 
 fn size(bytes: u64) -> String {
@@ -158,6 +162,19 @@ pub fn rules(facts: &Facts) -> Vec<Recommendation> {
             saving: None,
             action: Action::DeviceManager,
         }),
+    }
+
+    // A worn battery is worth knowing, though nothing on the computer fixes it.
+    if let Some(&percent) = facts.worn_batteries.iter().min() {
+        out.push(Recommendation {
+            id: "battery_worn",
+            level: Level::Tip,
+            title: "The battery holds {percent}% of the charge it was made to hold",
+            detail: "It lasts about that share of its first time on a charge. Only a new battery brings that back; settings and calibration do not.",
+            args: vec![("percent", percent.to_string())],
+            saving: None,
+            action: Action::Battery,
+        });
     }
 
     for (name, health) in &facts.disks {
@@ -525,6 +542,18 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
                 .and_then(|r| r.ok())
                 .map(|r| (restore::all_but_newest(&r.copies).len(), r.used()))
         });
+        let worn_batteries = s.spawn(|| {
+            tool_available("battery.health")
+                .then(crate::battery::report)
+                .and_then(|r| r.ok())
+                .map(|list| {
+                    list.iter()
+                        .filter(|b| b.worn())
+                        .filter_map(crate::battery::Battery::percent)
+                        .collect()
+                })
+                .unwrap_or_default()
+        });
         let device_problems = s.spawn(|| {
             tool_available("drivers.problems")
                 .then(crate::drivers::problems)
@@ -563,6 +592,7 @@ pub fn recommend(task: &Task) -> Vec<Recommendation> {
             virtual_disks: virtual_disks.join().unwrap_or_default(),
             restore_points: restore_points.join().unwrap_or_default(),
             device_problems: device_problems.join().unwrap_or_default(),
+            worn_batteries: worn_batteries.join().unwrap_or_default(),
         }
     });
     rules(&facts)

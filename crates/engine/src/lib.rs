@@ -3,6 +3,7 @@
 //! can do the CLI can do too.
 
 pub mod apps;
+pub mod battery;
 pub mod boot;
 pub mod cleanup;
 pub mod disks;
@@ -355,6 +356,10 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "battery.health",
+        "How much charge each battery still holds against what it was made to hold, and its charge cycles",
+    ),
+    ToolSpec::new(
         "kernels.list",
         "List the installed kernels, which are old and the space they take",
     )
@@ -549,6 +554,8 @@ pub enum Request {
         #[serde(default)]
         packages: Vec<String>,
     },
+    #[serde(rename = "battery.health")]
+    BatteryHealth,
     #[serde(rename = "kernels.list")]
     KernelsList,
     /// Releases (`6.8.0-45-generic`) as `kernels.list` gave them; empty means every old one.
@@ -590,6 +597,7 @@ pub enum Response {
     Drivers(drivers::Report),
     DeviceProblems(Vec<drivers::DeviceProblem>),
     DriversRemoved(drivers::Removed),
+    Batteries(Vec<battery::Battery>),
     Kernels(kernels::Report),
     KernelsRemoved(kernels::Removed),
     RestorePoints(restore::Report),
@@ -771,6 +779,7 @@ impl Engine {
             Request::DriversClean { packages } => {
                 drivers::remove(&packages, task).map(Response::DriversRemoved)
             }
+            Request::BatteryHealth => battery::report().map(Response::Batteries),
             Request::KernelsList => kernels::list(task).map(Response::Kernels),
             Request::KernelsClean { releases } => {
                 kernels::remove(&releases, task).map(Response::KernelsRemoved)
@@ -839,6 +848,7 @@ impl Request {
             Request::DriverProblems => "drivers.problems",
             Request::DeviceManager => "drivers.device_manager",
             Request::DriversClean { .. } => "drivers.clean",
+            Request::BatteryHealth => "battery.health",
             Request::KernelsList => "kernels.list",
             Request::KernelsClean { .. } => "kernels.clean",
             Request::RestoreList => "restore.list",

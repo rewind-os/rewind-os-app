@@ -21,6 +21,7 @@ pub enum Glyph {
     Gauge,
     Download,
     Stack,
+    Battery,
 }
 
 /// Draws `glyph` centred in `rect` (any size; drawn at 16 points).
@@ -142,6 +143,16 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
                 p(10.0, 8.0),
                 p(12.5, 8.0),
             ]);
+        }
+        Glyph::Battery => {
+            // A battery on its side, two thirds full.
+            rounded(
+                painter,
+                Rect::from_min_max(p(1.5, 4.5), p(13.0, 11.5)),
+                stroke,
+            );
+            line(vec![p(14.5, 6.75), p(14.5, 9.25)]);
+            painter.rect_filled(Rect::from_min_max(p(3.5, 6.5), p(8.5, 9.5)), 0.5, color);
         }
         Glyph::Stack => {
             // Two disks in a stack: a drive file holding a drive.

@@ -1,5 +1,6 @@
-//! Disk health: whether each drive reports problems, with its temperature, wear, hours and
-//! errors (`disk.health`), and the system's own optimization of the drives (`disk.optimize`).
+//! Health: how much charge the battery still holds (`battery.health`), whether each drive
+//! reports problems, with its temperature, wear, hours and errors (`disk.health`), and the
+//! system's own optimization of the drives (`disk.optimize`).
 
 use crate::app::Shared;
 use crate::charts;
@@ -8,6 +9,7 @@ use crate::jobs::{self, Job};
 use crate::theme::{self, Theme};
 use crate::widgets::{self, Choice, card, page_header_with};
 use egui::{Color32, RichText};
+use rewind_os_engine::battery::Battery;
 use rewind_os_engine::disks::{Disk, Health, Media, Report};
 use rewind_os_engine::format::{bytes, count, local_date};
 use rewind_os_engine::{Os, Request, Response};
@@ -17,6 +19,9 @@ use rewind_os_i18n::{tr, trf};
 pub struct State {
     report_job: Option<Job>,
     report: Option<Result<Report, String>>,
+    battery_job: Option<Job>,
+    /// The batteries, once read; empty on a computer without one.
+    batteries: Option<Vec<Battery>>,
     optimize_job: Option<Job>,
     output: Option<String>,
     confirm: bool,
@@ -34,7 +39,7 @@ fn health_color(t: &Theme, health: Health) -> Color32 {
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.report_job.is_some() || self.optimize_job.is_some()
+        self.report_job.is_some() || self.optimize_job.is_some() || self.battery_job.is_some()
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
@@ -42,6 +47,15 @@ impl State {
         let t = theme::current(&ctx);
         if self.report.is_none() && self.report_job.is_none() {
             self.report_job = Some(Job::start(&ctx, &shared.engine, Request::DiskHealth));
+        }
+        if self.batteries.is_none() && self.battery_job.is_none() {
+            self.battery_job = Some(Job::start(&ctx, &shared.engine, Request::BatteryHealth));
+        }
+        match jobs::finished(&mut self.battery_job, &ctx) {
+            Some(Ok(Response::Batteries(list))) => self.batteries = Some(list),
+            // Without a battery report the page shows the drives only.
+            Some(_) => self.batteries = Some(Vec::new()),
+            None => {}
         }
         match jobs::finished(&mut self.report_job, &ctx) {
             Some(Ok(Response::DiskHealth(report))) => self.report = Some(Ok(report)),
@@ -64,14 +78,17 @@ impl State {
         let checking = self.report_job.is_some();
         page_header_with(
             ui,
-            tr("Disk health"),
-            tr("Whether your drives report problems, and keeping them optimized."),
+            tr("Health"),
+            tr(
+                "How much charge the battery still holds, whether your drives report problems, and keeping them optimized.",
+            ),
             |ui| {
                 if ui
                     .add_enabled(!checking, egui::Button::new(tr("Check again")))
                     .clicked()
                 {
                     self.report = None;
+                    self.batteries = None;
                 }
             },
         );
@@ -90,6 +107,10 @@ impl State {
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
+                for b in self.batteries.iter().flatten() {
+                    battery(ui, b);
+                    ui.add_space(t.gap);
+                }
                 if let Some(why) = report.missing {
                     ui.label(RichText::new(tr(why)).color(t.text_muted));
                     if Os::current() == Os::Windows && !shared.elevated {
@@ -251,6 +272,81 @@ fn drive(ui: &mut egui::Ui, disk: &Disk, readable: bool) {
             );
         }
     });
+}
+
+/// One battery: what it still holds against what it was made to hold, and its cycles.
+fn battery(ui: &mut egui::Ui, b: &Battery) {
+    let t = theme::current(ui.ctx());
+    card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.horizontal(|ui| {
+            ui.set_height(40.0);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let (word, color) = match b.health {
+                    None => (tr("Unknown"), t.text_muted),
+                    Some(_) if b.worn() => (tr("Worn"), t.warn),
+                    Some(_) => (tr("Good"), t.ok),
+                };
+                widgets::badge(ui, word, color);
+                ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    widgets::icon_tile(ui, Glyph::Battery, theme::TILES[2], 36.0);
+                    let mut parts = vec![tr("Battery").to_owned()];
+                    parts.extend(b.maker.clone());
+                    parts.extend(b.chemistry.clone());
+                    widgets::card_text(ui, &b.name, &parts.join(" · "));
+                });
+            });
+        });
+        let mut tiles: Vec<Tile> = Vec::new();
+        if let Some(health) = b.health {
+            let detail = match (b.full_mwh, b.design_mwh) {
+                (Some(full), Some(design)) => trf(
+                    "{now} of the {design} it was made to hold",
+                    &[("now", &watt_hours(full)), ("design", &watt_hours(design))],
+                ),
+                _ => tr("Of what it was made to hold").to_owned(),
+            };
+            let color = if b.worn() { t.warn } else { t.ok };
+            tiles.push((
+                tr("Charge it holds").to_owned(),
+                format!("{:.0} %", health * 100.0),
+                detail,
+                Some((health.min(1.0), color)),
+            ));
+        }
+        if let Some(cycles) = b.cycles {
+            tiles.push((
+                tr("Charge cycles").to_owned(),
+                count(u64::from(cycles)),
+                tr("Full charges it has done").to_owned(),
+                None,
+            ));
+        }
+        if !tiles.is_empty() {
+            ui.add_space(10.0);
+            charts::grid(ui, tiles.len().max(4), 140.0, |ui, i| {
+                if let Some((label, value, detail, meter)) = tiles.get(i) {
+                    charts::stat_tile(ui, label, value, detail, *meter);
+                }
+            });
+        }
+        ui.add_space(6.0);
+        let note = if b.health.is_none() {
+            tr("This battery does not say how much it holds.")
+        } else if b.worn() {
+            tr(
+                "It lasts about that share of its first time on a charge. Only a new battery brings that back; settings and calibration do not.",
+            )
+        } else {
+            tr("Batteries hold a little less every year; below 80 % they count as worn.")
+        };
+        ui.label(RichText::new(note).color(t.text_muted));
+    });
+}
+
+/// mWh as watt-hours with one decimal (`51.1 Wh`).
+fn watt_hours(mwh: u64) -> String {
+    format!("{:.1} Wh", mwh as f64 / 1000.0)
 }
 
 /// A key figure: label, value, detail and an optional meter.

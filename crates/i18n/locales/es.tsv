@@ -1018,3 +1018,22 @@ Windows reports a problem with it.	Windows informa de un problema con él.
 Device Manager marks them in yellow. The maker's driver or Windows Update usually fixes them.	El Administrador de dispositivos los marca en amarillo. Suele arreglarlo el driver del fabricante o Windows Update.
 Opened Device Manager	Se abrió el Administrador de dispositivos
 Every device works: none has a driver problem.	Todos los dispositivos funcionan: ninguno tiene problemas de driver.
+# Battery health (R3.15)
+Battery	Batería
+Good	Buena
+Worn	Desgastada
+The battery holds {percent}% of the charge it was made to hold	La batería guarda el {percent}% de la carga para la que se fabricó
+It lasts about that share of its first time on a charge. Only a new battery brings that back; settings and calibration do not.	Dura más o menos esa parte de lo que duraba con una carga al principio. Solo una batería nueva lo recupera; ni los ajustes ni calibrarla lo hacen.
+How much charge the battery still holds, whether your drives report problems, and keeping them optimized.	Cuánta carga guarda todavía la batería, si tus discos avisan de problemas, y mantenerlos optimizados.
+{now} of the {design} it was made to hold	{now} de los {design} para los que se fabricó
+Of what it was made to hold	De lo que podía guardar al fabricarse
+Charge it holds	Carga que guarda
+Charge cycles	Ciclos de carga
+Full charges it has done	Cargas completas que ha hecho
+This battery does not say how much it holds.	Esta batería no dice cuánto guarda.
+Batteries hold a little less every year; below 80 % they count as worn.	Las baterías guardan un poco menos cada año; por debajo del 80 % se consideran desgastadas.
+This computer has no battery.	Este ordenador no tiene batería.
+It holds {percent} % of what it was made to hold: {now} of {design}.	Guarda el {percent} % de lo que podía guardar al fabricarse: {now} de {design}.
+It holds {percent} % of what it was made to hold.	Guarda el {percent} % de lo que podía guardar al fabricarse.
+{n} charge cycles	{n} ciclos de carga
+Worn: it lasts about that share of its first time on a charge.	Desgastada: dura más o menos esa parte de lo que duraba con una carga al principio.

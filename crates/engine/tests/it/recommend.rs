@@ -222,3 +222,23 @@ fn a_device_with_a_driver_problem_is_named_and_several_are_counted() {
             .all(|r| r.id != "device_problem")
     );
 }
+
+#[test]
+fn a_worn_battery_is_mentioned_once_with_the_most_worn() {
+    let advice = |worn: Vec<u8>| {
+        rules(&Facts {
+            worn_batteries: worn,
+            ..Facts::default()
+        })
+        .into_iter()
+        .filter(|r| r.id == "battery_worn")
+        .collect::<Vec<_>>()
+    };
+    assert!(advice(Vec::new()).is_empty());
+    let two = advice(vec![72, 61]);
+    assert_eq!(two.len(), 1);
+    assert!(matches!(two[0].action, Action::Battery));
+    assert!(two[0].args.iter().any(|(_, v)| v == "61"));
+    // Nothing on the computer frees space or fixes it.
+    assert!(two[0].saving.is_none());
+}

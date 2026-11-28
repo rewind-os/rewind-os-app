@@ -132,6 +132,8 @@ enum Command {
     /// Old driver packages a newer version replaced (Windows).
     #[command(subcommand)]
     Drivers(Drivers),
+    /// How much charge the battery still holds against what it was made to hold.
+    Battery,
     /// Old kernels left by kernel updates (Linux, with APT).
     #[command(subcommand)]
     Kernels(Kernels),
@@ -584,6 +586,7 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             confirm(yes)?;
             Request::DriversClean { packages }
         }
+        Command::Battery => Request::BatteryHealth,
         Command::Kernels(Kernels::List) => Request::KernelsList,
         Command::Kernels(Kernels::Clean { releases, yes }) => {
             confirm(yes)?;
@@ -1513,6 +1516,49 @@ fn print_human(response: &Response, top: usize) {
             );
             for (name, why) in &done.failed {
                 eprintln!("{}", paint::warn(format!("{name}: {}", tr_text(why))));
+            }
+        }
+        Response::Batteries(list) => {
+            if list.is_empty() {
+                println!("{}", tr("This computer has no battery."));
+            }
+            for b in list {
+                println!("{}", paint::heading(&b.name));
+                match (b.percent(), b.full_mwh, b.design_mwh) {
+                    (Some(p), Some(full), Some(design)) => println!(
+                        "  {}",
+                        trf(
+                            "It holds {percent} % of what it was made to hold: {now} of {design}.",
+                            &[
+                                ("percent", &p.to_string()),
+                                ("now", &format!("{:.1} Wh", full as f64 / 1000.0)),
+                                ("design", &format!("{:.1} Wh", design as f64 / 1000.0)),
+                            ],
+                        )
+                    ),
+                    (Some(p), _, _) => println!(
+                        "  {}",
+                        trf(
+                            "It holds {percent} % of what it was made to hold.",
+                            &[("percent", &p.to_string())],
+                        )
+                    ),
+                    _ => println!("  {}", tr("This battery does not say how much it holds.")),
+                }
+                if let Some(cycles) = b.cycles {
+                    println!(
+                        "  {}",
+                        trf("{n} charge cycles", &[("n", &count(u64::from(cycles)))])
+                    );
+                }
+                if b.worn() {
+                    println!(
+                        "  {}",
+                        paint::warn(tr(
+                            "Worn: it lasts about that share of its first time on a charge."
+                        ))
+                    );
+                }
             }
         }
         Response::Kernels(report) => {

@@ -5,7 +5,8 @@ use crate::theme;
 use crate::widgets::{self, Choice, card, page_header};
 use egui::RichText;
 use rewind_os_engine::cleanup::{CategoryReport, CategoryResult, Disposal, Group, Risk};
-use rewind_os_engine::format::{bytes, count};
+use rewind_os_engine::format::{bytes, count, local_date};
+use rewind_os_engine::schedule::{Frequency, Status};
 use rewind_os_engine::{Request, Response};
 use rewind_os_i18n::{tr, trf};
 use std::collections::HashSet;
@@ -21,13 +22,125 @@ pub struct State {
     /// Asking before cleaning the categories that need administrator rights.
     confirming_system: bool,
     started: bool,
+    /// The scheduled cleanup: reading it, changing it, and the frequency waiting for an answer.
+    schedule_job: Option<Job>,
+    schedule: Option<Status>,
+    confirming_schedule: Option<Frequency>,
 }
 
 impl State {
     pub fn busy(&self) -> bool {
-        self.analyze.is_some() || self.run.is_some()
+        self.analyze.is_some() || self.run.is_some() || self.schedule_job.is_some()
     }
 
+    /// Reads or changes the schedule; the answer comes back through `poll_schedule`.
+    fn schedule_request(&mut self, ctx: &egui::Context, shared: &Shared, request: Request) {
+        self.schedule_job = Some(Job::start(ctx, &shared.engine, request));
+    }
+
+    fn poll_schedule(&mut self, ctx: &egui::Context, shared: &mut Shared) {
+        match jobs::finished(&mut self.schedule_job, ctx) {
+            Some(Ok(Response::Schedule(status))) => self.schedule = Some(status),
+            Some(Ok(Response::Done(message))) => {
+                shared.info(tr(message));
+                self.schedule_request(ctx, shared, Request::ScheduleStatus);
+            }
+            Some(Ok(_)) => {}
+            Some(Err(err)) => {
+                shared.error(err);
+                self.schedule_request(ctx, shared, Request::ScheduleStatus);
+            }
+            None => {}
+        }
+    }
+}
+
+/// The card that turns the scheduled cleanup on and off, and says how it last went. Returns
+/// the frequency picked (`Some(None)` for off).
+fn schedule_card(
+    ui: &mut egui::Ui,
+    status: Option<&Status>,
+    busy: bool,
+) -> Option<Option<Frequency>> {
+    let t = theme::current(ui.ctx());
+    let status = status?;
+    let names: Vec<&str> = status
+        .categories
+        .iter()
+        .filter_map(|id| {
+            rewind_os_engine::cleanup::categories()
+                .iter()
+                .find(|c| c.id == *id)
+                .map(|c| tr(c.name))
+        })
+        .collect();
+    let current = status.frequency;
+    let last = status.runs.first().cloned();
+    let mut pick: Option<Option<Frequency>> = None;
+    card(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(
+            RichText::new(tr("Clean automatically"))
+                .strong()
+                .family(theme::bold()),
+        );
+        ui.label(
+            RichText::new(trf(
+                "The system's scheduler cleans these on its own: {list}. Nothing that needs a look or administrator rights is included.",
+                &[("list", &names.join(", "))],
+            ))
+            .color(t.text_muted),
+        );
+        ui.add_space(6.0);
+        ui.horizontal(|ui| {
+            for (choice, label) in [
+                (None, tr("Off")),
+                (Some(Frequency::Weekly), tr(Frequency::Weekly.label())),
+                (Some(Frequency::FourWeeks), tr(Frequency::FourWeeks.label())),
+            ] {
+                let response =
+                    ui.add_enabled(!busy, egui::Button::selectable(current == choice, label));
+                if response.clicked() && current != choice {
+                    pick = Some(choice);
+                }
+            }
+            if busy {
+                ui.spinner();
+            }
+        });
+        if let Some(run) = &last {
+            ui.add_space(4.0);
+            ui.label(
+                RichText::new(trf(
+                    "Last run {date}: {size} freed, {files} files.",
+                    &[
+                        ("date", &local_date(run.at)),
+                        ("size", &bytes(run.bytes)),
+                        ("files", &count(run.files)),
+                    ],
+                ))
+                .color(t.text_muted),
+            );
+            if run.failed > 0 {
+                ui.label(
+                    RichText::new(trf(
+                        "{n} files were in use and stayed.",
+                        &[("n", &count(run.failed))],
+                    ))
+                    .color(t.warn),
+                );
+            }
+            for (id, why) in &run.skipped {
+                ui.label(
+                    RichText::new(format!("{id}: {}", rewind_os_i18n::tr_text(why))).color(t.warn),
+                );
+            }
+        }
+    });
+    pick
+}
+
+impl State {
     fn start_analyze(&mut self, ctx: &egui::Context, shared: &Shared) {
         self.started = true;
         self.analyze = Some(Job::start(ctx, &shared.engine, Request::CleanupAnalyze));
@@ -105,6 +218,13 @@ impl State {
     }
 
     pub fn ui(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
+        {
+            let ctx = ui.ctx().clone();
+            if self.schedule.is_none() && self.schedule_job.is_none() {
+                self.schedule_request(&ctx, shared, Request::ScheduleStatus);
+            }
+            self.poll_schedule(&ctx, shared);
+        }
         let ctx = ui.ctx().clone();
         let t = theme::current(&ctx);
         if !self.started || (shared.cleanup_request.is_some() && self.analyze.is_none()) {
@@ -202,10 +322,14 @@ impl State {
             ));
             return;
         }
+        let mut schedule_pick = None;
         egui::ScrollArea::vertical()
             .auto_shrink([false; 2])
             .show(ui, |ui| {
                 breakdown(ui, reports, selected_bytes, self.selected.len());
+                ui.add_space(t.gap);
+                schedule_pick =
+                    schedule_card(ui, self.schedule.as_ref(), self.schedule_job.is_some());
                 ui.add_space(t.gap * 1.5);
                 for group in Group::ALL {
                     let items: Vec<&CategoryReport> = reports
@@ -228,6 +352,43 @@ impl State {
                     ui.add_space(t.gap);
                 }
             });
+        match schedule_pick {
+            // Turning it off deletes nothing: at once.
+            Some(None) => {
+                self.schedule_job = Some(Job::start(
+                    ui.ctx(),
+                    &shared.engine,
+                    Request::ScheduleSet { frequency: None },
+                ));
+            }
+            Some(Some(f)) => self.confirming_schedule = Some(f),
+            None => {}
+        }
+
+        if let Some(frequency) = self.confirming_schedule {
+            match widgets::confirm(
+                ui.ctx(),
+                "confirm_schedule",
+                tr("Clean automatically?"),
+                tr(
+                    "Each run deletes these caches without asking, as the safe cleanup here does. You can turn it off here at any time.",
+                ),
+                tr("Turn on"),
+            ) {
+                Choice::Open => {}
+                Choice::Cancelled => self.confirming_schedule = None,
+                Choice::Confirmed => {
+                    self.confirming_schedule = None;
+                    self.schedule_job = Some(Job::start(
+                        ui.ctx(),
+                        &shared.engine,
+                        Request::ScheduleSet {
+                            frequency: Some(frequency),
+                        },
+                    ));
+                }
+            }
+        }
 
         if self.confirming_system {
             let system = self.system_categories();

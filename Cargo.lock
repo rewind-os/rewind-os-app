@@ -3663,6 +3663,7 @@ dependencies = [
 name = "rewind-os"
 version = "0.35.0"
 dependencies = [
+ "rewind-os-engine",
  "rewind-os-ui",
  "winresource",
 ]

@@ -28,6 +28,7 @@ pub mod recommend;
 pub mod restore;
 pub mod safety;
 pub mod scan;
+pub mod schedule;
 pub mod startup;
 pub mod system;
 pub mod task;
@@ -356,6 +357,20 @@ pub const TOOLS: &[ToolSpec] = &[
     .changes()
     .only(WINDOWS),
     ToolSpec::new(
+        "schedule.status",
+        "Whether the scheduled cleanup is on, how often, what it cleans and how its last runs went",
+    ),
+    ToolSpec::new(
+        "schedule.set",
+        "Turn the scheduled cleanup of the safe categories on (every week or every four weeks) or off",
+    )
+    .changes(),
+    ToolSpec::new(
+        "schedule.run",
+        "Clean the categories the schedule cleans now, and keep the run in its record",
+    )
+    .changes(),
+    ToolSpec::new(
         "battery.health",
         "How much charge each battery still holds against what it was made to hold, and its charge cycles",
     ),
@@ -554,6 +569,16 @@ pub enum Request {
         #[serde(default)]
         packages: Vec<String>,
     },
+    #[serde(rename = "schedule.status")]
+    ScheduleStatus,
+    /// `frequency` absent or null turns it off.
+    #[serde(rename = "schedule.set")]
+    ScheduleSet {
+        #[serde(default)]
+        frequency: Option<schedule::Frequency>,
+    },
+    #[serde(rename = "schedule.run")]
+    ScheduleRun,
     #[serde(rename = "battery.health")]
     BatteryHealth,
     #[serde(rename = "kernels.list")]
@@ -598,6 +623,8 @@ pub enum Response {
     DeviceProblems(Vec<drivers::DeviceProblem>),
     DriversRemoved(drivers::Removed),
     Batteries(Vec<battery::Battery>),
+    Schedule(schedule::Status),
+    ScheduledRun(schedule::Run),
     Kernels(kernels::Report),
     KernelsRemoved(kernels::Removed),
     RestorePoints(restore::Report),
@@ -780,6 +807,16 @@ impl Engine {
                 drivers::remove(&packages, task).map(Response::DriversRemoved)
             }
             Request::BatteryHealth => battery::report().map(Response::Batteries),
+            Request::ScheduleStatus => schedule::status().map(Response::Schedule),
+            Request::ScheduleSet { frequency } => {
+                schedule::set(frequency)?;
+                Ok(Response::Done(if frequency.is_some() {
+                    "The scheduled cleanup is on"
+                } else {
+                    "The scheduled cleanup is off"
+                }))
+            }
+            Request::ScheduleRun => schedule::run(task).map(Response::ScheduledRun),
             Request::KernelsList => kernels::list(task).map(Response::Kernels),
             Request::KernelsClean { releases } => {
                 kernels::remove(&releases, task).map(Response::KernelsRemoved)
@@ -849,6 +886,9 @@ impl Request {
             Request::DeviceManager => "drivers.device_manager",
             Request::DriversClean { .. } => "drivers.clean",
             Request::BatteryHealth => "battery.health",
+            Request::ScheduleStatus => "schedule.status",
+            Request::ScheduleSet { .. } => "schedule.set",
+            Request::ScheduleRun => "schedule.run",
             Request::KernelsList => "kernels.list",
             Request::KernelsClean { .. } => "kernels.clean",
             Request::RestoreList => "restore.list",

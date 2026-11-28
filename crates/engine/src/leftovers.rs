@@ -104,6 +104,12 @@ const SHARED: &[&str] = &[
     "microsoft.net",
     "reference assemblies",
     "msbuild",
+    // The Windows SDK and driver kit, shared by Visual Studio, its build tools and others; the
+    // SDK's entry in Programs names neither the folder nor where it is.
+    "windows kits",
+    "hyper-v",
+    "placeholdertilelogofolder",
+    "windowsoobeapphost",
     "windows defender",
     "windows defender advanced threat protection",
     "windows mail",
@@ -151,6 +157,7 @@ const SHARED: &[&str] = &[
     "squirreltemp",
     "npm",
     "npm-cache",
+    "node-gyp",
     "pip",
     "pnpm",
     "yarn",
@@ -206,6 +213,21 @@ impl Signals {
         if n.len() >= 3 {
             self.names.push(n);
         }
+        // "Termius 9.43.1" also as "termius", so its `termius-updater` folder is its own.
+        let words: Vec<&str> = name
+            .split_whitespace()
+            .filter(|w| {
+                !w.starts_with(|c: char| c.is_ascii_digit())
+                    && !w
+                        .strip_prefix(['v', 'V'])
+                        .is_some_and(|r| r.starts_with(|c: char| c.is_ascii_digit()))
+                    && !w.eq_ignore_ascii_case("version")
+            })
+            .collect();
+        let bare = normalize(&words.join(" "));
+        if bare.len() >= 4 && self.names.last() != Some(&bare) {
+            self.names.push(bare);
+        }
     }
 
     pub fn add_path(&mut self, path: &str) {
@@ -249,6 +271,33 @@ impl Signals {
                 || (name.len() >= 4 && norm.contains(name.as_str()))
         })
     }
+}
+
+/// The Windows paths (`C:/Program Files (x86)/World of Warcraft`) written as protobuf strings
+/// in a binary record, such as Battle.net's `product.db`: each comes after a byte that gives
+/// its length.
+pub fn paths_in(bytes: &[u8]) -> Vec<String> {
+    let mut found = Vec::new();
+    for (i, window) in bytes.windows(3).enumerate() {
+        let [drive, b':', b'/' | b'\\'] = window else {
+            continue;
+        };
+        if !drive.is_ascii_alphabetic() {
+            continue;
+        }
+        let Some(&len) = i.checked_sub(1).and_then(|before| bytes.get(before)) else {
+            continue;
+        };
+        let Some(text) = bytes
+            .get(i..i + usize::from(len))
+            .filter(|t| t.iter().all(|b| b.is_ascii_graphic() || *b == b' '))
+            .and_then(|t| std::str::from_utf8(t).ok())
+        else {
+            continue;
+        };
+        found.push(text.to_owned());
+    }
+    found
 }
 
 /// Lowercase letters and digits only: "Mozilla Firefox (x64)" -> "mozillafirefoxx64".
@@ -299,6 +348,21 @@ fn gather_signals() -> Signals {
     }
     for entry in startup::list() {
         signals.add_path(&entry.command);
+    }
+    // Battle.net games are not in Programs; its own record lists where each one is.
+    if let Some(data) = Known::ProgramData.path()
+        && let Ok(db) = std::fs::read(data.join(r"Battle.net\Agent\product.db"))
+    {
+        for path in paths_in(&db) {
+            signals.add_path(&path);
+        }
+    }
+    // Folders on the PATH hold tools in use that Programs may not list (Chocolatey, Scoop,
+    // command line tools unpacked by hand).
+    if let Some(path) = std::env::var_os("PATH") {
+        for dir in std::env::split_paths(&path) {
+            signals.add_path(&dir.to_string_lossy());
+        }
     }
     signals
 }

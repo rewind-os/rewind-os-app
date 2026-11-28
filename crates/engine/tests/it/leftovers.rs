@@ -37,6 +37,17 @@ fn shared_and_ambiguous_folders_are_never_candidates() {
     assert!(s.accounts_for("Microsoft Edge"));
     assert!(s.accounts_for("{3F2504E0-4F89-11D3-9A0C-0305E82C3301}"));
     assert!(s.accounts_for("ab"));
+    // Windows' SDK, used by Visual Studio although Programs names no folder for it.
+    assert!(s.accounts_for("Windows Kits"));
+    assert!(s.accounts_for("Hyper-V"));
+}
+
+#[test]
+fn a_folder_holding_a_tool_on_the_path_is_in_use() {
+    let mut s = Signals::default();
+    assert!(!s.accounts_for("chocolatey"));
+    s.add_path(r"C:\ProgramData\chocolatey\bin");
+    assert!(s.accounts_for("chocolatey"));
 }
 
 #[test]
@@ -133,4 +144,31 @@ fn the_apps_own_folder_is_never_a_leftover() {
     // A portable copy is not installed, and its scan summaries live in this folder.
     let nothing_installed = Signals::default();
     assert!(nothing_installed.accounts_for(rewind_os_engine::history::APP_FOLDER));
+}
+
+#[test]
+fn a_program_name_with_its_version_still_owns_its_folders() {
+    let mut s = Signals::default();
+    s.add_name("Termius 9.43.1");
+    s.add_name("Ollama version 0.40.3");
+    assert!(s.accounts_for("termius-updater"));
+    assert!(s.accounts_for("Ollama"));
+    assert!(!s.accounts_for("OldGameStudio"));
+}
+
+#[test]
+fn game_folders_battle_net_records_are_found_in_its_binary_record() {
+    use rewind_os_engine::leftovers::paths_in;
+    let mut db = vec![0x0a, 0x12, b'w', b'o', b'w', 0x1a, 0x28];
+    db.extend_from_slice(b"(C:/Program Files (x86)/World of Warcraft");
+    db.extend_from_slice(&[0x22, 0x05, 0x00]);
+    db.extend_from_slice(b"enUS no path here");
+    let paths = paths_in(&db);
+    assert_eq!(paths, ["C:/Program Files (x86)/World of Warcraft"]);
+    let mut s = Signals::default();
+    for p in &paths {
+        s.add_path(p);
+    }
+    assert!(s.accounts_for("World of Warcraft"));
+    assert!(!s.accounts_for("Diablo IV"));
 }

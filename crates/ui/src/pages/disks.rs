@@ -292,7 +292,7 @@ fn battery(ui: &mut egui::Ui, b: &Battery) {
                     widgets::icon_tile(ui, Glyph::Battery, theme::TILES[2], 36.0);
                     let mut parts = vec![tr("Battery").to_owned()];
                     parts.extend(b.maker.clone());
-                    parts.extend(b.chemistry.clone());
+                    parts.extend(b.chemistry.as_deref().map(chemistry));
                     widgets::card_text(ui, &b.name, &parts.join(" · "));
                 });
             });
@@ -301,8 +301,11 @@ fn battery(ui: &mut egui::Ui, b: &Battery) {
         if let Some(health) = b.health {
             let detail = match (b.full_mwh, b.design_mwh) {
                 (Some(full), Some(design)) => trf(
-                    "{now} of the {design} it was made to hold",
-                    &[("now", &watt_hours(full)), ("design", &watt_hours(design))],
+                    "{now} of {design} when new",
+                    &[
+                        ("now", &format!("{:.1}", full as f64 / 1000.0)),
+                        ("design", &watt_hours(design)),
+                    ],
                 ),
                 _ => tr("Of what it was made to hold").to_owned(),
             };
@@ -324,7 +327,8 @@ fn battery(ui: &mut egui::Ui, b: &Battery) {
         }
         if !tiles.is_empty() {
             ui.add_space(10.0);
-            charts::grid(ui, tiles.len().max(4), 140.0, |ui, i| {
+            // Two columns at least, so the figure's detail has room.
+            charts::grid(ui, tiles.len().max(2), 220.0, |ui, i| {
                 if let Some((label, value, detail, meter)) = tiles.get(i) {
                     charts::stat_tile(ui, label, value, detail, *meter);
                 }
@@ -342,6 +346,17 @@ fn battery(ui: &mut egui::Ui, b: &Battery) {
         };
         ui.label(RichText::new(note).color(t.text_muted));
     });
+}
+
+/// A battery's chemistry in words; Windows gives codes (`LIon`).
+fn chemistry(code: &str) -> String {
+    match code.to_ascii_lowercase().replace(['-', ' '], "").as_str() {
+        "lion" => tr("Lithium-ion").to_owned(),
+        "lip" | "lipo" | "lipoly" => tr("Lithium polymer").to_owned(),
+        "nimh" => tr("Nickel-metal hydride").to_owned(),
+        "unknown" => tr("Unknown").to_owned(),
+        _ => code.to_owned(),
+    }
 }
 
 /// mWh as watt-hours with one decimal (`51.1 Wh`).

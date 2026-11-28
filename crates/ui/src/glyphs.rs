@@ -145,14 +145,20 @@ pub fn paint(painter: &Painter, rect: Rect, glyph: Glyph, color: Color32) {
             ]);
         }
         Glyph::Battery => {
-            // A battery on its side, two thirds full.
+            // A battery standing up, with its terminal on top and two of three bars charged.
             rounded(
                 painter,
-                Rect::from_min_max(p(1.5, 4.5), p(13.0, 11.5)),
+                Rect::from_min_max(p(4.5, 3.0), p(11.5, 15.0)),
                 stroke,
             );
-            line(vec![p(14.5, 6.75), p(14.5, 9.25)]);
-            painter.rect_filled(Rect::from_min_max(p(3.5, 6.5), p(8.5, 9.5)), 0.5, color);
+            painter.rect_filled(Rect::from_min_max(p(6.5, 1.0), p(9.5, 3.0)), 0.5, color);
+            for top in [9.0, 11.75] {
+                painter.rect_filled(
+                    Rect::from_min_max(p(6.5, top), p(9.5, top + 1.75)),
+                    0.3,
+                    color,
+                );
+            }
         }
         Glyph::Stack => {
             // Two disks in a stack: a drive file holding a drive.

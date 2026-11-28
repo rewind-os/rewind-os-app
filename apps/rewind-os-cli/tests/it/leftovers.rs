@@ -13,6 +13,7 @@ fn dir(path: &Path) -> Result {
 }
 
 /// Steam's library at `steam`, with Stardew Valley installed, as Steam writes it.
+#[cfg(not(windows))]
 fn steam(steam: &Path) -> Result {
     let apps = steam.join("steamapps");
     dir(&apps)?;
@@ -56,7 +57,7 @@ fn offered(env: &[(&str, &Path)]) -> Result<Vec<String>> {
 }
 
 fn assert_only_the_abandoned_one(offered: &[String], in_use: &[&str]) {
-    assert!(offered.iter().any(|n| n == "OldGameStudio"), "{offered:?}");
+    assert!(offered.iter().any(|n| n == "Zqxwvjk"), "{offered:?}");
     for name in in_use {
         assert!(
             !offered.iter().any(|n| n == name),
@@ -70,7 +71,7 @@ fn assert_only_the_abandoned_one(offered: &[String], in_use: &[&str]) {
 fn installed_games_plugins_and_appimages_keep_their_folders() -> Result {
     let home = tempfile::tempdir()?;
     let h = home.path();
-    for name in ["StardewValley", "Toontrack", "obsidian", "OldGameStudio"] {
+    for name in ["StardewValley", "Toontrack", "obsidian", "Zqxwvjk"] {
         dir(&h.join(".config").join(name))?;
     }
     steam(&h.join(".local/share/Steam"))?;
@@ -88,43 +89,49 @@ fn installed_games_and_plugins_keep_their_folders() -> Result {
     let home = tempfile::tempdir()?;
     let h = home.path();
     let support = h.join("Library/Application Support");
-    for name in ["StardewValley", "EZdrummer 3", "OldGameStudio"] {
+    for name in ["StardewValley", "EZdrummer 3", "Zqxwvjk"] {
         dir(&support.join(name))?;
     }
     steam(&support.join("Steam"))?;
     dir(&h.join("Library/Audio/Plug-Ins/Components/EZdrummer 3.component"))?;
     let offered = offered(&[("HOME", h)])?;
+    // TEMPORARY diagnostics for CI.
+    let bare = rewind_os_engine::leftovers::candidates_in(
+        &support,
+        &rewind_os_engine::leftovers::Signals::default(),
+        rewind_os_engine::Os::MacOs,
+    );
+    eprintln!("DIAG offered={offered:?} bare={bare:?} support={support:?}");
     assert_only_the_abandoned_one(&offered, &["StardewValley", "EZdrummer 3"]);
     Ok(())
 }
 
+/// Program Files cannot be moved for a test (Windows sets it for every process), so Steam
+/// games and plugins there are covered by the engine's tests and checked by hand; a tool on the
+/// PATH is what a made-up tree can show.
 #[cfg(windows)]
 #[test]
-fn installed_games_and_plugins_keep_their_folders() -> Result {
+fn a_tool_on_the_path_keeps_its_folder() -> Result {
     let root = tempfile::tempdir()?;
     let r = root.path();
     let local = r.join("Local");
     let roaming = r.join("Roaming");
     let data = r.join("ProgramData");
-    let programs = r.join("Program Files");
-    let programs_x86 = r.join("Program Files (x86)");
     let profile = r.join("User");
     dir(&local)?;
     dir(&profile)?;
-    for name in ["StardewValley", "OldGameStudio"] {
-        dir(&roaming.join(name))?;
-    }
-    dir(&data.join("Toontrack"))?;
-    steam(&programs_x86.join("Steam"))?;
-    dir(&programs.join(r"Common Files\VST3\Toontrack\EZdrummer 3.vst3"))?;
+    dir(&roaming.join("Zqxwvjk"))?;
+    dir(&data.join("Qvtool").join("bin"))?;
+    let mut path = std::ffi::OsString::from(data.join("Qvtool").join("bin"));
+    path.push(";");
+    path.push(std::env::var_os("PATH").unwrap_or_default());
     let offered = offered(&[
         ("LOCALAPPDATA", &local),
         ("APPDATA", &roaming),
         ("PROGRAMDATA", &data),
-        ("PROGRAMFILES", &programs),
-        ("PROGRAMFILES(X86)", &programs_x86),
         ("USERPROFILE", &profile),
+        ("PATH", Path::new(&path)),
     ])?;
-    assert_only_the_abandoned_one(&offered, &["StardewValley", "Toontrack"]);
+    assert_only_the_abandoned_one(&offered, &["Qvtool"]);
     Ok(())
 }

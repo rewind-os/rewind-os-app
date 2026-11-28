@@ -781,8 +781,9 @@ Force {name} to close?	¿Forzar el cierre de {name}?
 It ends at once, and any unsaved work in it is lost.	Se cierra en el acto y se pierde el trabajo sin guardar.
 Force close	Forzar cierre
 {name} was closed.	{name} se cerró.
-{name} did not close: it may be asking to save your work.	{name} no se cerró: puede que esté pidiendo guardar tu trabajo.
-{name} did not close: it may be asking to save your work. Look for its window, or force it to close.	{name} no se cerró: puede que esté pidiendo guardar tu trabajo. Busca su ventana o fuerza el cierre.
+{name} is still running: it may keep running in the background, or be asking to save your work.	{name} sigue abierto: puede que siga en segundo plano o que esté pidiendo guardar tu trabajo.
+{name} is still running: it may keep running in the background, or be asking to save your work. F forces it to close.	{name} sigue abierto: puede que siga en segundo plano o que esté pidiendo guardar tu trabajo. F fuerza el cierre.
+{name} is still running. Many programs only hide when closed and keep running in the background, next to the clock; others ask to save first. Look for its window, or force it to close.	{name} sigue abierto. Muchos programas solo se ocultan al cerrarlos y siguen en segundo plano, junto al reloj; otros piden guardar antes. Busca su ventana o fuerza el cierre.
 {name} did not close: it may be asking to save your work, or it only ends when forced (--force).	{name} no se cerró: puede que esté pidiendo guardar tu trabajo, o que solo termine si se fuerza (--force).
 No running program has that name.	No hay ningún programa abierto con ese nombre.
 The system needs this to keep running. Closing it could freeze or restart the computer.	El sistema lo necesita para seguir funcionando. Cerrarlo podría bloquear o reiniciar el equipo.

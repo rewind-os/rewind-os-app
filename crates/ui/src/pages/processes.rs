@@ -70,7 +70,7 @@ impl State {
                     self.stuck = None;
                 } else {
                     shared.error(trf(
-                        "{name} did not close: it may be asking to save your work.",
+                        "{name} is still running: it may keep running in the background, or be asking to save your work.",
                         &[("name", &done.name)],
                     ));
                     self.stuck = program;
@@ -135,7 +135,7 @@ impl State {
                         ui.set_width(ui.available_width());
                         ui.horizontal(|ui| {
                             ui.label(trf(
-                                "{name} did not close: it may be asking to save your work. Look for its window, or force it to close.",
+                                "{name} is still running. Many programs only hide when closed and keep running in the background, next to the clock; others ask to save first. Look for its window, or force it to close.",
                                 &[("name", &program.name)],
                             ));
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

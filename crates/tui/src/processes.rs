@@ -373,7 +373,7 @@ fn closed_note(closed: &Closed) -> (String, bool) {
     if closed.running > 0 {
         return (
             trf(
-                "{name} did not close: it may be asking to save your work.",
+                "{name} is still running: it may keep running in the background, or be asking to save your work. F forces it to close.",
                 &[("name", &closed.name)],
             ),
             true,

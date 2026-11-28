@@ -64,6 +64,13 @@ Things that look wrong but are not, and mistakes worth not repeating.
 - Windows Installer saves an `<Icon>` under its `Id`: without an `.ico` extension the Start menu
   shortcut and the Settings entry show a blank icon. Small icon sizes are bitmaps, not PNG.
 
+## Windows: the driver database
+
+- The complete record of driver packages is `HKLM\DRIVERS\DriverDatabase\DriverPackages`, a
+  hive Windows loads on its own. `HKLM\SYSTEM\DriverDatabase\DriverPackages` looks the same but
+  holds only some packages: on one computer it missed every NVIDIA and Intel Bluetooth package,
+  so nine versions of one driver looked like none. Compare with `pnputil /enum-drivers`.
+
 ## Starting a program's uninstaller
 
 `UninstallString` is a full command line in whatever shape the installer chose: quoted,

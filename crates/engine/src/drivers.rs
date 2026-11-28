@@ -1,8 +1,10 @@
 //! Windows: old driver packages. Every driver update leaves the previous version in the driver
 //! store (`System32\DriverStore\FileRepository`); for a graphics card each can take a gigabyte.
 //!
-//! Packages are read from Windows' own record (`HKLM\SYSTEM\DriverDatabase\DriverPackages`),
-//! which does not depend on the system's language. They are grouped by driver: the same
+//! Packages are read from Windows' own record, the driver database Windows loads as its own
+//! hive (`HKLM\DRIVERS\DriverDatabase\DriverPackages`), which does not depend on the system's
+//! language. `HKLM\SYSTEM\DriverDatabase` also exists but holds only some of the packages, so it
+//! is read only when the other is missing. They are grouped by driver: the same
 //! original INF, provider and device class. In each group the newest version always stays, and
 //! so does every package a device uses. Only the older ones nothing uses are offered, and they
 //! are removed with `pnputil /delete-driver`, never with `/force`, so Windows itself refuses a
@@ -19,7 +21,11 @@ use rewind_os_platform::{Os, elevation, process};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-const PACKAGES: &str = r"SYSTEM\DriverDatabase\DriverPackages";
+/// Where Windows records its driver packages, the complete record first.
+const DATABASES: [&str; 2] = [
+    r"DRIVERS\DriverDatabase\DriverPackages",
+    r"SYSTEM\DriverDatabase\DriverPackages",
+];
 
 /// English reason; translate with `rewind_os_i18n::tr`.
 pub const NOT_OLD: &str = "This is not an old driver package: it is the newest of its driver, a device uses it, or it is gone.";
@@ -139,10 +145,16 @@ pub fn old_packages<'a>(
 }
 
 fn read_packages() -> Vec<Package> {
-    registry::subkeys(Hive::LocalMachine, PACKAGES)
+    let Some((database, folders)) = DATABASES.iter().find_map(|path| {
+        let folders = registry::subkeys(Hive::LocalMachine, path);
+        (!folders.is_empty()).then_some((*path, folders))
+    }) else {
+        return Vec::new();
+    };
+    folders
         .into_iter()
         .filter_map(|folder| {
-            let values = registry::values(Hive::LocalMachine, &format!(r"{PACKAGES}\{folder}"));
+            let values = registry::values(Hive::LocalMachine, &format!(r"{database}\{folder}"));
             let text = |name: &str| {
                 values
                     .iter()

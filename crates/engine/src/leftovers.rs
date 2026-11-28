@@ -107,6 +107,8 @@ const SHARED: &[&str] = &[
     // The Windows SDK and driver kit, shared by Visual Studio, its build tools and others; the
     // SDK's entry in Programs names neither the folder nor where it is.
     "windows kits",
+    "windows app certification kit",
+    "application verifier",
     "hyper-v",
     "placeholdertilelogofolder",
     "windowsoobeapphost",
@@ -273,6 +275,47 @@ impl Signals {
     }
 }
 
+/// Where Windows keeps audio plugins, under Program Files or its 32-bit twin.
+const PLUGIN_FOLDERS: [(Known, &str); 12] = [
+    (Known::ProgramFiles, r"Common Files\VST3"),
+    (Known::ProgramFiles, r"Common Files\VST2"),
+    (Known::ProgramFiles, r"Common Files\CLAP"),
+    (Known::ProgramFiles, r"Common Files\Avid\Audio\Plug-Ins"),
+    (Known::ProgramFiles, "VSTPlugins"),
+    (Known::ProgramFiles, r"Steinberg\VSTPlugins"),
+    (Known::ProgramFilesX86, r"Common Files\VST3"),
+    (Known::ProgramFilesX86, r"Common Files\VST2"),
+    (Known::ProgramFilesX86, r"Common Files\CLAP"),
+    (Known::ProgramFilesX86, r"Common Files\Avid\Audio\Plug-Ins"),
+    (Known::ProgramFilesX86, "VSTPlugins"),
+    (Known::ProgramFilesX86, r"Steinberg\VSTPlugins"),
+];
+
+/// The plugins and makers' folders in a plugin folder, two levels deep (`Toontrack\EZdrummer
+/// 3.vst3`). Links are not followed.
+pub fn plugin_items(dir: &Path) -> Vec<PathBuf> {
+    let mut items = Vec::new();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return items;
+    };
+    for entry in entries.flatten() {
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_symlink() {
+            continue;
+        }
+        let path = entry.path();
+        if kind.is_dir()
+            && let Ok(inner) = std::fs::read_dir(&path)
+        {
+            items.extend(inner.flatten().map(|e| e.path()));
+        }
+        items.push(path);
+    }
+    items
+}
+
 /// The Windows paths (`C:/Program Files (x86)/World of Warcraft`) written as protobuf strings
 /// in a binary record, such as Battle.net's `product.db`: each comes after a byte that gives
 /// its length.
@@ -355,6 +398,19 @@ fn gather_signals() -> Signals {
     {
         for path in paths_in(&db) {
             signals.add_path(&path);
+        }
+    }
+    // Audio plugins (VST, CLAP, AAX) are not in Programs either, and their sound libraries
+    // live in folders named after the maker or the plugin.
+    for (root, sub) in PLUGIN_FOLDERS {
+        let Some(base) = root.path() else {
+            continue;
+        };
+        for item in plugin_items(&base.join(sub)) {
+            signals.add_path(&item.to_string_lossy());
+            if let Some(stem) = item.file_stem() {
+                signals.add_name(&stem.to_string_lossy());
+            }
         }
     }
     // Folders on the PATH hold tools in use that Programs may not list (Chocolatey, Scoop,

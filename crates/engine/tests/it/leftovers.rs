@@ -192,3 +192,20 @@ fn the_makers_and_names_of_audio_plugins_own_their_sound_libraries() {
     assert!(s.accounts_for("EZdrummer 3"));
     assert!(!s.accounts_for("Old Synth Maker"));
 }
+
+#[test]
+fn store_apps_own_the_folders_named_after_them() {
+    use rewind_os_engine::leftovers::store_package_names;
+    let mut s = Signals::default();
+    for full in [
+        "Claude_6.28899.6.0_x64__pzs8sxrjxfjjc",
+        "5319275A.WhatsAppDesktop_2.2645.101.0_x64__cv1g1gvanyjgm",
+    ] {
+        for name in store_package_names(full) {
+            s.add_name(&name);
+        }
+    }
+    assert!(s.accounts_for("Claude-Data"));
+    assert!(s.accounts_for("WhatsApp Desktop"));
+    assert!(!s.accounts_for("OldGameStudio"));
+}

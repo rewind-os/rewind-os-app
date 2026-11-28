@@ -209,3 +209,81 @@ fn store_apps_own_the_folders_named_after_them() {
     assert!(s.accounts_for("WhatsApp Desktop"));
     assert!(!s.accounts_for("OldGameStudio"));
 }
+
+#[test]
+fn steam_lists_its_libraries_and_each_installed_game() {
+    use rewind_os_engine::leftovers::{steam_game, steam_libraries};
+    // As Steam writes them on Windows and on Linux.
+    let vdf = r#""libraryfolders"
+{
+	"0"
+	{
+		"path"		"C:\\Program Files (x86)\\Steam"
+		"label"		""
+	}
+	"1"
+	{
+		"path"		"/home/ana/Games/SteamLibrary"
+	}
+}"#;
+    let libraries = steam_libraries(vdf);
+    assert_eq!(libraries.len(), 2);
+    assert!(libraries[0].to_string_lossy().ends_with(r"(x86)\Steam"));
+    let acf = r#""AppState"
+{
+	"appid"		"413150"
+	"name"		"Stardew Valley"
+	"installdir"		"Stardew Valley"
+	"SizeOnDisk"		"682014543"
+}"#;
+    let mut s = Signals::default();
+    for name in steam_game(acf) {
+        s.add_name(&name);
+    }
+    // Its saves (`%APPDATA%\StardewValley`, `~/.config/StardewValley`) belong to it.
+    assert!(s.accounts_for("StardewValley"));
+    assert!(!s.accounts_for("TheIsle"));
+}
+
+#[test]
+fn a_program_file_named_with_its_version_owns_its_folder() {
+    let mut s = Signals::default();
+    s.add_name("Obsidian-1.5.3");
+    s.add_name("cursor_0.42.3_x86_64");
+    assert!(s.accounts_for("obsidian"));
+    assert!(s.accounts_for("Cursor"));
+    assert!(!s.accounts_for("OldGameStudio"));
+}
+
+#[test]
+fn only_real_folders_nothing_accounts_for_are_candidates() {
+    use rewind_os_engine::leftovers::candidates_in;
+    use rewind_os_platform::Os;
+    let root = tempfile::tempdir().unwrap();
+    for dir in [
+        "Mozilla Firefox",
+        "OldGameStudio",
+        "gtk-3.0",
+        "Common Files",
+    ] {
+        std::fs::create_dir(root.path().join(dir)).unwrap();
+    }
+    std::fs::write(root.path().join("notes.txt"), b"a file, never a candidate").unwrap();
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(
+        root.path().join("OldGameStudio"),
+        root.path().join("Linked Game"),
+    )
+    .unwrap();
+    let names = |os| {
+        let mut found: Vec<String> = candidates_in(root.path(), &signals(), os)
+            .iter()
+            .filter_map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+            .collect();
+        found.sort();
+        found
+    };
+    // `gtk-3.0` is the desktop's own on Linux, an unknown folder elsewhere.
+    assert_eq!(names(Os::Linux), ["OldGameStudio"]);
+    assert_eq!(names(Os::Windows), ["OldGameStudio", "gtk-3.0"]);
+}

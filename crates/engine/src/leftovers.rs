@@ -216,9 +216,10 @@ impl Signals {
         if n.len() >= 3 {
             self.names.push(n);
         }
-        // "Termius 9.43.1" also as "termius", so its `termius-updater` folder is its own.
+        // "Termius 9.43.1" also as "termius", so its `termius-updater` folder is its own;
+        // "Obsidian-1.5.3" (an AppImage) as "obsidian".
         let words: Vec<&str> = name
-            .split_whitespace()
+            .split(|c: char| c.is_whitespace() || c == '-' || c == '_')
             .filter(|w| {
                 !w.starts_with(|c: char| c.is_ascii_digit())
                     && !w
@@ -292,21 +293,141 @@ pub fn store_package_names(full: &str) -> Vec<String> {
     names
 }
 
-/// Where Windows keeps audio plugins, under Program Files or its 32-bit twin.
-const PLUGIN_FOLDERS: [(Known, &str); 12] = [
-    (Known::ProgramFiles, r"Common Files\VST3"),
-    (Known::ProgramFiles, r"Common Files\VST2"),
-    (Known::ProgramFiles, r"Common Files\CLAP"),
-    (Known::ProgramFiles, r"Common Files\Avid\Audio\Plug-Ins"),
-    (Known::ProgramFiles, "VSTPlugins"),
-    (Known::ProgramFiles, r"Steinberg\VSTPlugins"),
-    (Known::ProgramFilesX86, r"Common Files\VST3"),
-    (Known::ProgramFilesX86, r"Common Files\VST2"),
-    (Known::ProgramFilesX86, r"Common Files\CLAP"),
-    (Known::ProgramFilesX86, r"Common Files\Avid\Audio\Plug-Ins"),
-    (Known::ProgramFilesX86, "VSTPlugins"),
-    (Known::ProgramFilesX86, r"Steinberg\VSTPlugins"),
-];
+/// Where each system keeps audio plugins (VST, CLAP, AAX, LV2, Audio Units). Their makers'
+/// and names own the folders of their sound libraries and settings.
+pub fn plugin_roots(os: rewind_os_platform::Os) -> Vec<PathBuf> {
+    use rewind_os_platform::Os;
+    let mut roots = Vec::new();
+    match os {
+        Os::Windows => {
+            for base in [Known::ProgramFiles, Known::ProgramFilesX86]
+                .into_iter()
+                .filter_map(Known::path)
+            {
+                for sub in [
+                    r"Common Files\VST3",
+                    r"Common Files\VST2",
+                    r"Common Files\CLAP",
+                    r"Common Files\Avid\Audio\Plug-Ins",
+                    "VSTPlugins",
+                    r"Steinberg\VSTPlugins",
+                ] {
+                    roots.push(base.join(sub));
+                }
+            }
+        }
+        Os::MacOs => {
+            let mut bases = vec![PathBuf::from("/Library/Audio/Plug-Ins")];
+            bases.extend(Known::Home.path().map(|h| h.join("Library/Audio/Plug-Ins")));
+            for base in bases {
+                for sub in ["VST3", "VST", "Components", "CLAP"] {
+                    roots.push(base.join(sub));
+                }
+            }
+            roots.push(PathBuf::from(
+                "/Library/Application Support/Avid/Audio/Plug-Ins",
+            ));
+        }
+        Os::Linux => {
+            let kinds = ["vst3", "vst", "clap", "lv2", "ladspa"];
+            for base in ["/usr/lib", "/usr/local/lib"] {
+                for kind in kinds {
+                    roots.push(Path::new(base).join(kind));
+                }
+            }
+            if let Some(home) = Known::Home.path() {
+                for kind in kinds {
+                    roots.push(home.join(format!(".{kind}")));
+                }
+            }
+        }
+    }
+    roots
+}
+
+/// Where Steam keeps its own library on each system.
+fn steam_roots(os: rewind_os_platform::Os) -> Vec<PathBuf> {
+    use rewind_os_platform::Os;
+    let home = Known::Home.path();
+    match os {
+        Os::Windows => Known::ProgramFilesX86
+            .path()
+            .map(|p| vec![p.join("Steam")])
+            .unwrap_or_default(),
+        Os::MacOs => home
+            .map(|h| vec![h.join("Library/Application Support/Steam")])
+            .unwrap_or_default(),
+        Os::Linux => home
+            .map(|h| {
+                vec![
+                    h.join(".local/share/Steam"),
+                    h.join(".steam/steam"),
+                    h.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+                ]
+            })
+            .unwrap_or_default(),
+    }
+}
+
+/// The libraries listed in Steam's `steamapps/libraryfolders.vdf` (`"path"  "D:\\Games"`).
+pub fn steam_libraries(vdf: &str) -> Vec<PathBuf> {
+    vdf.lines()
+        .filter_map(|line| {
+            let rest = line.trim().strip_prefix("\"path\"")?.trim();
+            let value = rest.strip_prefix('"')?.strip_suffix('"')?;
+            Some(PathBuf::from(value.replace("\\\\", "\\")))
+        })
+        .collect()
+}
+
+/// A game's name and folder in one of Steam's `appmanifest_*.acf` files.
+pub fn steam_game(acf: &str) -> Vec<String> {
+    acf.lines()
+        .filter_map(|line| {
+            let line = line.trim();
+            let rest = line
+                .strip_prefix("\"name\"")
+                .or_else(|| line.strip_prefix("\"installdir\""))?
+                .trim();
+            rest.strip_prefix('"')?.strip_suffix('"').map(str::to_owned)
+        })
+        .collect()
+}
+
+/// Evidence every system has: Steam games, which no package manager lists, and audio plugins.
+fn add_everywhere(signals: &mut Signals) {
+    let os = rewind_os_platform::Os::current();
+    for root in steam_roots(os) {
+        let steamapps = root.join("steamapps");
+        let Ok(vdf) = std::fs::read_to_string(steamapps.join("libraryfolders.vdf")) else {
+            continue;
+        };
+        let mut libraries = steam_libraries(&vdf);
+        libraries.push(root.clone());
+        for library in libraries {
+            let apps = library.join("steamapps");
+            for entry in std::fs::read_dir(&apps).into_iter().flatten().flatten() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.starts_with("appmanifest_")
+                    && name.ends_with(".acf")
+                    && let Ok(acf) = std::fs::read_to_string(entry.path())
+                {
+                    for game in steam_game(&acf) {
+                        signals.add_name(&game);
+                    }
+                }
+            }
+        }
+    }
+    for root in plugin_roots(os) {
+        for item in plugin_items(&root) {
+            signals.add_path(&item.to_string_lossy());
+            if let Some(stem) = item.file_stem() {
+                signals.add_name(&stem.to_string_lossy());
+            }
+        }
+    }
+}
 
 /// The plugins and makers' folders in a plugin folder, two levels deep (`Toontrack\EZdrummer
 /// 3.vst3`). Links are not followed.
@@ -432,19 +553,7 @@ fn gather_signals() -> Signals {
     for maker in crate::drivers::providers() {
         signals.add_name(&maker);
     }
-    // Audio plugins (VST, CLAP, AAX) are not in Programs either, and their sound libraries
-    // live in folders named after the maker or the plugin.
-    for (root, sub) in PLUGIN_FOLDERS {
-        let Some(base) = root.path() else {
-            continue;
-        };
-        for item in plugin_items(&base.join(sub)) {
-            signals.add_path(&item.to_string_lossy());
-            if let Some(stem) = item.file_stem() {
-                signals.add_name(&stem.to_string_lossy());
-            }
-        }
-    }
+    add_everywhere(&mut signals);
     // Folders on the PATH hold tools in use that Programs may not list (Chocolatey, Scoop,
     // command line tools unpacked by hand).
     if let Some(path) = std::env::var_os("PATH") {
@@ -628,6 +737,7 @@ pub fn mac_shared(lower: &str) -> bool {
 /// the programs on the `PATH`, and the running programs.
 fn gather_mac_signals() -> Signals {
     let mut signals = Signals::default();
+    add_everywhere(&mut signals);
     for name in crate::macapps::known_names() {
         signals.add_name(&name);
     }
@@ -659,6 +769,7 @@ fn gather_mac_signals() -> Signals {
 /// programs desktop entries start, and the running programs.
 fn gather_linux_signals() -> Signals {
     let mut signals = Signals::default();
+    add_everywhere(&mut signals);
     for name in crate::packages::all_names() {
         signals.add_name(&name);
     }
@@ -670,10 +781,20 @@ fn gather_linux_signals() -> Signals {
     bin_dirs.retain(|d| !d.starts_with("/mnt"));
     if let Some(home) = Known::Home.path() {
         bin_dirs.push(home.join(".local/bin"));
+        // AppImages and programs unpacked by hand.
+        bin_dirs.push(home.join("Applications"));
+        bin_dirs.push(home.join("AppImages"));
+        bin_dirs.push(home.join(".local/opt"));
     }
+    bin_dirs.push(PathBuf::from("/opt"));
     for dir in bin_dirs {
         for entry in std::fs::read_dir(dir).into_iter().flatten().flatten() {
-            signals.add_name(&entry.file_name().to_string_lossy());
+            let name = entry.file_name().to_string_lossy().into_owned();
+            signals.add_name(&name);
+            // `Obsidian-1.5.3.AppImage` as `Obsidian-1.5.3`, which also gives `obsidian`.
+            if let Some(stem) = Path::new(&name).file_stem() {
+                signals.add_name(&stem.to_string_lossy());
+            }
         }
     }
     let mut desktop_dirs = vec![
@@ -750,22 +871,11 @@ pub fn find(task: &Task) -> Vec<Leftover> {
         let Some(root) = location.path() else {
             continue;
         };
-        let Ok(entries) = std::fs::read_dir(&root) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            // Only real folders; links and junctions are skipped.
-            if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                continue;
-            }
-            let name = entry.file_name().to_string_lossy().into_owned();
-            let lower = name.to_lowercase();
-            let shared_here =
-                (linux && LINUX_SHARED.contains(&lower.as_str())) || (mac && mac_shared(&lower));
-            if !shared_here && !signals.accounts_for(&name) {
-                candidates.push((entry.path(), location));
-            }
-        }
+        candidates.extend(
+            candidates_in(&root, &signals, os)
+                .into_iter()
+                .map(|path| (path, location)),
+        );
     }
     task.set_stage("Measuring candidate folders");
     let now = SystemTime::now();
@@ -787,6 +897,28 @@ pub fn find(task: &Task) -> Vec<Leftover> {
         .collect();
     found.sort_by(|a, b| b.confidence.cmp(&a.confidence).then(b.bytes.cmp(&a.bytes)));
     found
+}
+
+/// The folders directly in `root` that nothing accounts for: real folders only (links and
+/// junctions are skipped), never one shared on this system.
+pub fn candidates_in(root: &Path, signals: &Signals, os: rewind_os_platform::Os) -> Vec<PathBuf> {
+    let linux = os == rewind_os_platform::Os::Linux;
+    let mac = os == rewind_os_platform::Os::MacOs;
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter(|entry| entry.file_type().map(|t| t.is_dir()).unwrap_or(false))
+        .filter(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let lower = name.to_lowercase();
+            let shared_here =
+                (linux && LINUX_SHARED.contains(&lower.as_str())) || (mac && mac_shared(&lower));
+            !shared_here && !signals.accounts_for(&name)
+        })
+        .map(|entry| entry.path())
+        .collect()
 }
 
 fn modified(path: &Path) -> Option<SystemTime> {

@@ -421,113 +421,149 @@ pub fn rules(facts: &Facts) -> Vec<Recommendation> {
     out
 }
 
-/// Looks at this computer and returns what is worth doing.
+/// Looks at this computer and returns what is worth doing. The checks do not depend on each
+/// other, so each runs on its own thread and the whole takes about as long as the slowest one.
 pub fn recommend(task: &Task) -> Vec<Recommendation> {
     task.set_stage("Looking for recommendations");
-    let overview = system::overview();
     let tool_available = |id: &str| crate::tool(id).is_some_and(|t| t.available());
     let downloads = Known::Downloads.path();
-    let facts = Facts {
-        drives: overview
-            .drives
-            .iter()
-            .map(|d| DriveFact {
-                mount: d.mount.clone(),
-                total: d.total,
-                available: d.available,
-                removable: d.removable,
-            })
-            .collect(),
-        cleanup: cleanup::analyze(task),
-        startup_enabled: tool_available("startup.list").then(|| {
-            // Scheduled tasks mostly run later (updaters), and services are a different kind
-            // of thing to turn off; count programs only.
-            startup::list()
-                .iter()
-                .filter(|e| {
-                    e.enabled
-                        && !matches!(
-                            e.source,
-                            startup::Source::ScheduledTask | startup::Source::Service
-                        )
-                })
-                .count()
-        }),
-        tweaks_pending: (Os::current() == Os::Windows).then(|| {
-            tweaks::list()
-                .iter()
-                .filter(|s| s.tweak.recommended && s.state != tweaks::State::Applied)
-                .count()
-        }),
-        downloads: downloads.clone().map(|p| {
-            let bytes = walk::measure(&p, &walk::Filter::default(), task).bytes;
-            (p, bytes)
-        }),
-        download_duplicates: downloads.and_then(|p| {
-            duplicates::find(&p, duplicates::DEFAULT_MIN_BYTES, task)
-                .ok()
-                .map(|r| (p, r.reclaimable()))
-        }),
-        leftovers: tool_available("leftovers.find").then(|| {
-            let likely: Vec<_> = leftovers::find(task)
-                .into_iter()
-                .filter(|l| l.confidence == leftovers::Confidence::High)
-                .collect();
-            (likely.len(), likely.iter().map(|l| l.bytes).sum())
-        }),
-        hibernation_file: overview
-            .system_files
-            .iter()
-            .find(|f| f.kind == system::SystemFileKind::Hibernation)
-            .map(|f| f.bytes),
-        power_saving: tool_available("power.list")
-            && power::report().is_ok_and(|r| {
-                r.active().is_some_and(|p| p.kind == power::Kind::Saver)
-                    || r.mode_plugged_in == Some(power::Mode::BestEfficiency)
-            }),
-        disks: tool_available("disk.health")
-            .then(disks::report)
-            .and_then(|r| r.ok())
-            .map(|r| {
-                r.disks
-                    .into_iter()
-                    .filter(|d| d.health >= disks::Health::Warning)
-                    .map(|d| (d.name, d.health))
-                    .collect()
-            })
-            .unwrap_or_default(),
-        virtual_disks: tool_available("vdisk.list")
-            .then(vdisks::list)
-            .and_then(|r| r.ok())
-            .filter(|r| !r.disks.is_empty())
-            .map(|r| {
-                let known: Vec<u64> = r
-                    .disks
+    let facts = std::thread::scope(|s| {
+        let cleanup = s.spawn(|| cleanup::analyze(task));
+        let startup_enabled = s.spawn(|| {
+            tool_available("startup.list").then(|| {
+                // Scheduled tasks mostly run later (updaters), and services are a different
+                // kind of thing to turn off; count programs only.
+                startup::list()
                     .iter()
-                    .filter_map(vdisks::VirtualDisk::reclaimable)
+                    .filter(|e| {
+                        e.enabled
+                            && !matches!(
+                                e.source,
+                                startup::Source::ScheduledTask | startup::Source::Service
+                            )
+                    })
+                    .count()
+            })
+        });
+        let tweaks_pending = s.spawn(|| {
+            (Os::current() == Os::Windows).then(|| {
+                tweaks::list()
+                    .iter()
+                    .filter(|s| s.tweak.recommended && s.state != tweaks::State::Applied)
+                    .count()
+            })
+        });
+        let downloads_size = s.spawn(|| {
+            downloads.clone().map(|p| {
+                let bytes = walk::measure(&p, &walk::Filter::default(), task).bytes;
+                (p, bytes)
+            })
+        });
+        let download_duplicates = s.spawn(|| {
+            downloads.clone().and_then(|p| {
+                duplicates::find(&p, duplicates::DEFAULT_MIN_BYTES, task)
+                    .ok()
+                    .map(|r| (p, r.reclaimable()))
+            })
+        });
+        let leftovers = s.spawn(|| {
+            tool_available("leftovers.find").then(|| {
+                let likely: Vec<_> = leftovers::find(task)
+                    .into_iter()
+                    .filter(|l| l.confidence == leftovers::Confidence::High)
                     .collect();
-                VirtualDiskFacts {
-                    total: r.disks.iter().map(|d| d.bytes).sum(),
-                    reclaimable: (!known.is_empty()).then(|| known.iter().sum()),
-                    unknown: r
+                (likely.len(), likely.iter().map(|l| l.bytes).sum())
+            })
+        });
+        let power_saving = s.spawn(|| {
+            tool_available("power.list")
+                && power::report().is_ok_and(|r| {
+                    r.active().is_some_and(|p| p.kind == power::Kind::Saver)
+                        || r.mode_plugged_in == Some(power::Mode::BestEfficiency)
+                })
+        });
+        let disks = s.spawn(|| {
+            tool_available("disk.health")
+                .then(disks::report)
+                .and_then(|r| r.ok())
+                .map(|r| {
+                    r.disks
+                        .into_iter()
+                        .filter(|d| d.health >= disks::Health::Warning)
+                        .map(|d| (d.name, d.health))
+                        .collect()
+                })
+                .unwrap_or_default()
+        });
+        let virtual_disks = s.spawn(|| {
+            tool_available("vdisk.list")
+                .then(vdisks::list)
+                .and_then(|r| r.ok())
+                .filter(|r| !r.disks.is_empty())
+                .map(|r| {
+                    let known: Vec<u64> = r
                         .disks
                         .iter()
-                        .filter(|d| d.used_inside.is_none())
-                        .map(|d| d.bytes)
-                        .sum(),
-                }
-            }),
+                        .filter_map(vdisks::VirtualDisk::reclaimable)
+                        .collect();
+                    VirtualDiskFacts {
+                        total: r.disks.iter().map(|d| d.bytes).sum(),
+                        reclaimable: (!known.is_empty()).then(|| known.iter().sum()),
+                        unknown: r
+                            .disks
+                            .iter()
+                            .filter(|d| d.used_inside.is_none())
+                            .map(|d| d.bytes)
+                            .sum(),
+                    }
+                })
+        });
         // Only with administrator rights; without them Windows hides the restore points.
-        restore_points: (tool_available("restore.list")
-            && rewind_os_platform::elevation::is_elevated())
-        .then(restore::list)
-        .and_then(|r| r.ok())
-        .map(|r| (restore::all_but_newest(&r.copies).len(), r.used())),
-        device_problems: tool_available("drivers.problems")
-            .then(crate::drivers::problems)
-            .and_then(|r| r.ok())
-            .map(|list| list.iter().map(|p| (p.name.clone(), p.meaning())).collect())
-            .unwrap_or_default(),
-    };
+        let restore_points = s.spawn(|| {
+            (tool_available("restore.list") && rewind_os_platform::elevation::is_elevated())
+                .then(restore::list)
+                .and_then(|r| r.ok())
+                .map(|r| (restore::all_but_newest(&r.copies).len(), r.used()))
+        });
+        let device_problems = s.spawn(|| {
+            tool_available("drivers.problems")
+                .then(crate::drivers::problems)
+                .and_then(|r| r.ok())
+                .map(|list| list.iter().map(|p| (p.name.clone(), p.meaning())).collect())
+                .unwrap_or_default()
+        });
+        // A check that failed on its own thread gives no recommendation, as when it finds
+        // nothing.
+        // The overview is quick; this thread reads it while the others work.
+        let overview = system::overview();
+        Facts {
+            drives: overview
+                .drives
+                .iter()
+                .map(|d| DriveFact {
+                    mount: d.mount.clone(),
+                    total: d.total,
+                    available: d.available,
+                    removable: d.removable,
+                })
+                .collect(),
+            cleanup: cleanup.join().unwrap_or_default(),
+            startup_enabled: startup_enabled.join().unwrap_or_default(),
+            tweaks_pending: tweaks_pending.join().unwrap_or_default(),
+            downloads: downloads_size.join().unwrap_or_default(),
+            download_duplicates: download_duplicates.join().unwrap_or_default(),
+            leftovers: leftovers.join().unwrap_or_default(),
+            hibernation_file: overview
+                .system_files
+                .iter()
+                .find(|f| f.kind == system::SystemFileKind::Hibernation)
+                .map(|f| f.bytes),
+            power_saving: power_saving.join().unwrap_or_default(),
+            disks: disks.join().unwrap_or_default(),
+            virtual_disks: virtual_disks.join().unwrap_or_default(),
+            restore_points: restore_points.join().unwrap_or_default(),
+            device_problems: device_problems.join().unwrap_or_default(),
+        }
+    });
     rules(&facts)
 }

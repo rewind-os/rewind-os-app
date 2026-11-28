@@ -107,7 +107,7 @@ fn read_agent(path: &Path) -> Option<Agent> {
     parse_agent(&done.stdout)
 }
 
-fn domain() -> Result<String> {
+pub(crate) fn domain() -> Result<String> {
     let uid = process::run_checked("id", &["-u"])?;
     Ok(format!("gui/{}", uid.stdout.trim()))
 }

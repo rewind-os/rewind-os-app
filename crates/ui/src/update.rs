@@ -1,7 +1,7 @@
 //! New versions: a button at the foot of the navigation when a newer release is out, and the
-//! version number, whose menu turns the check at start on or off and checks at once. The check
-//! itself is the engine's (`update.check`): each time the app starts, and only the app's version
-//! goes out. A failed check at start stays quiet; one asked for by hand says what went wrong.
+//! version number next to the app's name. The check itself is the engine's (`update.check`):
+//! each time the app starts, and only the app's version goes out; a failed check stays quiet.
+//! `rewind-os-cli update auto off` turns it off.
 //!
 //! A copy that can update itself (the MSI, a portable copy) offers "Update to …": after a
 //! confirmation the engine downloads the new version, checks its signature and installs it
@@ -21,8 +21,6 @@ use std::sync::Arc;
 pub struct Notice {
     job: Option<Job>,
     status: Option<Status>,
-    /// The running check was asked for by hand, so its outcome is reported.
-    asked: bool,
     /// The confirmation before installing is open.
     confirm: bool,
     install: Option<Job>,
@@ -49,7 +47,6 @@ impl Notice {
                     way: Way::Portable,
                     manual: None,
                 }),
-                asked: false,
                 confirm: false,
                 install: None,
             };
@@ -57,7 +54,6 @@ impl Notice {
         Self {
             job: Some(Job::start(ctx, engine, Request::UpdateCheck { now: false })),
             status: None,
-            asked: false,
             confirm: false,
             install: None,
         }
@@ -65,28 +61,9 @@ impl Notice {
 
     /// Takes in the outcome of a running check. Call once per frame.
     pub fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
-        match jobs::finished(&mut self.job, ctx) {
-            Some(Ok(Response::Update(status))) => {
-                if self.asked && !status.newer {
-                    shared.info(trf(
-                        "Rewind OS {current} is the newest version.",
-                        &[("current", status.current)],
-                    ));
-                }
-                self.status = Some(status);
-                self.asked = false;
-            }
-            Some(Ok(_)) => self.asked = false,
-            Some(Err(err)) => {
-                if self.asked {
-                    shared.error(trf(
-                        "Could not check for a new version: {error}",
-                        &[("error", &err)],
-                    ));
-                }
-                self.asked = false;
-            }
-            None => {}
+        // A check at start that failed (offline) stays quiet.
+        if let Some(Ok(Response::Update(status))) = jobs::finished(&mut self.job, ctx) {
+            self.status = Some(status);
         }
         match jobs::finished(&mut self.install, ctx) {
             Some(Ok(Response::UpdateInstalled(done))) if done.restarting => {
@@ -241,67 +218,14 @@ impl Notice {
         }
     }
 
-    /// The version number; its menu turns the check at start on or off and checks at once.
-    pub fn version_menu(&mut self, ui: &mut egui::Ui, shared: &mut Shared) {
+    /// The version number, as plain text.
+    pub fn version(&self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
-        let label = RichText::new(format!("v{}", update::CURRENT))
-            .small()
-            .color(t.text_muted);
-        let button = egui::Button::new(label).frame(false);
-        let (response, _) = egui::containers::menu::MenuButton::from_button(button).ui(ui, |ui| {
-            ui.label(
-                RichText::new(trf("Rewind OS {version}", &[("version", update::CURRENT)]))
-                    .family(theme::bold()),
-            );
-            let mut auto = self.status.as_ref().is_none_or(|s| s.auto);
-            if ui
-                .checkbox(
-                    &mut auto,
-                    tr("Check for a new version when Rewind OS starts"),
-                )
-                .changed()
-            {
-                run(shared, Request::UpdateAuto { enabled: auto });
-                match &mut self.status {
-                    Some(status) => status.auto = auto,
-                    None if self.job.is_none() => {
-                        self.job = Some(Job::start(
-                            ui.ctx(),
-                            &shared.engine,
-                            Request::UpdateCheck { now: false },
-                        ));
-                    }
-                    None => {}
-                }
-            }
-            let newer = self
-                .status
-                .as_ref()
-                .filter(|s| s.newer)
-                .and_then(|s| s.latest.as_ref())
-                .map(|l| l.version.clone());
-            if let Some(version) = newer
-                && ui
-                    .button(trf("What's new in {version}", &[("version", &version)]))
-                    .clicked()
-            {
-                run(shared, Request::UpdateNotes);
-                ui.close();
-            }
-            if ui
-                .add_enabled(self.job.is_none(), egui::Button::new(tr("Check now")))
-                .clicked()
-            {
-                self.job = Some(Job::start(
-                    ui.ctx(),
-                    &shared.engine,
-                    Request::UpdateCheck { now: true },
-                ));
-                self.asked = true;
-                ui.close();
-            }
-        });
-        response.on_hover_text(tr("Version and new versions"));
+        ui.label(
+            RichText::new(format!("v{}", update::CURRENT))
+                .small()
+                .color(t.text_muted),
+        );
     }
 }
 

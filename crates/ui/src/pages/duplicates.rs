@@ -424,7 +424,7 @@ impl State {
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
                                         let show = widgets::row_button(ui, tr("Show"), true)
-                                            .on_hover_text(tr("Show in File Explorer"));
+                                            .on_hover_text(widgets::reveal_hint());
                                         if show.clicked() {
                                             shared.reveal(copy.path.clone());
                                         }

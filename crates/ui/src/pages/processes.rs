@@ -393,7 +393,9 @@ fn power_card(
                     request = Some(Request::PowerSettings);
                 }
             });
-            if report.plans.len() <= 1 {
+            if report.plans.len() <= 1
+                && rewind_os_engine::Os::current() == rewind_os_engine::Os::Windows
+            {
                 ui.label(
                     RichText::new(tr(
                         "This computer has one power plan; Windows' power mode decides how fast it runs.",

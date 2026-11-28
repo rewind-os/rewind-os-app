@@ -1040,3 +1040,6 @@ Worn: it lasts about that share of its first time on a charge.	Desgastada: dura 
 Lithium-ion	Iones de litio
 Lithium polymer	Polímero de litio
 Nickel-metal hydride	Níquel-metalhidruro
+Show in Finder	Mostrar en el Finder
+Show in the file manager	Mostrar en el gestor de archivos
+{n} tools of other systems are not listed (--json lists them all).	No se muestran {n} herramientas de otros sistemas (--json las muestra todas).

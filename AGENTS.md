@@ -34,8 +34,10 @@ Layers, lowest first. A crate MUST NOT depend on a crate in a higher layer.
    system only through it, so the CLI (and future automation) can do everything the GUI can.
 2. Apps MUST be Rust only: no handwritten JavaScript or TypeScript, no webview.
 3. Every tool in `TOOLS` lists the systems it works on (`.only(...)`). Elsewhere `Engine::run`
-   answers `EngineError::Unsupported`, the GUI greys the page out and says why, and the CLI says
-   so. Platform differences live in `crates/platform` or behind `Os::current()`, not in panels.
+   answers `EngineError::Unsupported`; the GUI does not show the page, the CLI leaves the command
+   out of its help and `commands` (and says so if it is run anyway), and the terminal interface
+   leaves the action out. Text names what each system calls things (the Trash outside Windows,
+   Finder on macOS) and does not mention Windows where Windows is not involved. Platform differences live in `crates/platform` or behind `Os::current()`, not in panels.
    Cleanup categories are per system (`cleanup::WINDOWS`, `LINUX`, `MACOS`); a shared idea keeps
    the same id on every system.
 4. `unsafe_code` is forbidden workspace-wide. Windows APIs are reached through safe crates

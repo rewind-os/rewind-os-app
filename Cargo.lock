@@ -3709,6 +3709,7 @@ dependencies = [
 name = "rewind-os-i18n"
 version = "0.35.0"
 dependencies = [
+ "parking_lot 0.13.0",
  "sys-locale",
 ]
 

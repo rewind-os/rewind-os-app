@@ -155,3 +155,20 @@ fn a_program_name_with_its_version_still_owns_its_folders() {
     assert!(s.accounts_for("Ollama"));
     assert!(!s.accounts_for("OldGameStudio"));
 }
+
+#[test]
+fn game_folders_battle_net_records_are_found_in_its_binary_record() {
+    use rewind_os_engine::leftovers::paths_in;
+    let mut db = vec![0x0a, 0x12, b'w', b'o', b'w', 0x1a, 0x28];
+    db.extend_from_slice(b"(C:/Program Files (x86)/World of Warcraft");
+    db.extend_from_slice(&[0x22, 0x05, 0x00]);
+    db.extend_from_slice(b"enUS no path here");
+    let paths = paths_in(&db);
+    assert_eq!(paths, ["C:/Program Files (x86)/World of Warcraft"]);
+    let mut s = Signals::default();
+    for p in &paths {
+        s.add_path(p);
+    }
+    assert!(s.accounts_for("World of Warcraft"));
+    assert!(!s.accounts_for("Diablo IV"));
+}

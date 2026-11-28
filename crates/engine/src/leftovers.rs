@@ -273,6 +273,33 @@ impl Signals {
     }
 }
 
+/// The Windows paths (`C:/Program Files (x86)/World of Warcraft`) written as protobuf strings
+/// in a binary record, such as Battle.net's `product.db`: each comes after a byte that gives
+/// its length.
+pub fn paths_in(bytes: &[u8]) -> Vec<String> {
+    let mut found = Vec::new();
+    for (i, window) in bytes.windows(3).enumerate() {
+        let [drive, b':', b'/' | b'\\'] = window else {
+            continue;
+        };
+        if !drive.is_ascii_alphabetic() {
+            continue;
+        }
+        let Some(&len) = i.checked_sub(1).and_then(|before| bytes.get(before)) else {
+            continue;
+        };
+        let Some(text) = bytes
+            .get(i..i + usize::from(len))
+            .filter(|t| t.iter().all(|b| b.is_ascii_graphic() || *b == b' '))
+            .and_then(|t| std::str::from_utf8(t).ok())
+        else {
+            continue;
+        };
+        found.push(text.to_owned());
+    }
+    found
+}
+
 /// Lowercase letters and digits only: "Mozilla Firefox (x64)" -> "mozillafirefoxx64".
 pub fn normalize(text: &str) -> String {
     text.chars()
@@ -321,6 +348,14 @@ fn gather_signals() -> Signals {
     }
     for entry in startup::list() {
         signals.add_path(&entry.command);
+    }
+    // Battle.net games are not in Programs; its own record lists where each one is.
+    if let Some(data) = Known::ProgramData.path()
+        && let Ok(db) = std::fs::read(data.join(r"Battle.net\Agent\product.db"))
+    {
+        for path in paths_in(&db) {
+            signals.add_path(&path);
+        }
     }
     // Folders on the PATH hold tools in use that Programs may not list (Chocolatey, Scoop,
     // command line tools unpacked by hand).

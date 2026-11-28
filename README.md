@@ -65,6 +65,8 @@ large forgotten files and programs that start with the system for no reason.
   errors (Windows' own storage reports, the figures as administrator; udisks on Linux), a warning
   on Home when one is failing, and the system's own optimization (TRIM on SSDs, defragmentation
   of hard drives on Windows) run on request.
+- **Battery health**: how much charge the battery still holds against what it was made to hold,
+  and its charge cycles, with a tip on Home when it is worn (below 80 %).
 - **Make Windows lighter**: turn off ads, suggestions, tracking and extras you do not use. A
   closed list of documented settings, each of which can be undone, and optional removal of
   preinstalled Store apps (News, Tips, Clipchamp…) for your account; the Store can install
@@ -87,6 +89,7 @@ starts as a normal user and, on Windows, offers to restart as administrator when
 | Running programs | ✓ | ✓ | — |
 | Power plan | ✓ | ✓ (power-profiles-daemon) | — |
 | Disk health and optimization | ✓ (figures as administrator) | ✓ (udisks; TRIM with the password) | — |
+| Battery health | ✓ (battery report) | ✓ (`/sys/class/power_supply`) | ✓ (`ioreg`) |
 | Recommendations | ✓ | ✓ | ✓ |
 | Installed programs | ✓ | ✓ (APT, RPM, pacman, Flatpak, Snap) | ✓ (apps, to the Trash) |
 | Program leftovers | ✓ | ✓ (`~/.config`, `~/.local/share`) | ✓ (`~/Library`) |
@@ -176,6 +179,7 @@ rewind-os-cli clean run --defaults --yes     # the categories marked safe
 rewind-os-cli leftovers
 rewind-os-cli drivers list                   # Windows: old driver packages no device uses
 rewind-os-cli drivers problems               # Windows: devices with a driver problem
+rewind-os-cli battery                        # how much charge the battery still holds
 rewind-os-cli kernels list                   # Linux (APT): old kernels; the running one and the newest stay
 rewind-os-cli startup list
 rewind-os-cli recommend

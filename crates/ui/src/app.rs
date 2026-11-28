@@ -155,7 +155,7 @@ impl Page {
             Page::Startup => "Startup programs",
             Page::Lighten => "Make Windows lighter",
             Page::Maintenance => "Maintenance",
-            Page::Disks => "Disk health",
+            Page::Disks => "Health",
             Page::Processes => "Running programs",
         }
     }

@@ -91,6 +91,7 @@ impl State {
                             Action::Duplicates { .. } | Action::Leftovers => tr("Review"),
                             Action::Hibernation
                             | Action::DiskHealth
+                            | Action::Battery
                             | Action::PowerPlan
                             | Action::DeviceManager => tr("Open"),
                             Action::ReviewStartup
@@ -165,7 +166,7 @@ impl State {
                 Action::ReviewStartup => shared.goto = Some(Page::Startup),
                 Action::Lighten => shared.goto = Some(Page::Lighten),
                 Action::Hibernation => shared.goto = Some(Page::Maintenance),
-                Action::DiskHealth => shared.goto = Some(Page::Disks),
+                Action::DiskHealth | Action::Battery => shared.goto = Some(Page::Disks),
                 Action::PowerPlan => shared.goto = Some(Page::Processes),
                 Action::VirtualDisks => shared.goto = Some(Page::VirtualDisks),
                 Action::RestorePoints => shared.goto = Some(Page::Maintenance),

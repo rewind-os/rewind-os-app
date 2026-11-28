@@ -101,3 +101,4 @@ by keys like k9s, through the same engine requests as the app and the CLI.
 - [x] R4.3 Duplicates, program leftovers and build folders: picked one by one, moved to the recycle bin (or, for build folders, deleted) after a confirmation, never the last copy of a file
 - [x] R4.4 Running programs (closed or forced after a confirmation, turned off at startup) and maintenance (the system's own tools; what changes the system asks first and needs its rights)
 - [x] R4.5 The mouse in the terminal interface (tabs, rows, the wheel, a double click opens a folder) and running programs measured again every few seconds, the cursor staying on the same program
+- [x] R4.6 Health in the terminal interface (each drive's health and figures, the battery, optimizing after a confirmation); views of other systems are left out, and views past the tenth are reached with Tab or `:`

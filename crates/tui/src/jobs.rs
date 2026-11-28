@@ -28,6 +28,9 @@ pub enum Purpose {
     Close,
     StartupOff,
     Maintenance,
+    Health,
+    Battery,
+    Optimize,
 }
 
 /// What a running request reports.

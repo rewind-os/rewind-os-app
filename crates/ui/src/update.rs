@@ -61,10 +61,9 @@ impl Notice {
 
     /// Takes in the outcome of a running check. Call once per frame.
     pub fn poll(&mut self, ctx: &egui::Context, shared: &mut Shared) {
-        match jobs::finished(&mut self.job, ctx) {
-            Some(Ok(Response::Update(status))) => self.status = Some(status),
-            // A check at start that failed (offline) stays quiet.
-            Some(_) | None => {}
+        // A check at start that failed (offline) stays quiet.
+        if let Some(Ok(Response::Update(status))) = jobs::finished(&mut self.job, ctx) {
+            self.status = Some(status);
         }
         match jobs::finished(&mut self.install, ctx) {
             Some(Ok(Response::UpdateInstalled(done))) if done.restarting => {

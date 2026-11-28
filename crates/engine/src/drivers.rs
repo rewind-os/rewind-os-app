@@ -144,6 +144,14 @@ pub fn old_packages<'a>(
     old
 }
 
+/// The makers of the driver packages added to Windows (`Goodix`, `Logitech`), each once.
+pub(crate) fn providers() -> Vec<String> {
+    let mut makers: Vec<String> = read_packages().into_iter().map(|p| p.provider).collect();
+    makers.sort();
+    makers.dedup();
+    makers
+}
+
 fn read_packages() -> Vec<Package> {
     let Some((database, folders)) = DATABASES.iter().find_map(|path| {
         let folders = registry::subkeys(Hive::LocalMachine, path);

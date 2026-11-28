@@ -104,6 +104,7 @@ const SHARED: &[&str] = &[
     "microsoft.net",
     "reference assemblies",
     "msbuild",
+    "logishrd",
     // The Windows SDK and driver kit, shared by Visual Studio, its build tools and others; the
     // SDK's entry in Programs names neither the folder nor where it is.
     "windows kits",
@@ -275,6 +276,22 @@ impl Signals {
     }
 }
 
+const STORE_PACKAGES: &str = r"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages";
+
+/// The names in a Store package's full name: `5319275A.WhatsAppDesktop_2.26.0_x64__cv1g1g`
+/// -> `5319275A.WhatsAppDesktop` and `WhatsAppDesktop`; `Claude_6.2_x64__pzs8` -> `Claude`.
+pub fn store_package_names(full: &str) -> Vec<String> {
+    let name = full.split('_').next().unwrap_or(full);
+    let mut names = vec![name.to_owned()];
+    names.extend(
+        name.split('.')
+            .filter(|part| part.len() >= 4 && !part.starts_with(|c: char| c.is_ascii_digit()))
+            .filter(|part| *part != name)
+            .map(str::to_owned),
+    );
+    names
+}
+
 /// Where Windows keeps audio plugins, under Program Files or its 32-bit twin.
 const PLUGIN_FOLDERS: [(Known, &str); 12] = [
     (Known::ProgramFiles, r"Common Files\VST3"),
@@ -387,6 +404,11 @@ fn gather_signals() -> Signals {
             if let Some(exe) = process.exe() {
                 signals.add_path(&exe.to_string_lossy());
             }
+            // A program run from anywhere (a portable one in Downloads) keeps its settings in
+            // a folder named after it.
+            if let Some(stem) = Path::new(process.name()).file_stem() {
+                signals.add_name(&stem.to_string_lossy());
+            }
         }
     }
     for entry in startup::list() {
@@ -399,6 +421,16 @@ fn gather_signals() -> Signals {
         for path in paths_in(&db) {
             signals.add_path(&path);
         }
+    }
+    // Store apps (MSIX) are not in Programs; the packages installed for this account are.
+    for package in registry::subkeys(Hive::CurrentUser, STORE_PACKAGES) {
+        for name in store_package_names(&package) {
+            signals.add_name(&name);
+        }
+    }
+    // Drivers' makers keep their tools' files in folders named after them (`Goodix`).
+    for maker in crate::drivers::providers() {
+        signals.add_name(&maker);
     }
     // Audio plugins (VST, CLAP, AAX) are not in Programs either, and their sound libraries
     // live in folders named after the maker or the plugin.

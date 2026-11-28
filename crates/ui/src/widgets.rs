@@ -249,8 +249,17 @@ pub fn file_actions(ui: &mut Ui, path: &std::path::Path, gone: bool) -> (bool, b
         Some(why) => trash.on_disabled_hover_text(tr(why)),
         None => trash.on_hover_text(tr("Move to recycle bin")),
     };
-    let show = row_button(ui, tr("Show"), true).on_hover_text(tr("Show in File Explorer"));
+    let show = row_button(ui, tr("Show"), true).on_hover_text(reveal_hint());
     (show.clicked(), trash.clicked())
+}
+
+/// What "Show" does, in the words of this system.
+pub fn reveal_hint() -> &'static str {
+    match rewind_os_engine::Os::current() {
+        rewind_os_engine::Os::Windows => tr("Show in File Explorer"),
+        rewind_os_engine::Os::MacOs => tr("Show in Finder"),
+        rewind_os_engine::Os::Linux => tr("Show in the file manager"),
+    }
 }
 
 /// A horizontal bar showing `fraction` (0..=1). `label` is what a screen reader announces.

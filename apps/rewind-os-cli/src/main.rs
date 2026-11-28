@@ -5,7 +5,7 @@ mod mcp;
 mod paint;
 
 use anstream::{eprintln, println};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use rewind_os_engine::format::{bytes, count, duration_ms, local_date, signed_bytes};
 use rewind_os_engine::{Engine, Request, Response, TOOLS, Task, cleanup, kernels};
 use rewind_os_i18n::{tr, tr_text, trf};
@@ -19,7 +19,7 @@ use std::time::Duration;
 #[command(
     name = "rewind-os-cli",
     version,
-    about = "Disk analysis and cleanup for Windows"
+    about = "See what uses your disk and clean it up, on Windows, Linux and macOS"
 )]
 struct Cli {
     /// Print the engine's response as JSON.
@@ -54,7 +54,7 @@ enum Command {
         /// A folder the assistant may scan and list (repeatable).
         #[arg(long = "automation-read-root")]
         read_roots: Vec<PathBuf>,
-        /// A folder where the assistant may also move files to the recycle bin (repeatable).
+        /// A folder where the assistant may also move files to the recycle bin or Trash (repeatable).
         #[arg(long = "automation-write-root")]
         write_roots: Vec<PathBuf>,
         /// Also offer cleanup, startup, settings, apps, uninstall and maintenance tools.
@@ -103,19 +103,19 @@ enum Command {
         #[arg(long)]
         registry: bool,
     },
-    /// Move files or folders to the recycle bin.
+    /// Move files or folders to the recycle bin (the Trash on Linux and macOS).
     Trash {
         paths: Vec<PathBuf>,
         #[arg(long)]
         yes: bool,
     },
-    /// Move empty folders `scan` listed to the recycle bin; each is checked again first.
+    /// Move empty folders `scan` listed to the recycle bin or Trash; each is checked again first.
     TrashEmpty {
         paths: Vec<PathBuf>,
         #[arg(long)]
         yes: bool,
     },
-    /// Programs that start with Windows.
+    /// Programs that start with the system.
     #[command(subcommand)]
     Startup(Startup),
     /// How long the computer takes to start, and what slowed it down.
@@ -146,7 +146,7 @@ enum Command {
     /// Drive health, and optimizing the drives.
     #[command(subcommand)]
     Disks(Disks),
-    /// Windows maintenance tools (need administrator rights).
+    /// The system's own maintenance tools (most need administrator rights).
     #[command(subcommand)]
     Maintenance(Maintenance),
     /// New versions of Rewind OS.
@@ -383,10 +383,60 @@ enum Maintenance {
         #[arg(long)]
         yes: bool,
     },
+    /// How much space the system journal takes (Linux).
+    Journal,
+    /// Delete system journal entries older than two weeks (Linux, as administrator).
+    JournalClean {
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+/// Commands, and maintenance commands, with the tool each needs: hidden from the help on a
+/// system without it (they still say so when run).
+const ONLY_SOME_SYSTEMS: &[(&str, &str)] = &[
+    ("tweaks", "tweaks.list"),
+    ("apps", "apps.list"),
+    ("vdisks", "vdisk.list"),
+    ("drivers", "drivers.list"),
+    ("kernels", "kernels.list"),
+    ("restore", "restore.list"),
+    ("power", "power.list"),
+    ("boot", "boot.report"),
+];
+const MAINTENANCE_ONLY_SOME: &[(&str, &str)] = &[
+    ("store", "maintenance.analyze_component_store"),
+    ("cleanup", "maintenance.component_cleanup"),
+    ("hibernation", "maintenance.hibernation"),
+    ("journal", "maintenance.journal_usage"),
+    ("journal-clean", "maintenance.journal_vacuum"),
+];
+
+fn available(tool: &str) -> bool {
+    rewind_os_engine::tool(tool).is_some_and(|t| t.available())
+}
+
+/// The command line, with what this system cannot do left out of the help.
+fn parse() -> Cli {
+    let mut command = Cli::command();
+    for (name, tool) in ONLY_SOME_SYSTEMS {
+        if !available(tool) {
+            command = command.mut_subcommand(*name, |c| c.hide(true));
+        }
+    }
+    command = command.mut_subcommand("maintenance", |mut m| {
+        for (name, tool) in MAINTENANCE_ONLY_SOME {
+            if !available(tool) {
+                m = m.mut_subcommand(*name, |c| c.hide(true));
+            }
+        }
+        m
+    });
+    Cli::from_arg_matches(&command.get_matches()).unwrap_or_else(|e| e.exit())
 }
 
 fn main() -> ExitCode {
-    let cli = Cli::parse();
+    let cli = parse();
     rewind_os_i18n::init(cli.lang.as_deref());
     rewind_os_engine::update::tidy();
     let mut json = cli.json;
@@ -462,15 +512,22 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
                     serde_json::to_string_pretty(TOOLS).map_err(|e| e.to_string())?
                 );
             } else {
-                for tool in TOOLS {
+                // Only this system's tools; `--json` lists every one, with the systems of each.
+                for tool in TOOLS.iter().filter(|t| t.available()) {
                     let mark = if tool.changes_system { "*" } else { " " };
-                    let mut line = format!("{mark} {:<40} {}", tool.id, tr(tool.summary));
-                    if !tool.available() {
-                        line.push_str(&format!(" ({})", tr("not available on this system yet")));
-                    }
-                    println!("{line}");
+                    println!("{mark} {:<40} {}", tool.id, tr(tool.summary));
                 }
                 println!("\n* {}", tr("changes your system"));
+                let others = TOOLS.iter().filter(|t| !t.available()).count();
+                if others > 0 {
+                    println!(
+                        "{}",
+                        paint::muted(trf(
+                            "{n} tools of other systems are not listed (--json lists them all).",
+                            &[("n", &others.to_string())],
+                        ))
+                    );
+                }
             }
             return Ok(None);
         }
@@ -732,6 +789,11 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::Hibernation {
                 enabled: state == "on",
             }
+        }
+        Command::Maintenance(Maintenance::Journal) => Request::JournalUsage,
+        Command::Maintenance(Maintenance::JournalClean { yes }) => {
+            confirm(yes)?;
+            Request::JournalVacuum
         }
         Command::Run { request } => {
             *json = true;

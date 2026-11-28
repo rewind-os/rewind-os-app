@@ -89,6 +89,7 @@ Ids are `R<milestone>.<n>`. `- [ ]` is pending, `- [x]` is done.
 - [x] R3.14 A dark theme in neutral near-black and greys as in VS Code instead of navy, and a test that text, accents and controls keep their contrast on every layer of both themes
 - [x] R3.15 Battery health: the charge each battery still holds against what it was made to hold, and its cycles (Windows' battery report, `/sys/class/power_supply`, `ioreg`), on the health page, in the CLI and as a tip on Home when it is worn
 - [x] R3.16 Optional scheduled cleaning of the categories marked safe (Task Scheduler, a systemd timer, launchd), off until turned on, with a report of each run
+- [x] R3.17 Each system sees only its own: the app hides pages and the CLI hides commands of other systems, texts say Trash and Finder outside Windows, and the CLI reaches the Linux journal too
 
 ## R4 — A terminal interface
 

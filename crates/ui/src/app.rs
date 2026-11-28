@@ -7,7 +7,7 @@ use crate::theme;
 use crate::widgets;
 use egui::{CornerRadius, Margin, RichText};
 use rewind_os_engine::system::Overview;
-use rewind_os_engine::{Engine, Os, Request, Response};
+use rewind_os_engine::{Engine, Request, Response};
 use rewind_os_i18n::tr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -533,23 +533,11 @@ impl App {
         });
         ui.add_space(4.0);
         ui.spacing_mut().item_spacing.y = 2.0;
-        for &page in group.pages() {
-            let available = page.available();
-            let response = widgets::nav_item(
-                ui,
-                page.glyph(),
-                tr(page.title()),
-                self.page == page,
-                available,
-            );
-            let response = if available {
-                response.on_hover_text(tr(page.hint()))
-            } else {
-                response.on_hover_text(rewind_os_i18n::trf(
-                    "Not available on {os} yet.",
-                    &[("os", Os::current().name())],
-                ))
-            };
+        // Pages of tools this system does not have are not shown at all.
+        for &page in group.pages().iter().filter(|p| p.available()) {
+            let response =
+                widgets::nav_item(ui, page.glyph(), tr(page.title()), self.page == page, true)
+                    .on_hover_text(tr(page.hint()));
             if response.clicked() {
                 self.page = page;
             }

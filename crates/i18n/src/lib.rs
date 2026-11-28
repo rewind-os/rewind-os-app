@@ -60,9 +60,35 @@ pub fn language() -> &'static str {
     &catalog().lang
 }
 
-/// Translates `key`, the English text. Returns `key` when there is no translation.
+/// Translates `key`, the English text. Returns `key` when there is no translation, in the words
+/// of this system (see [`in_system_words`]).
 pub fn tr(key: &'static str) -> &'static str {
-    catalog().map.get(key).copied().unwrap_or(key)
+    if let Some(text) = catalog().map.get(key) {
+        return text;
+    }
+    if cfg!(windows) || !key.to_ascii_lowercase().contains("recycle bin") {
+        return key;
+    }
+    // English keys name Windows' recycle bin; macOS and Linux call it the Trash. Each changed
+    // text is made once and kept for the life of the program (a few dozen at most).
+    static CHANGED: OnceLock<parking_lot::Mutex<HashMap<&'static str, &'static str>>> =
+        OnceLock::new();
+    let mut changed = CHANGED.get_or_init(Default::default).lock();
+    changed
+        .entry(key)
+        .or_insert_with(|| Box::leak(in_system_words(key, false).into_boxed_str()))
+}
+
+/// English text in the words of the system it runs on: on Windows as written, elsewhere the
+/// recycle bin is the Trash.
+pub fn in_system_words(text: &str, windows: bool) -> String {
+    if windows {
+        return text.to_owned();
+    }
+    text.replace("the recycle bin", "the Trash")
+        .replace("to recycle bin", "to Trash")
+        .replace("Recycle bin", "Trash")
+        .replace("recycle bin", "Trash")
 }
 
 /// Translates text that is only known at run time (a reason an engine error carries). Returns
@@ -71,7 +97,7 @@ pub fn tr_text(text: &str) -> String {
     catalog()
         .map
         .get(text)
-        .map_or_else(|| text.to_owned(), |t| (*t).to_owned())
+        .map_or_else(|| in_system_words(text, cfg!(windows)), |t| (*t).to_owned())
 }
 
 /// Translates `key` and fills `{name}` placeholders from `args`.
@@ -112,5 +138,21 @@ mod tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod system_words {
+    use super::in_system_words;
+
+    #[test]
+    fn the_recycle_bin_is_the_trash_outside_windows() {
+        let text = "Move to recycle bin: 3 items will be moved to the recycle bin.";
+        assert_eq!(in_system_words(text, true), text);
+        assert_eq!(
+            in_system_words(text, false),
+            "Move to Trash: 3 items will be moved to the Trash."
+        );
+        assert_eq!(in_system_words("Recycle bin", false), "Trash");
     }
 }

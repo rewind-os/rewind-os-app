@@ -172,3 +172,23 @@ fn game_folders_battle_net_records_are_found_in_its_binary_record() {
     assert!(s.accounts_for("World of Warcraft"));
     assert!(!s.accounts_for("Diablo IV"));
 }
+
+#[test]
+fn the_makers_and_names_of_audio_plugins_own_their_sound_libraries() {
+    use rewind_os_engine::leftovers::plugin_items;
+    let plugins = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(plugins.path().join("Toontrack").join("EZdrummer 3.vst3")).unwrap();
+    std::fs::write(plugins.path().join("jamstix4.dll"), b"").unwrap();
+    let mut s = Signals::default();
+    for item in plugin_items(plugins.path()) {
+        s.add_path(&item.to_string_lossy());
+        if let Some(stem) = item.file_stem() {
+            s.add_name(&stem.to_string_lossy());
+        }
+    }
+    // `ProgramData\Toontrack` holds EZdrummer's drums; `ProgramData\Jamstix4` its plugin's.
+    assert!(s.accounts_for("Toontrack"));
+    assert!(s.accounts_for("Jamstix4"));
+    assert!(s.accounts_for("EZdrummer 3"));
+    assert!(!s.accounts_for("Old Synth Maker"));
+}

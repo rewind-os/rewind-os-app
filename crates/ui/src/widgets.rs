@@ -496,22 +496,37 @@ pub enum Choice {
 /// A modal confirmation. Escape or clicking outside cancels.
 pub fn confirm(ctx: &egui::Context, id: &str, title: &str, body: &str, action: &str) -> Choice {
     let mut choice = Choice::Open;
-    let modal = egui::Modal::new(egui::Id::unique(id)).show(ctx, |ui| {
-        ui.set_max_width(460.0);
-        ui.heading(title);
-        ui.add_space(6.0);
-        ui.label(body);
-        ui.add_space(12.0);
-        ui.horizontal(|ui| {
-            let go = danger_button(ui, action, true);
-            if go.clicked() {
-                choice = Choice::Confirmed;
-            }
-            if ui.button(tr("Cancel")).clicked() {
-                choice = Choice::Cancelled;
-            }
+    let t = theme::current(ctx);
+    // Wide enough for a few lines of explanation, never wider than the window allows.
+    let width = (ctx.content_rect().width() - 64.0).clamp(280.0, 520.0);
+    let frame = egui::Frame::new()
+        .fill(t.surface)
+        .corner_radius(CornerRadius::same(t.radius))
+        .inner_margin(Margin::same(t.card_padding.saturating_mul(2)));
+    let modal = egui::Modal::new(egui::Id::unique(id))
+        .frame(frame)
+        .show(ctx, |ui| {
+            ui.set_width(width);
+            ui.spacing_mut().item_spacing.y = 8.0;
+            ui.label(
+                RichText::new(title)
+                    .size(18.0)
+                    .strong()
+                    .family(theme::bold()),
+            );
+            ui.add_space(4.0);
+            ui.add(egui::Label::new(RichText::new(body).color(t.text_muted)).wrap());
+            ui.add_space(t.gap);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.spacing_mut().button_padding = egui::vec2(16.0, 8.0);
+                if danger_button(ui, action, true).clicked() {
+                    choice = Choice::Confirmed;
+                }
+                if ui.button(tr("Cancel")).clicked() {
+                    choice = Choice::Cancelled;
+                }
+            });
         });
-    });
     if choice == Choice::Open && modal.should_close() {
         choice = Choice::Cancelled;
     }

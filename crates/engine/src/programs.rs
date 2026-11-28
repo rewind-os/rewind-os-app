@@ -228,15 +228,61 @@ fn msi_remove(args: &str) -> String {
     out
 }
 
-/// Starts the uninstaller the way Explorer would (ShellExecute, through `Start-Process`), so
-/// Windows shows its administrator prompt when the uninstaller asks for one. `cmd /C` could not:
-/// a program that needs elevation failed inside cmd without a word, and cmd's quote handling
-/// broke command lines with more than one quoted part.
+/// Starts the uninstaller from this process, so its window comes to the front: Windows lets
+/// only the program in front, or one it starts, bring a window forward, and an uninstaller
+/// started through a hidden PowerShell opened behind the app, as if nothing had happened. One
+/// that needs administrator rights cannot be started this way (error 740); it goes through
+/// `Start-Process` (ShellExecute), which shows Windows' prompt. An uninstaller that fails at
+/// once is reported. `cmd /C` is never used: a program that needs elevation failed inside cmd
+/// without a word, and cmd's quote handling broke command lines with more than one quoted part.
 #[cfg(windows)]
 fn launch(command: &str) -> Result<()> {
+    use std::os::windows::process::CommandExt;
     let exists = |p: &str| std::path::Path::new(p).is_file();
     let launch = split_command(command, exists)
         .ok_or_else(|| EngineError::NotFound(format!("uninstall command: {command}")))?;
+    let mut direct = std::process::Command::new(&launch.program);
+    if !launch.args.is_empty() {
+        // As the installer wrote it: it reaches the uninstaller as its command line, untouched.
+        direct.raw_arg(&launch.args);
+    }
+    match direct.spawn() {
+        Ok(mut child) => {
+            let started = std::time::Instant::now();
+            while started.elapsed() < std::time::Duration::from_secs(2) {
+                match child.try_wait() {
+                    // Many uninstallers copy themselves elsewhere and end at once with 0.
+                    Ok(Some(status)) if status.success() => return Ok(()),
+                    Ok(Some(status)) => {
+                        return Err(rewind_os_platform::PlatformError::Command {
+                            program: launch.program,
+                            code: status.code(),
+                            detail: String::new(),
+                        }
+                        .into());
+                    }
+                    Ok(None) => std::thread::sleep(std::time::Duration::from_millis(100)),
+                    Err(_) => return Ok(()),
+                }
+            }
+            Ok(())
+        }
+        // ERROR_ELEVATION_REQUIRED: the uninstaller asks for administrator rights.
+        Err(e) if e.raw_os_error() == Some(740) => launch_elevated(launch),
+        Err(e) if matches!(e.raw_os_error(), Some(2 | 3)) => Err(EngineError::Refused(MISSING)),
+        Err(source) => Err(rewind_os_platform::PlatformError::Spawn {
+            program: launch.program,
+            source,
+        }
+        .into()),
+    }
+}
+
+/// Starts an uninstaller that needs administrator rights the way Explorer would (ShellExecute,
+/// through `Start-Process`), so Windows shows its prompt; the prompt and what it starts come to
+/// the front.
+#[cfg(windows)]
+fn launch_elevated(launch: Launch) -> Result<()> {
     let quote = |s: &str| format!("'{}'", s.replace('\'', "''"));
     let mut start = format!(
         "Start-Process -FilePath {} -ErrorAction Stop",

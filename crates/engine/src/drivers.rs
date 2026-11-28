@@ -3,8 +3,10 @@
 //!
 //! Packages are read from Windows' own record, the driver database Windows loads as its own
 //! hive (`HKLM\DRIVERS\DriverDatabase\DriverPackages`), which does not depend on the system's
-//! language. `HKLM\SYSTEM\DriverDatabase` also exists but holds only some of the packages, so it
-//! is read only when the other is missing. They are grouped by driver: the same
+//! language. Windows loads that hive only while something uses it, so when it is not loaded the
+//! driver store is listed once (`pnputil /enum-drivers`, read only) to load it.
+//! `HKLM\SYSTEM\DriverDatabase` also exists but holds only some of the packages, so it is read
+//! only when the other cannot be loaded. They are grouped by driver: the same
 //! original INF, provider and device class. In each group the newest version always stays, and
 //! so does every package a device uses. Only the older ones nothing uses are offered, and they
 //! are removed with `pnputil /delete-driver`, never with `/force`, so Windows itself refuses a
@@ -21,11 +23,10 @@ use rewind_os_platform::{Os, elevation, process};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
-/// Where Windows records its driver packages, the complete record first.
-const DATABASES: [&str; 2] = [
-    r"DRIVERS\DriverDatabase\DriverPackages",
-    r"SYSTEM\DriverDatabase\DriverPackages",
-];
+/// Where Windows records every driver package: a hive it loads only while it is used.
+const COMPLETE: &str = r"DRIVERS\DriverDatabase\DriverPackages";
+/// A copy that holds only some of the packages; read only when the other cannot be loaded.
+const PARTIAL: &str = r"SYSTEM\DriverDatabase\DriverPackages";
 
 /// English reason; translate with `rewind_os_i18n::tr`.
 pub const NOT_OLD: &str = "This is not an old driver package: it is the newest of its driver, a device uses it, or it is gone.";
@@ -153,10 +154,23 @@ pub(crate) fn providers() -> Vec<String> {
 }
 
 fn read_packages() -> Vec<Package> {
-    let Some((database, folders)) = DATABASES.iter().find_map(|path| {
+    let read = |path: &'static str| {
         let folders = registry::subkeys(Hive::LocalMachine, path);
-        (!folders.is_empty()).then_some((*path, folders))
-    }) else {
+        (!folders.is_empty()).then_some((path, folders))
+    };
+    // Windows loads the complete record only while something uses it and unloads it a couple
+    // of minutes later. Listing the driver store (read only) loads it again.
+    let found = read(COMPLETE)
+        .or_else(|| {
+            if Os::current() != Os::Windows {
+                return None;
+            }
+            // Its output is only words in the system's language; the record is what is read.
+            let _ = process::run("pnputil", &["/enum-drivers"]);
+            read(COMPLETE)
+        })
+        .or_else(|| read(PARTIAL));
+    let Some((database, folders)) = found else {
         return Vec::new();
     };
     folders

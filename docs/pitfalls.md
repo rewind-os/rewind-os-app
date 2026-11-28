@@ -70,6 +70,9 @@ Things that look wrong but are not, and mistakes worth not repeating.
   hive Windows loads on its own. `HKLM\SYSTEM\DriverDatabase\DriverPackages` looks the same but
   holds only some packages: on one computer it missed every NVIDIA and Intel Bluetooth package,
   so nine versions of one driver looked like none. Compare with `pnputil /enum-drivers`.
+- `HKLM\DRIVERS` is loaded only while something uses the driver store and unloaded about two
+  minutes later; then opening it fails as if it did not exist. Listing the store
+  (`pnputil /enum-drivers`, no rights needed) loads it again.
 
 ## Starting a program's uninstaller
 

@@ -81,8 +81,11 @@ unquoted with spaces in the path, or `MsiExec.exe /I{…}` (which opens change/r
 remove). Do not run it through `cmd /C`: cmd strips the first and last quote when the line has
 more than two, and an uninstaller that needs administrator rights fails inside cmd with error
 740 while `spawn()` still reports success. `programs::launch` splits the line itself and starts
-it with `Start-Process` (ShellExecute), which shows the administrator prompt and returns the
-Windows error code (1223 declined, 2 missing).
+it from the app's own process, and only one that needs administrator rights (error 740) with
+`Start-Process` (ShellExecute), which shows the administrator prompt and returns the Windows
+error code (1223 declined, 2 missing). Started through a hidden PowerShell, an uninstaller that
+needs no rights opened behind the app: Windows lets only the program in front, or one it
+starts, bring a window forward.
 - **A Linux release that warns about `GLIBC_2.39` on Debian 12.** Rust's standard library asks
   for the newest glibc functions of the system it is built on (`pidfd_spawnp`, as weak symbols:
   the program still runs, but the loader warns). Releases are built on Ubuntu 22.04 (glibc 2.35)

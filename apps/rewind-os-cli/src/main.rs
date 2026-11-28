@@ -134,6 +134,9 @@ enum Command {
     Drivers(Drivers),
     /// How much charge the battery still holds against what it was made to hold.
     Battery,
+    /// Cleaning the safe categories on a schedule (off until turned on).
+    #[command(subcommand)]
+    Schedule(Schedule),
     /// Old kernels left by kernel updates (Linux, with APT).
     #[command(subcommand)]
     Kernels(Kernels),
@@ -289,6 +292,26 @@ enum Drivers {
     Clean {
         /// Only these packages (`oem12.inf`), as `drivers list` names them.
         packages: Vec<String>,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+enum Schedule {
+    /// Whether it is on, how often, what it cleans and how its last runs went.
+    Status,
+    /// Turn it on: every week, or every four weeks. Each run deletes without asking.
+    On {
+        #[arg(long)]
+        every_four_weeks: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Turn it off.
+    Off,
+    /// Clean what the schedule cleans, now (the scheduler runs this).
+    Run {
         #[arg(long)]
         yes: bool,
     },
@@ -587,6 +610,26 @@ fn build(command: Command, json: &mut bool) -> Result<Option<Request>, String> {
             Request::DriversClean { packages }
         }
         Command::Battery => Request::BatteryHealth,
+        Command::Schedule(Schedule::Status) => Request::ScheduleStatus,
+        Command::Schedule(Schedule::On {
+            every_four_weeks,
+            yes,
+        }) => {
+            confirm(yes)?;
+            Request::ScheduleSet {
+                frequency: Some(if every_four_weeks {
+                    rewind_os_engine::schedule::Frequency::FourWeeks
+                } else {
+                    rewind_os_engine::schedule::Frequency::Weekly
+                }),
+            }
+        }
+        // Turning it off removes nothing but the schedule.
+        Command::Schedule(Schedule::Off) => Request::ScheduleSet { frequency: None },
+        Command::Schedule(Schedule::Run { yes }) => {
+            confirm(yes)?;
+            Request::ScheduleRun
+        }
         Command::Kernels(Kernels::List) => Request::KernelsList,
         Command::Kernels(Kernels::Clean { releases, yes }) => {
             confirm(yes)?;
@@ -1518,6 +1561,28 @@ fn print_human(response: &Response, top: usize) {
                 eprintln!("{}", paint::warn(format!("{name}: {}", tr_text(why))));
             }
         }
+        Response::Schedule(status) => {
+            match status.frequency {
+                Some(f) => println!(
+                    "{}",
+                    paint::good(trf("On: {when}.", &[("when", tr(f.label()))]))
+                ),
+                None => println!("{}", tr("Off.")),
+            }
+            println!("{}", paint::heading(tr("What it cleans")));
+            for id in &status.categories {
+                let name = cleanup::categories()
+                    .iter()
+                    .find(|c| c.id == *id)
+                    .map_or(*id, |c| tr(c.name));
+                println!("  {name}");
+            }
+            match status.runs.first() {
+                Some(run) => print_scheduled_run(run),
+                None => println!("{}", paint::muted(tr("It has not run yet."))),
+            }
+        }
+        Response::ScheduledRun(run) => print_scheduled_run(run),
         Response::Batteries(list) => {
             if list.is_empty() {
                 println!("{}", tr("This computer has no battery."));
@@ -1826,5 +1891,32 @@ fn print_human(response: &Response, top: usize) {
             }
             println!("\n* {}", tr("recommended"));
         }
+    }
+}
+
+/// One scheduled cleanup: when, what it freed, and what it could not do.
+fn print_scheduled_run(run: &rewind_os_engine::schedule::Run) {
+    println!(
+        "{}",
+        trf(
+            "Last run {date}: {size} freed, {files} files.",
+            &[
+                ("date", &local_date(run.at)),
+                ("size", &bytes(run.bytes)),
+                ("files", &count(run.files)),
+            ],
+        )
+    );
+    if run.failed > 0 {
+        println!(
+            "{}",
+            paint::warn(trf(
+                "{n} files were in use and stayed.",
+                &[("n", &count(run.failed))]
+            ))
+        );
+    }
+    for (id, why) in &run.skipped {
+        println!("{}", paint::warn(format!("{id}: {}", tr_text(why))));
     }
 }

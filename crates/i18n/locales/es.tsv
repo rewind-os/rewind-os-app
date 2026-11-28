@@ -1040,3 +1040,20 @@ Worn: it lasts about that share of its first time on a charge.	Desgastada: dura 
 Lithium-ion	Iones de litio
 Lithium polymer	Polímero de litio
 Nickel-metal hydride	Níquel-metalhidruro
+# Scheduled cleanup (R3.16)
+Every week	Cada semana
+Every four weeks	Cada cuatro semanas
+Clean automatically	Limpiar automáticamente
+The system's scheduler cleans these on its own: {list}. Nothing that needs a look or administrator rights is included.	El programador del sistema limpia esto por su cuenta: {list}. No entra nada que haya que revisar ni que necesite permisos de administrador.
+Last run {date}: {size} freed, {files} files.	Última vez el {date}: {size} liberados, {files} archivos.
+{n} files were in use and stayed.	{n} archivos estaban en uso y se quedaron.
+Clean automatically?	¿Limpiar automáticamente?
+Each run deletes these caches without asking, as the safe cleanup here does. You can turn it off here at any time.	Cada vez borra estas cachés sin preguntar, igual que la limpieza segura de aquí. Puedes desactivarlo aquí cuando quieras.
+The scheduled cleanup is on	La limpieza programada está activada
+The scheduled cleanup is off	La limpieza programada está desactivada
+On: {when}.	Activada: {when}.
+Off.	Desactivada.
+What it cleans	Qué limpia
+It has not run yet.	Todavía no se ha ejecutado.
+Rewind OS could not find its own program next to this one, so it cannot be scheduled.	Rewind OS no ha encontrado su propio programa junto a este, así que no puede programarse.
+This system has no systemd for your user, so Rewind OS cannot schedule a cleanup.	Este sistema no tiene systemd para tu usuario, así que Rewind OS no puede programar una limpieza.

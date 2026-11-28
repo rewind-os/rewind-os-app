@@ -1063,3 +1063,8 @@ This system has no systemd for your user, so Rewind OS cannot schedule a cleanup
 Some of this needs administrator rights	Parte de esto necesita permisos de administrador
 the system asks for your password	el sistema te pide la contraseña
 use sudo rewind-os-cli	usa sudo rewind-os-cli
+# Terminal interface: health (R4.6)
+Connected by	Conectado por
+Optimizing the drives	Optimizando los discos
+Reading the drives…	Leyendo los discos…
+Volumes	Volúmenes

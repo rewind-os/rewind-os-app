@@ -4,8 +4,8 @@
 
 use crate::jobs::{Jobs, Purpose};
 use crate::{
-    build_folders, cleanup, duplicates, home, leftovers, maintenance, processes, programs, scan,
-    startup, style,
+    build_folders, cleanup, duplicates, health, home, leftovers, maintenance, processes, programs,
+    scan, startup, style,
 };
 use ratatui::Frame;
 use ratatui::crossterm::event::{
@@ -37,10 +37,11 @@ pub enum View {
     BuildFolders,
     Processes,
     Maintenance,
+    Health,
 }
 
 impl View {
-    pub const ALL: [View; 10] = [
+    pub const ALL: [View; 11] = [
         View::Home,
         View::Scan,
         View::Cleanup,
@@ -51,7 +52,22 @@ impl View {
         View::BuildFolders,
         View::Processes,
         View::Maintenance,
+        View::Health,
     ];
+
+    /// Whether this system has what the view shows: views of other systems are left out.
+    fn available(self) -> bool {
+        let tool = |id: &str| rewind_os_engine::tool(id).is_some_and(|t| t.available());
+        match self {
+            View::Health => tool("disk.health") || tool("battery.health"),
+            _ => true,
+        }
+    }
+
+    /// The views of this system, in order; the first ten have the keys 1 to 9 and 0.
+    pub fn shown() -> Vec<View> {
+        View::ALL.into_iter().filter(|v| v.available()).collect()
+    }
 
     fn title(self) -> &'static str {
         match self {
@@ -65,6 +81,7 @@ impl View {
             View::BuildFolders => tr("Builds"),
             View::Processes => tr("Processes"),
             View::Maintenance => tr("Maintenance"),
+            View::Health => tr("Health"),
         }
     }
 
@@ -85,6 +102,7 @@ impl View {
             View::BuildFolders => &["builds", "dev", "projects"],
             View::Processes => &["processes", "ps", "top"],
             View::Maintenance => &["maintenance"],
+            View::Health => &["health", "disks", "battery", "drives"],
         };
         names.iter().any(|n| n.starts_with(&typed))
             || self.title().to_lowercase().starts_with(&typed)
@@ -111,6 +129,7 @@ pub struct App {
     pub build_folders: build_folders::State,
     pub processes: processes::State,
     pub maintenance: maintenance::State,
+    pub health: health::State,
     mode: Mode,
     /// A line for the bottom bar, and whether it is an error.
     message: Option<(String, bool)>,
@@ -132,6 +151,7 @@ impl App {
             build_folders: build_folders::State::new(scan_root),
             processes: processes::State::default(),
             maintenance: maintenance::State::default(),
+            health: health::State::default(),
             cleanup: cleanup::State::default(),
             startup: startup::State::default(),
             programs: programs::State::default(),
@@ -157,6 +177,7 @@ impl App {
             View::Leftovers => self.leftovers.open(),
             View::Processes => self.processes.open(),
             View::Maintenance => self.maintenance.open(),
+            View::Health => self.health.open(),
             View::Home | View::Scan | View::Duplicates | View::BuildFolders => Vec::new(),
         }
     }
@@ -172,6 +193,7 @@ impl App {
             View::BuildFolders => self.build_folders.captures_keys(),
             View::Processes => self.processes.captures_keys(),
             View::Maintenance => self.maintenance.captures_keys(),
+            View::Health => self.health.captures_keys(),
             View::Home => false,
         }
     }
@@ -208,11 +230,12 @@ impl App {
         }
         if !self.captured() {
             self.message = None;
+            let shown = View::shown();
             let next = |step: isize| {
-                let at = View::ALL.iter().position(|v| *v == self.view).unwrap_or(0);
-                let n = View::ALL.len() as isize;
+                let at = shown.iter().position(|v| *v == self.view).unwrap_or(0);
+                let n = shown.len().max(1) as isize;
                 let index = (at as isize + step).rem_euclid(n) as usize;
-                View::ALL.get(index).copied().unwrap_or(View::Home)
+                shown.get(index).copied().unwrap_or(View::Home)
             };
             match key.code {
                 KeyCode::Char('q') => {
@@ -234,7 +257,7 @@ impl App {
                     } else {
                         (c as usize).saturating_sub('1' as usize)
                     };
-                    if let Some(&view) = View::ALL.get(index) {
+                    if let Some(&view) = shown.get(index) {
                         return self.show(view);
                     }
                 }
@@ -254,6 +277,7 @@ impl App {
             View::BuildFolders => self.build_folders.key(key, jobs),
             View::Processes => self.processes.key(key, jobs),
             View::Maintenance => self.maintenance.key(key, jobs),
+            View::Health => self.health.key(key, jobs),
         }
     }
 
@@ -320,8 +344,8 @@ impl App {
             self.quit = true;
             return Vec::new();
         }
-        match View::ALL.iter().find(|v| v.matches(typed)) {
-            Some(&view) => self.show(view),
+        match View::shown().into_iter().find(|v| v.matches(typed)) {
+            Some(view) => self.show(view),
             None => {
                 self.message = Some((trf("No view is called “{name}”.", &[("name", typed)]), true));
                 Vec::new()
@@ -361,6 +385,10 @@ impl App {
                 self.maintenance.finished(outcome);
                 Vec::new()
             }
+            Purpose::Health | Purpose::Battery | Purpose::Optimize => {
+                self.health.finished(purpose, outcome);
+                Vec::new()
+            }
         }
     }
 
@@ -376,24 +404,29 @@ impl App {
             Span::styled(" Rewind OS ", style::heading()),
             Span::raw(" "),
         ];
-        // Each view's key: 1 to 9, then 0.
-        let key = |i: usize| (i + 1) % 10;
-        let full: usize = View::ALL
+        let shown = View::shown();
+        // Each view's key: 1 to 9, then 0; later views have none (Tab or `:` reach them).
+        let key = |i: usize| (i < 10).then(|| ((i + 1) % 10).to_string());
+        let label = |i: usize, view: View| match key(i) {
+            Some(k) => format!(" {k} {} ", view.title()),
+            None => format!(" {} ", view.title()),
+        };
+        let full: usize = shown
             .iter()
             .enumerate()
-            .map(|(i, v)| format!(" {} {} ", key(i), v.title()).chars().count())
+            .map(|(i, v)| label(i, *v).chars().count())
             .sum::<usize>()
             + 12;
-        // When every name does not fit, the other views show only their key.
+        // When every name does not fit, the other views show only their key, or their initial.
         let compact = full > usize::from(top.width);
-        for (i, view) in View::ALL.iter().enumerate() {
+        for (i, view) in shown.iter().enumerate() {
             if *view == self.view {
-                let label = format!(" {} {} ", key(i), view.title());
-                tabs.push(Span::styled(label, style::active()));
+                tabs.push(Span::styled(label(i, *view), style::active()));
             } else if compact {
-                tabs.push(Span::styled(format!(" {} ", key(i)), style::muted()));
+                let short = key(i).unwrap_or_else(|| view.title().chars().take(1).collect());
+                tabs.push(Span::styled(format!(" {short} "), style::muted()));
             } else {
-                tabs.push(Span::raw(format!(" {} {} ", key(i), view.title())));
+                tabs.push(Span::raw(label(i, *view)));
             }
         }
         // Each tab's columns, for the mouse.
@@ -402,7 +435,7 @@ impl App {
         for (i, span) in tabs.iter().enumerate() {
             let width = u16::try_from(span.width()).unwrap_or(u16::MAX);
             // The first two spans are the name and a space; then one span per view.
-            if let Some(&view) = i.checked_sub(2).and_then(|v| View::ALL.get(v)) {
+            if let Some(&view) = i.checked_sub(2).and_then(|v| shown.get(v)) {
                 places.push((column, column.saturating_add(width), view));
             }
             column = column.saturating_add(width);
@@ -425,6 +458,7 @@ impl App {
             View::BuildFolders => self.build_folders.draw(frame, body, jobs),
             View::Processes => self.processes.draw(frame, body, jobs),
             View::Maintenance => self.maintenance.draw(frame, body, jobs),
+            View::Health => self.health.draw(frame, body, jobs),
         }
 
         let line = match (&self.mode, &self.message) {
@@ -452,6 +486,7 @@ impl App {
                     View::BuildFolders => self.build_folders.hints(jobs),
                     View::Processes => self.processes.hints(jobs),
                     View::Maintenance => self.maintenance.hints(),
+                    View::Health => self.health.hints(),
                 });
                 if !self.captured() {
                     hints.push(("1-0", tr("Views")));

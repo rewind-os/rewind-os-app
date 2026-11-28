@@ -205,11 +205,11 @@ impl State {
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 let busy = self.optimize_job.is_some();
-                if widgets::primary_button(ui, tr("Optimize now"), allowed && !busy).clicked() {
-                    ask = true;
-                }
+                let button = widgets::primary_button(ui, tr("Optimize now"), allowed && !busy);
                 if !allowed {
-                    shared.admin_hint(ui);
+                    button.on_disabled_hover_text(tr("This needs administrator rights."));
+                } else if button.clicked() {
+                    ask = true;
                 }
             });
             if let Some(job) = &self.optimize_job {

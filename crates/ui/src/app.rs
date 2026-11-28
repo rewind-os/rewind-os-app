@@ -309,27 +309,43 @@ impl Shared {
     }
 
     /// A short "needs administrator" note with a restart button, for pages and cards.
+    /// One small line where a page has parts that need administrator rights: a short note and
+    /// the way to get them. The page itself says what needs them.
     pub fn admin_hint(&mut self, ui: &mut egui::Ui) {
         let t = theme::current(ui.ctx());
         ui.horizontal_wrapped(|ui| {
-            ui.label(RichText::new(tr("This needs administrator rights.")).color(t.warn));
+            ui.spacing_mut().item_spacing.x = 6.0;
+            ui.label(
+                RichText::new(tr("Some of this needs administrator rights"))
+                    .small()
+                    .color(t.text_muted),
+            );
+            ui.label(RichText::new("·").small().color(t.text_muted));
             if can_relaunch() {
-                if ui.button(tr("Restart as administrator")).clicked() {
+                let restart = egui::Button::new(
+                    RichText::new(tr("Restart as administrator")).small().color(t.accent),
+                )
+                .frame(false);
+                if ui
+                    .add(restart)
+                    .on_hover_text(tr(
+                        "Some cleanups and settings need administrator rights. Windows will ask for permission.",
+                    ))
+                    .clicked()
+                {
                     self.relaunch_elevated(ui.ctx());
                 }
             } else if can_elevate_actions() {
                 ui.label(
-                    RichText::new(tr(
-                        "The system asks for your password when you start one of these actions.",
-                    ))
-                    .color(t.text_muted),
+                    RichText::new(tr("the system asks for your password"))
+                        .small()
+                        .color(t.text_muted),
                 );
             } else {
                 ui.label(
-                    RichText::new(tr(
-                        "Run the command-line tool with sudo for these: sudo rewind-os-cli",
-                    ))
-                    .color(t.text_muted),
+                    RichText::new(tr("use sudo rewind-os-cli"))
+                        .small()
+                        .color(t.text_muted),
                 );
             }
         });
@@ -463,7 +479,7 @@ impl App {
                     .family(crate::theme::bold()),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                self.update.version_menu(ui, &mut self.shared);
+                self.update.version(ui);
             });
         });
         egui::Panel::bottom("sidebar_footer")

@@ -3661,7 +3661,7 @@ dependencies = [
 
 [[package]]
 name = "rewind-os"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "rewind-os-ui",
  "winresource",
@@ -3669,7 +3669,7 @@ dependencies = [
 
 [[package]]
 name = "rewind-os-cli"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "anstream",
  "anstyle",
@@ -3684,7 +3684,7 @@ dependencies = [
 
 [[package]]
 name = "rewind-os-engine"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "blake3",
  "chrono",
@@ -3707,14 +3707,14 @@ dependencies = [
 
 [[package]]
 name = "rewind-os-i18n"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "sys-locale",
 ]
 
 [[package]]
 name = "rewind-os-platform"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "filesize",
  "thiserror 2.0.21",
@@ -3725,7 +3725,7 @@ dependencies = [
 
 [[package]]
 name = "rewind-os-tui"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "chrono",
  "ratatui",
@@ -3736,7 +3736,7 @@ dependencies = [
 
 [[package]]
 name = "rewind-os-ui"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "chrono",
  "eframe",
@@ -5575,7 +5575,7 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xtask"
-version = "0.33.1"
+version = "0.33.2"
 dependencies = [
  "resvg",
 ]

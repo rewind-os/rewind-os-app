@@ -95,13 +95,6 @@ fn installed_games_and_plugins_keep_their_folders() -> Result {
     steam(&support.join("Steam"))?;
     dir(&h.join("Library/Audio/Plug-Ins/Components/EZdrummer 3.component"))?;
     let offered = offered(&[("HOME", h)])?;
-    // TEMPORARY diagnostics for CI.
-    let bare = rewind_os_engine::leftovers::candidates_in(
-        &support,
-        &rewind_os_engine::leftovers::Signals::default(),
-        rewind_os_engine::Os::MacOs,
-    );
-    eprintln!("DIAG offered={offered:?} bare={bare:?} support={support:?}");
     assert_only_the_abandoned_one(&offered, &["StardewValley", "EZdrummer 3"]);
     Ok(())
 }
